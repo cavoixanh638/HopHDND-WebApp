@@ -1,0 +1,65 @@
+/* HĐND List: one readable type scale for actual business values.
+ * The user-controlled --table-font-size remains the sole source of truth:
+ * default 13px, supported 11..20px. This does not change titles, filter
+ * controls, warning badges or the print/export layout. */
+.app-shell.list-visual-parity .item-data-table tbody tr.color-row > td[data-col-key] {
+  font-size:var(--table-font-size,13px)!important;
+  line-height:1.42;
+}
+.app-shell.list-visual-parity .item-data-table tbody tr.color-row
+  td[data-col-key] :is(
+    .code,.content-button,.compact-content-line,.compact-document-content,
+    .compact-document-heading,.compact-document-department,
+    .compact-document-badge,.compact-type-suffix,
+    .compact-stage-label,.compact-stage-title,.compact-stage-level,
+    .compact-stage-state,.workflow-status-value,
+    .compact-pair-lines,.compact-pair-tag,.compact-highlight-member,
+    .compact-cv-room-name,.compact-cv-room-line,.compact-part,
+    .cell-picker-trigger,.cell-picker-value-text,
+    .inline-note-trigger,.inline-note-textarea,.inline-note-entry,
+    .pr95-v6-type-cell,.status-pill
+  ) {
+  font-size:var(--table-font-size,13px)!important;
+}
+/* Do not enlarge UI affordance icons/tooltips or warning indicators. */
+.app-shell.list-visual-parity .item-data-table tbody tr.color-row
+  td[data-col-key] button.inline-note-empty .inline-note-pencil {
+  width:14px;height:14px;
+}
+
+/* Distinguish TWO separate resolutions even when both have long multiline
+ * descriptions/statuses. A separator belongs to the entire record, not to
+ * isolated cards inside cells. No new columns, badges or extra blank rows. */
+.app-shell.list-visual-parity .item-data-table tbody
+  tr.color-row + tr.color-row > td {
+  border-top:2px solid #cfdcd5;
+}
+.app-shell.list-visual-parity .item-data-table tbody
+  tr.color-row[data-document-kind="NQ"] + tr.color-row[data-document-kind="NQ"] > td {
+  border-top-color:#b7cac0;
+}
+/* Very quiet alternating rows ONLY where no saved row-color rule exists.
+ * Data-progress-tone cells keep their existing traffic-light status styling.
+ * Inline cell highlights remain authoritative over this non-important rule. */
+.app-shell.list-visual-parity:not(.imperial-sky-theme) .item-data-table tbody
+  tr.color-row:nth-child(even):not(.color-mint):not(.color-amber):not(.color-rose):not(.color-blue)
+  > td:not([data-progress-tone]) {
+  background-color:#f8faf9;
+}
+/* A small ID rail keeps the record boundary visible when horizontally
+ * scanning long NQ rows without consuming additional text width. */
+.app-shell.list-visual-parity .item-data-table tbody
+  tr.color-row > td[data-col-key="displayCode"] {
+  box-shadow:inset 3px 0 #d0dcd5;
+}
+.app-shell.list-visual-parity .item-data-table tbody
+  tr.color-row:nth-child(even) > td[data-col-key="displayCode"] {
+  box-shadow:inset 3px 0 #a9c2b5;
+}
+/* Hover a whole record gently without overriding user-colored rows, status
+ * palettes, inline highlights or the stronger editable-field hover. */
+.app-shell.list-visual-parity:not(.imperial-sky-theme) .item-data-table tbody
+  tr.color-row:not(.color-mint):not(.color-amber):not(.color-rose):not(.color-blue):hover
+  > td:not([data-progress-tone]):not(.editable-cell) {
+  background-color:#f1f6f3;
+}
