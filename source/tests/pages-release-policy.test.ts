@@ -7,9 +7,9 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
   it('passes standalone Node policy regression matrix before allowing a UI release',()=>{
     const cwd=fileURLToPath(new URL('../',import.meta.url));
     const output=execFileSync(process.execPath,
-      ['--test','scripts/pages-release-policy.test.mjs'],
+      ['--test','scripts/pages-release-policy.check.mjs'],
       {cwd,encoding:'utf8',timeout:12000});
-    expect(output).toContain('# fail 0');
+    expect(output).toMatch(/fail\\s+0/);
   });
   it('keeps a separate Spark cutover gate and exact SHA approval for sensitive changes',()=>{
     const flow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');
@@ -17,7 +17,7 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
     expect(flow).toContain('needs: release-gate');
     expect(flow).toContain("needs.release-gate.outputs.release_allowed == 'true'");
     expect(flow).toContain('node source/scripts/pages-release-policy.mjs');
-    expect(flow).toContain('node --test source/scripts/pages-release-policy.test.mjs');
+    expect(flow).toContain('node --test source/scripts/pages-release-policy.check.mjs');
     expect(flow).toContain('HOPHDND_PAGES_APPROVED_MAIN_SHA');
     expect(flow).toContain('--baseline "$RELEASE_BASELINE"');
     expect(flow).toContain('--assert-mode "$RELEASE_MODE"');
