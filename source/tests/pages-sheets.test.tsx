@@ -467,9 +467,9 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(menu).toBeDefined();
     const popover=nodes(menu).find(n=>n.type==='div'&&n.props.className==='options-popover');
     expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual([
-      'Chỉnh sửa','Phân quyền chỉnh sửa ô','Tùy chỉnh báo cáo','Tài khoản và dữ liệu','Nhập / Xuất Excel','Hiện mã khu vực'
+      'Chỉnh sửa','Tùy chỉnh báo cáo','Phân quyền chỉnh sửa ô','Tài khoản và dữ liệu','Nhập / Xuất Excel','Chốt số liệu','Hiện mã khu vực'
     ]);
-    expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(1);
+    expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(2);
     tree=open('Chỉnh sửa');
     expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing===true)).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
@@ -483,6 +483,25 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     tree=open('Excel · Trích xuất');
     expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(true);
     expect(nodes(tree).some(n=>n.type==='details'&&String(n.props.className).includes('v3-settings-menu'))).toBe(true);
+  });
+  it('keeps a verified admin editing route during temporary disconnect, then restores it without widening rights',async()=>{
+    grantAdmin();render();respond();await settle();
+    let tree=open('Chỉnh sửa');
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing===true)).toBe(true);
+    firebase.connected=false;
+    tree=render();tree=render();
+    expect(tree.props.className).toContain('settings-page');
+    expect(text(tree)).toContain('Kết nối quản trị tạm gián đoạn');
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.allowLayout)).toBe(false);
+    firebase.connected=true;
+    tree=render();tree=render();
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing===true)).toBe(true);
+    firebase.isAdmin=false;
+    firebase.user={isAnonymous:false,uid:'staff',email:'staff@example.com'} as FirebaseController['user'];
+    tree=render();tree=render();
+    expect(tree.props.className).not.toContain('settings-page');
+    expect(nodes(tree).some(n=>n.type===ItemList&&n.props.allowLayout)).toBe(false);
+    expect(button(tree,'Đăng xuất Google')).toBeDefined();
   });
   it('blocks switching editing sections while a report draft is unsaved',async()=>{
     grantAdmin();render();respond();await settle();
