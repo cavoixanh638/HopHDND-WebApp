@@ -789,41 +789,36 @@ try{
   // Guest receives the palette but never an editable palette control.
   const hiddenGuestPalette=await evaluate(`!document.querySelector('.item-header-actions .status-palette-trigger')`);
   if(!hiddenGuestPalette)throw Error('Guest must not receive admin status palette editor');
+  // Exercise the saved-palette entry point. L03 intentionally has dedicated
+  // default colors, so mutating only generic CSS vars bypasses its real mapping.
+  const paletteKey='hdnd.status-palettes.v1:pages:gen:'+SMOKE_GENERATION+':'+SMOKE_OPERATION+':1';
+  const previousPalette=await evaluate(`localStorage.getItem(${JSON.stringify(paletteKey)})`);
+  const customPalette={version:1,activePresetId:'',presets:[],active:{
+    'not-submitted':{text:'#A10022',background:'#F1CBDB'},
+    office:{text:'#80531F',background:'#FFEEDA'},
+    done:{text:'#256441',background:'#DEF3E5'},
+    other:{text:'#426274',background:'#F2F6F9'},otherEnabled:false
+  }};
+  await evaluate(`localStorage.setItem(${JSON.stringify(paletteKey)},${JSON.stringify(JSON.stringify(customPalette))})`);
+  await send('Page.reload');
+  await eventually(`(()=>{const node=document.querySelector('.item-data-table tbody .compact-stage-state[data-progress-tone="not-submitted"]');
+    return !!node&&getComputedStyle(node).color==='rgb(161, 0, 34)'&&
+      getComputedStyle(node).backgroundColor==='rgb(241, 203, 219)';})()`,
+    'Saved custom palette did not reach the real guest L03 status',150);
   const paletteCascade=await evaluate(`(()=>{
-    const sample=document.querySelector('.item-data-table tbody td[data-col-key="partyLevel"] .compact-stage-state[data-progress-tone="not-submitted"]');
-    const frame=sample?.closest('.compact-stage-row');
-    if(!sample||!frame)return {ok:false,reason:'missing real grouped stage'};
-    // App may supply a nearer scoped palette than the outer app-shell. Edit the
-    // actual closest CSS-variable owner, then restore it without writing storage.
-    let owner=sample.parentElement;
-    while(owner&&!owner.style.getPropertyValue('--hdnd-status-not-submitted-text'))
-      owner=owner.parentElement;
-    owner??=document.querySelector('.app-shell');
-    if(!owner)return {ok:false,reason:'missing palette owner'};
-    const beforeText=owner.style.getPropertyValue('--hdnd-status-not-submitted-text');
-    const beforeBg=owner.style.getPropertyValue('--hdnd-status-not-submitted-bg');
-    owner.style.setProperty('--hdnd-status-not-submitted-text','#A10022');
-    owner.style.setProperty('--hdnd-status-not-submitted-bg','#F1CBDB');
-    const style=getComputedStyle(sample),frameStyle=getComputedStyle(frame);
-    const text=style.color,background=style.backgroundColor,frameBackground=frameStyle.backgroundColor;
-    const inherited=style.getPropertyValue('--hdnd-status-not-submitted-text').trim();
-    // REV2: this is a guest/read-only status. The source text inherits the
-    // palette ink, but only a real editable CellPicker button gets a filled
-    // palette background. Never require a fake filled guest affordance.
-    const isReadonly=sample.getAttribute('data-editable')!=='true'&&
-      !sample.querySelector('button.cell-picker-trigger');
-    const inheritedBg=style.getPropertyValue('--hdnd-status-not-submitted-bg').trim();
-    const ok=isReadonly&&text==='rgb(161, 0, 34)'&&
-      background==='rgba(0, 0, 0, 0)'&&
-      inherited==='#A10022'&&inheritedBg==='#F1CBDB'&&
-      frameBackground==='rgba(0, 0, 0, 0)';
-    if(beforeText)owner.style.setProperty('--hdnd-status-not-submitted-text',beforeText);
-    else owner.style.removeProperty('--hdnd-status-not-submitted-text');
-    if(beforeBg)owner.style.setProperty('--hdnd-status-not-submitted-bg',beforeBg);
-    else owner.style.removeProperty('--hdnd-status-not-submitted-bg');
-    return {ok,text,background,frameBackground,inherited,owner:owner.className};
+    const sample=document.querySelector('.item-data-table tbody .compact-stage-state[data-progress-tone="not-submitted"]');
+    return {text:getComputedStyle(sample).color,background:getComputedStyle(sample).backgroundColor,
+      guestToolsHidden:!document.querySelector('.item-header-actions .status-palette-trigger')};
   })()`);
-  if(!paletteCascade.ok)throw Error('Status palette CSS did not cascade: '+JSON.stringify(paletteCascade));
+  if(!paletteCascade.guestToolsHidden)throw Error('Custom palette exposed guest Admin tools');
+  console.log('SAVED_CUSTOM_L03_PALETTE_PASS',JSON.stringify(paletteCascade));
+  await evaluate(previousPalette===null
+    ?`localStorage.removeItem(${JSON.stringify(paletteKey)})`
+    :`localStorage.setItem(${JSON.stringify(paletteKey)},${JSON.stringify(previousPalette)})`);
+  await send('Page.reload');
+  await eventually(`(()=>{const node=document.querySelector('.item-data-table tbody .compact-stage-state[data-progress-tone="not-submitted"]');
+    return !!node&&getComputedStyle(node).color==='rgb(163, 45, 70)';})()`,
+    'Default palette did not return after restoring saved state',150);
   const sortAndGuestLayout=await evaluate(`(()=>{
     const topbar=document.querySelector('.topbar');
     const nav=document.querySelector('nav.primary-section-switcher');
