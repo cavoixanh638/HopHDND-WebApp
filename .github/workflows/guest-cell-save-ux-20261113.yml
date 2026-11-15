@@ -36,9 +36,12 @@ jobs:
         run: npm run test:spark
       - name: Public Spark build; no deployment or Firebase writes
         run: npm run build:spark
-      - name: Verify GitHub Pages release gate is unchanged
+      - name: Verify GitHub Pages UI auto and sensitive SHA release gates (NO DEPLOY)
         working-directory: .
         run: |
-          grep -Fq "vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha" .github/workflows/publish-pages.yml
           grep -Fq "vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'" .github/workflows/publish-pages.yml
+          grep -Fq "needs.release-gate.outputs.release_allowed == 'true'" .github/workflows/publish-pages.yml
+          grep -Fq 'HOPHDND_PAGES_APPROVED_MAIN_SHA' .github/workflows/publish-pages.yml
+          grep -Fq 'node source/scripts/pages-release-policy.mjs' .github/workflows/publish-pages.yml
+          node --test source/scripts/pages-release-policy.check.mjs
           echo "GUEST_CELL_EDIT_FIX_PASS_NO_DEPLOY"
