@@ -4453,12 +4453,23 @@ try{
     'Guest List scroll fixture missing');
   const guestDoc=await evaluate(`(()=>{
     const shell=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
+    const footer=document.querySelector('.item-list-table-footer');
+    const table=document.querySelector('.item-table-scroll');
+    const bodyShellBottom=shell?.getBoundingClientRect().bottom??0;
     return {adminMenu:!!document.querySelector('.admin-list-controls'),
       overflow:getComputedStyle(shell).overflowY,
-      max:doc.scrollHeight-doc.clientHeight,
-      table:document.querySelector('.item-table-scroll').clientHeight};
+      max:doc.scrollHeight-doc.clientHeight,table:table?.clientHeight,
+      tableMax:table?table.scrollHeight-table.clientHeight:null,
+      footer:footer?.textContent?.trim()??null,
+      footerCount:footer?.dataset.visibleCount,
+      trailing:footer?bodyShellBottom-footer.getBoundingClientRect().bottom:null};
   })()`);
-  if(guestDoc.adminMenu||guestDoc.overflow!=='hidden'||guestDoc.max>3||guestDoc.table<200)
+  // Guests can now scroll the document naturally when their content is tall;
+  // no admin settings, no artificial void below the actual List footer.
+  if(guestDoc.adminMenu||guestDoc.overflow!=='visible'||
+    guestDoc.table<200||guestDoc.tableMax<10||
+    guestDoc.footerCount!=='8'||guestDoc.trailing===null||
+    guestDoc.trailing>50||guestDoc.trailing<0)
     throw Error('GUEST_LIST_SCROLL_ISOLATION_FAIL '+JSON.stringify(guestDoc));
   console.log('GUEST_LIST_SCROLL_ISOLATION_PASS',JSON.stringify(guestDoc));
   // Return Chrome dimensions to the existing smoke baseline.
