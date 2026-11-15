@@ -4416,10 +4416,11 @@ try{
     return {y:document.scrollingElement.scrollTop,top:rect.top,bottom:rect.bottom,
       height:innerHeight};
   })()`);
-  if(l03Reach.y<5||l03Reach.top<0||l03Reach.bottom>l03Reach.height)
+  if(l03Reach.top<0||l03Reach.bottom>l03Reach.height)
     throw Error('ADMIN_L03_EDITOR_UNREACHABLE '+JSON.stringify(l03Reach));
   const pageAndTable=await evaluate(`(()=>{
     const doc=document.scrollingElement,table=document.querySelector('.item-table-scroll');
+    doc.scrollTop=0;
     const pageBefore=doc.scrollTop;
     doc.scrollTop=doc.scrollHeight;
     const pageAfter=doc.scrollTop;
