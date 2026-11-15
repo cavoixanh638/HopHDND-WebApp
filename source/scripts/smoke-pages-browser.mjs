@@ -3644,8 +3644,8 @@ try{
   await send('Input.dispatchMouseEvent',{type:'mousePressed',...dragStart,button:'left',clickCount:1});
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:dragStart.x+5,y:dragStart.y,button:'left'});
   await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:dragStart.x+5,y:dragStart.y,button:'left',clickCount:1});
-  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>433",
-    'R02 real pointer drag did not resize');
+  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>"+(r02Before.content+4.5),
+    'R02 real pointer drag did not resize relative to the fitted baseline');
   const r02Drag=await widthSnapshot();
   assertSameTotal(r02Before,r02Drag,'L019 adjacent pointer drag');
   if(r02Drag.content!==r02Before.content+5||
@@ -3704,8 +3704,9 @@ try{
   const groupedBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
   await realArrow('ArrowRight');
-  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>=450",
-    'R02 grouped last-column compensation did not move');
+  await eventually("document.querySelector('td[data-col-key=content]')?.getBoundingClientRect().width>="+
+    (groupedBefore.content+9.5),
+    'R02 grouped last-column compensation did not move relative to fitted baseline');
   const groupedAfter=await widthSnapshot();
   assertSameTotal(groupedBefore,groupedAfter,'R02 grouped last');
   if(groupedAfter.party!==groupedBefore.party)throw Error('L03 last group was resized indirectly');
