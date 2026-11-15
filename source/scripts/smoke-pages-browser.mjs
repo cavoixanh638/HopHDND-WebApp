@@ -4472,6 +4472,91 @@ try{
     guestDoc.trailing>50||guestDoc.trailing<0)
     throw Error('GUEST_LIST_SCROLL_ISOLATION_FAIL '+JSON.stringify(guestDoc));
   console.log('GUEST_LIST_SCROLL_ISOLATION_PASS',JSON.stringify(guestDoc));
+
+  // 15 Nov: L03 must not show another visible horizontal scrollbar within
+  // each row at Chrome's 75%-equivalent device scale. Test owner 326/399px
+  // rails in read-only, editable and granted-guest modes without persistence.
+  const l03ZoomMatrix=[];
+  for(const mode of ['readonly','editable','guest-editable']){
+    const params=mode==='readonly'?'':'&edit=1';
+    const guest=mode==='guest-editable'?'&guest=1':'';
+    await send('Emulation.setDeviceMetricsOverride',
+      {width:2133,height:1200,deviceScaleFactor:0.75,mobile:false});
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&l03-zoom=1'+params+guest});
+    await eventually("document.querySelectorAll('td[data-l03-layout] .compact-stages[data-rev2=true]').length>=3",
+      '75%-equivalent L03 owner rail fixture did not mount: '+mode);
+    const audit=await evaluate(`(()=>{
+      const cells=[...document.querySelectorAll('td[data-l03-layout]')].slice(0,5);
+      const rows=cells.map(td=>{
+        const s=td.querySelector('.compact-stages[data-rev2=true]');
+        if(!s)return {missing:true};
+        const style=getComputedStyle(s),labels=[...s.querySelectorAll('.compact-stage-label')];
+        const states=[...s.querySelectorAll('.compact-stage-state')];
+        return {kind:td.dataset.l03Layout,tdWidth:td.getBoundingClientRect().width,
+          stageWidth:s.getBoundingClientRect().width,client:s.clientWidth,
+          scroll:s.scrollWidth,excess:s.scrollWidth-s.clientWidth,
+          scrollbar:style.scrollbarWidth,overflow:style.overflowX,
+          grid:style.gridTemplateColumns,
+          labelExcess:labels.map(n=>n.scrollWidth-n.clientWidth),
+          stateExcess:states.map(n=>n.scrollWidth-n.clientWidth)};
+      });
+      const shell=document.querySelector('.app-shell.list-fit-page');
+      const footer=document.querySelector('.item-list-table-footer');
+      const list=document.querySelector('.item-table-scroll');
+      return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,rows,
+        footer:footer?{count:footer.dataset.visibleCount,
+          text:footer.textContent.trim(),bottom:footer.getBoundingClientRect().bottom,
+          height:footer.getBoundingClientRect().height}:null,
+        shell:getComputedStyle(shell).overflowY,table:list?.clientHeight,
+        tableHeight:list?.querySelector('table')?.getBoundingClientRect().height};
+    })()`);
+    console.log('L03_ZOOM_75_GEOMETRY_AUDIT',mode,JSON.stringify(audit));
+    if(audit.rows.length<3||audit.rows.some(r=>r.missing||
+      r.scrollbar!=='none'||r.labelExcess.some(n=>n>2)||
+      r.stateExcess.some(n=>n>6))||
+      !audit.footer||audit.footer.count!=='8'||audit.footer.height<15)
+      throw Error('L03_ZOOM75_OR_FOOTER_FAIL '+mode+' '+JSON.stringify(audit));
+    if(mode!=='guest-editable'&&(audit.shell!=='hidden'||
+      audit.footer.bottom>audit.height-5||audit.footer.bottom<audit.height-120))
+      throw Error('ADMIN_FOOTER_VIEWPORT_REACH_FAIL '+mode+' '+JSON.stringify(audit));
+    l03ZoomMatrix.push({mode,audit});
+  }
+  console.log('L03_ZOOM75_NO_NESTED_SCROLLBAR_PASS',
+    JSON.stringify(l03ZoomMatrix.map(({mode,audit})=>({
+      mode,dpr:audit.dpr,excess:audit.rows.map(r=>r.excess),
+      footer:audit.footer,scrollbar:audit.rows.map(r=>r.scrollbar)
+    }))));
+
+  // A guest filtering down to two records must get a 2-row table viewport,
+  // not hundreds of pixels of empty white area beneath the last real row.
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:1600,height:900,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&guest=1&short-rows=1'});
+  await eventually("document.querySelector('.item-list-table-footer[data-visible-count=2]')!==null",
+    'Short guest List with 2 records did not render');
+  const guestShort=await evaluate(`(()=>{
+    const table=document.querySelector('.item-table-scroll');
+    const footer=document.querySelector('.item-list-table-footer');
+    const shell=document.querySelector('.app-shell.list-fit-page');
+    const innerTable=table.querySelector('table');
+    const page=document.scrollingElement;
+    return {rows:innerTable.querySelectorAll('tbody tr').length,
+      viewport:table.getBoundingClientRect().height,
+      content:innerTable.getBoundingClientRect().height,
+      blank:table.clientHeight-innerTable.getBoundingClientRect().height,
+      footer:footer?.textContent.trim(),footerCount:footer?.dataset.visibleCount,
+      trail:shell.getBoundingClientRect().bottom-footer.getBoundingClientRect().bottom,
+      documentExcess:page.scrollHeight-page.clientHeight,
+      shellOverflow:getComputedStyle(shell).overflowY};
+  })()`);
+  if(guestShort.rows!==2||guestShort.blank>8||guestShort.trail>50||
+    guestShort.trail<0||guestShort.footerCount!=='2'||
+    guestShort.shellOverflow!=='visible')
+    throw Error('GUEST_SHORT_TABLE_TRAILING_SPACE_FAIL '+JSON.stringify(guestShort));
+  console.log('GUEST_SHORT_TABLE_NATURAL_HEIGHT_PASS',JSON.stringify(guestShort));
+
   // Return Chrome dimensions to the existing smoke baseline.
   await send('Emulation.setDeviceMetricsOverride',
     {width:1600,height:1000,deviceScaleFactor:1,mobile:false});
