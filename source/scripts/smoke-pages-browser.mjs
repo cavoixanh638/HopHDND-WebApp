@@ -854,22 +854,55 @@ try{
     throw Error('Guest List font audit did not find source columns: '+JSON.stringify(visibleFontAudit));
   console.log('GUEST_LIST_COLUMN_FONT_AUDIT',JSON.stringify(visibleFontAudit));
 
-  // Default 13px should be the exact computed business-value font size
-  // across every visible source column AND every nested L03 stage element.
+  // The 13px saved base must render a truly COMPACT 12px List across all
+  // business values and nested L03 labels; no global or A4 setting changes.
+  const compactDisplaySize='12px';
   const inconsistent=visibleFontAudit.columns.flatMap(col=>{
     const mismatches=[
-      ...(col.cellFont==='13px'?[]:[{member:'cell',size:col.cellFont}]),
-      ...(col.primaryFont==='13px'?[]:[{member:'primary',size:col.primaryFont}]),
-      ...col.segments.filter(member=>member.size!=='13px').map(member=>({member:member.name,size:member.size}))
+      ...(col.cellFont===compactDisplaySize?[]:[{member:'cell',size:col.cellFont}]),
+      ...(col.primaryFont===compactDisplaySize?[]:[{member:'primary',size:col.primaryFont}]),
+      ...col.segments.filter(member=>member.size!==compactDisplaySize).map(member=>({member:member.name,size:member.size}))
     ];
     return mismatches.map(member=>({column:col.key,...member}));
   });
   if(visibleFontAudit.tableFont!=='13px'||inconsistent.length)
-    throw Error('Guest List business text sizes must match 13px baseline: '+JSON.stringify({inconsistent,visibleFontAudit}));
+    throw Error('Guest List must render 12px text at 13px configured base: '+JSON.stringify({inconsistent,visibleFontAudit}));
   console.log('GUEST_LIST_FONT_UNIFIED_PASS',JSON.stringify({
     columns:visibleFontAudit.columns.map(col=>({key:col.key,size:col.primaryFont,segments:col.segments})),
-    configured:visibleFontAudit.tableFont
+    configured:visibleFontAudit.tableFont,rendered:compactDisplaySize
   }));
+
+  // Font slider still works: 16px configuration -> 15px List; 11px stays
+  // readable at its floor. Verify every edited value restores on exit.
+  const compactSliderProbe=await evaluate(`(()=>{
+    const table=document.querySelector('.app-shell.guest-view .item-data-table');
+    const row=table?.querySelector('tbody tr.color-row');
+    const id=row?.querySelector('td[data-col-key="displayCode"] .code');
+    const stage=row?.querySelector('.compact-stage-state');
+    if(!table||!id||!stage)return {error:'Missing live List font probe nodes'};
+    const prior=table.style.getPropertyValue('--table-font-size');
+    const priorPriority=table.style.getPropertyPriority('--table-font-size');
+    const read=()=>({
+      table:getComputedStyle(table).fontSize,
+      id:getComputedStyle(id).fontSize,
+      stage:getComputedStyle(stage).fontSize
+    });
+    try {
+      table.style.setProperty('--table-font-size','16px');
+      const bigger=read();
+      table.style.setProperty('--table-font-size','11px');
+      const floor=read();
+      return {bigger,floor};
+    } finally {
+      if(prior)table.style.setProperty('--table-font-size',prior,priorPriority);
+      else table.style.removeProperty('--table-font-size');
+    }
+  })()`);
+  if(compactSliderProbe.error||compactSliderProbe.bigger.id!=='15px'||
+    compactSliderProbe.bigger.stage!=='15px'||compactSliderProbe.floor.id!=='11px'||
+    compactSliderProbe.floor.stage!=='11px')
+    throw Error('Compact List must respect the font setting and minimum size: '+JSON.stringify(compactSliderProbe));
+  console.log('GUEST_LIST_COMPACT_FONT_SLIDER_PASS',JSON.stringify(compactSliderProbe));
 
   // Test three adjacent NQ records with and without a user-assigned row
   // palette. Zebra + 2px separation may NOT erase the saved mint background,
@@ -904,7 +937,7 @@ try{
     rowProbe.secondBackground!==(rowProbe.imperialTheme?'rgb(245, 249, 253)':'rgb(248, 250, 249)')||
     rowProbe.mintBackground!=='rgb(229, 245, 233)'||
     rowProbe.markedBackground!=='rgb(255, 249, 220)'||
-    !rowProbe.secondIdRail.includes('169, 194, 181')||rowProbe.idSize!=='13px')
+    !rowProbe.secondIdRail.includes('169, 194, 181')||rowProbe.idSize!=='12px')
     throw Error('Adjacent NQ row separation/color preservation failed: '+JSON.stringify(rowProbe));
   console.log('ADJACENT_RESOLUTION_ROWS_PASS',JSON.stringify(rowProbe));
 

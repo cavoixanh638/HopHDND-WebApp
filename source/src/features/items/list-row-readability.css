@@ -1,9 +1,13 @@
-/* HĐND List: one readable type scale for actual business values.
- * The user-controlled --table-font-size remains the sole source of truth:
- * default 13px, supported 11..20px. This does not change titles, filter
- * controls, warning badges or the print/export layout. */
+/* List-only compact reading size. The saved setting remains the base:
+ * at 13px the List text is 12px, at 16px it is 15px, with an 11px floor.
+ * Do not alter the administrator's saved font size, reports, headers,
+ * filter controls, warnings, A4 print, or other application surfaces.
+ * This also deliberately reverses PR #194's unintended 13px enlargement. */
+.app-shell.list-visual-parity .item-data-table {
+  --hdnd-list-business-font-size:max(11px,calc(var(--table-font-size,13px) - 1px));
+}
 .app-shell.list-visual-parity .item-data-table tbody tr.color-row > td[data-col-key] {
-  font-size:var(--table-font-size,13px)!important;
+  font-size:var(--hdnd-list-business-font-size,12px)!important;
   line-height:1.42;
 }
 .app-shell.list-visual-parity .item-data-table tbody tr.color-row
@@ -19,7 +23,7 @@
     .inline-note-trigger,.inline-note-textarea,.inline-note-entry,
     .pr95-v6-type-cell,.status-pill
   ) {
-  font-size:var(--table-font-size,13px)!important;
+  font-size:var(--hdnd-list-business-font-size,12px)!important;
 }
 /* Do not enlarge UI affordance icons/tooltips or warning indicators. */
 .app-shell.list-visual-parity .item-data-table tbody tr.color-row
