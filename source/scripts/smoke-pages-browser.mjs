@@ -4400,6 +4400,9 @@ try{
   await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
   await eventually("!!document.querySelector('.admin-list-controls:not([hidden])')",
     'Dense admin options did not expand');
+  await evaluate("document.querySelector('.admin-control-section-l03 > summary')?.click()");
+  await eventually("!!document.querySelector('.admin-control-section-l03[open]')",
+    'L03 advanced section did not expand');
   await evaluate("document.querySelector('.admin-l03-widths button')?.click()");
   await eventually("!!document.querySelector('#admin-l03-width-editor button[type=submit]')",
     'Five L03 widths admin editor missing');
