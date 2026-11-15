@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 
 describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
   it('passes standalone Node policy regression matrix before allowing a UI release',()=>{
