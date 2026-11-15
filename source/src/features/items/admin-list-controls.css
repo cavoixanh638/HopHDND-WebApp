@@ -85,3 +85,24 @@
    Do not add per-track resize handles or make table cells row-dependent. */
 .item-data-table td.compact-merged-cell[data-l03-layout] {--hdnd-l03-track-count:2}
 .item-data-table td.compact-merged-cell[data-l03-layout="editable"] {--hdnd-l03-track-count:3}
+
+/* Settings are occasional tasks, not part of the daily List toolbar. */
+.admin-list-controls .admin-control-section {
+  display:block;margin:5px 0;border:1px solid #dce8e1;
+  border-radius:9px;background:#fbfdfc;overflow:visible;
+}
+.admin-list-controls .admin-control-section > summary {
+  cursor:pointer;padding:10px 12px;font-size:12px;font-weight:700;
+  color:#32564a;line-height:1.35;
+}
+.admin-list-controls .admin-control-section > summary:hover {background:#f0f6f2;}
+.admin-list-controls .admin-control-section > summary:focus-visible {
+  outline:2px solid var(--green);outline-offset:-2px;border-radius:7px;
+}
+.admin-list-controls .admin-control-section[open] > summary {
+  border-bottom:1px solid #e4ebe6;
+}
+.admin-list-controls .admin-control-section > fieldset,
+.admin-list-controls .admin-control-section > .admin-l03-widths {
+  margin:8px 10px 12px;min-width:0;
+}
