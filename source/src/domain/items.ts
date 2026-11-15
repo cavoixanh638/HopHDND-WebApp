@@ -15,10 +15,19 @@ export function validateChanges(changes: Changes): string | null {
 export function updateDraft(item: Item, previous: Patch | undefined, changes: Changes): Patch | undefined {
   const merged: Changes = { ...(previous?.changes ?? {}), ...changes };
   const base: Changes = { ...(previous?.baseValues ?? {}) };
+  // If changing Cấp trình implicitly updates Tiến độ Thành ủy, protect the
+  // dependent old value too. Another tab's F/G edit must not be overwritten.
+  if('partyLevel' in merged&&!('progressParty' in base))
+    base.progressParty=item.progressParty;
   for (const key of Object.keys(merged) as EditableField[]) {
     if (!(key in base)) Object.assign(base, { [key]: item[key] });
     if (merged[key] === base[key]) { delete merged[key]; delete base[key]; }
   }
   if (!Object.keys(merged).length) return undefined;
-  return { recordId: item.recordId, sourceCode: previous?.sourceCode??item.displayCode, baseRevision: previous?.baseRevision ?? item.revision, baseValues: base, changes: merged, operationId: crypto.randomUUID() };
+  // Editing/recovery must never upgrade an existing draft to a newer source.
+  const maintenanceEpoch=previous?previous.legacyMaintenanceEpoch:item.legacyMaintenanceEpoch;
+  return { recordId: item.recordId, sourceCode: previous?.sourceCode??item.displayCode,
+    baseRevision: previous?.baseRevision ?? item.revision,
+    ...(maintenanceEpoch===undefined?{}:{legacyMaintenanceEpoch:maintenanceEpoch}),
+    baseValues: base, changes: merged, operationId: crypto.randomUUID() };
 }

@@ -14,7 +14,7 @@ export function armSparkCellCallerAckLoss(database:Database){
   requireLocalEmulator(database);armed.add(database);
 }
 export function maybeLoseSparkCellCallerAck(database:Database,action:string,status:string){
-  if(action!=='save'||status!=='committed'||!armed.has(database))return;
+  if(!['save','saveStatus'].includes(action)||status!=='committed'||!armed.has(database))return;
   requireLocalEmulator(database);armed.delete(database);
   throw Error('SPARK_TEST_CALLER_ACK_LOST_AFTER_SERVER_READBACK');
 }

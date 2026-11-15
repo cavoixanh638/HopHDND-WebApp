@@ -1,0 +1,64 @@
+name: Candidate Spark status single-CAS security (NO DEPLOY)
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  direct-status-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: source
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install locked source dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Rebuild exact candidate Spark Rules and fail on drift
+        run: |
+          npm run rules:spark
+          git diff --exit-code -- firebase/database.spark.rules.json
+      - name: Typecheck source and fast-status contract
+        env:
+          VITE_FIREBASE_WRITE_MODE: spark
+          VITE_FIREBASE_STATUS_CAS: 'true'
+        run: npm run typecheck
+      - name: Isolated Auth and RTDB security matrix - no production
+        env:
+          VITE_FIREBASE_WRITE_MODE: spark
+          VITE_FIREBASE_STATUS_CAS: 'true'
+        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node node_modules/vitest/vitest.mjs run tests/spark-direct-status-cas.test.ts tests/pr190-independent-security.test.ts --pool=threads --maxWorkers=1 --no-file-parallelism"
+      - name: Install locked local browser runner
+        run: |
+          npm ci --prefix cell-edit-service --no-audit --no-fund
+          command -v google-chrome
+      - name: Build real Spark candidate pinned to local emulators
+        env:
+          VITE_FIREBASE_WRITE_MODE: spark
+          VITE_FIREBASE_STATUS_CAS: 'true'
+        run: |
+          node node_modules/vite/bin/vite.js build --mode pages-test --outDir dist-pages-test
+          node scripts/prepare-pages.mjs dist-pages-test
+      - name: Two independent Chromium processes - direct CAS and conflict
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          VITE_FIREBASE_WRITE_MODE: spark
+          VITE_FIREBASE_STATUS_CAS: 'true'
+        run: npx firebase emulators:exec --project demo-hdnd --config firebase.spark-test.json --only auth,database "node scripts/pr190-two-browser.mjs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr190-single-cas-two-browser
+          path: source/qa-results/pr190-two-browser/
+          if-no-files-found: ignore

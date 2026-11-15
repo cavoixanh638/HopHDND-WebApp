@@ -84,6 +84,70 @@ function allowOnlyAdminFrozenReplacementValidation(node){
 }
 allowOnlyAdminFrozenReplacementValidation(h.items);
 
+// Drafts bind to the OPEN primary maintenance epoch in their read baseline.
+// A client cannot carry an old proposal across freeze/replace/reopen; check
+// this again against server root state at the actual transaction commit.
+const primaryEpoch="(root.child('hdnd/freezeControl/epoch').exists() ? root.child('hdnd/freezeControl/epoch').val() : 0)";
+// Direct-CAS status path: release gated, legacy primary only, no pre-open lease.
+function appendDirectStatusRules(h){
+  // This is intentionally called AFTER the legacy admin-maintenance wrapper.
+  // Appending a narrow alternative here preserves all prior lease branches.
+  const row=h.items.$id;
+  const identity="(auth != null && auth.token.firebase.sign_in_provider === 'anonymous')";
+  const binding="root.child('hdnd/sparkSessions').child(auth.uid)";
+  const bound="("+binding+".exists() && "+binding+".child('expiresAt').val() > now)";
+  const admin="("+identity+" && "+bound+" && "+binding+".child('admin').val() === true)";
+  const staff="("+binding+".child('admin').val() === true || root.child('hdnd/editors').child("+binding+".child('ownerUid').val()).val() === true)";
+  const session="(!"+binding+".exists() || ("+bound+" && "+staff+"))";
+  const base="("+[
+    identity,session,"data.parent().exists()",
+    "newData.parent().child('history').child((newData.parent().child('revision').val() % 50) + '').child('maintenanceEpoch').isNumber()",
+    "newData.parent().child('history').child((newData.parent().child('revision').val() % 50) + '').child('maintenanceEpoch').val() === "+primaryEpoch,
+    "!root.child('hdnd/datasetV2/active').exists()",
+    "(root.child('hdnd/freezeControl/mode').val() === 'OPEN' || !root.child('hdnd/freezeControl/mode').exists())",
+    "(root.child('hdnd/control/editingLocked').val() !== true || "+admin+")"
+  ].join(" && ")+")";
+  const perms="root.child('hdnd/permissions')";
+  const grant=(field)=>"("+admin+" || ("+perms+".child('cells').child($id).child('"+field+"').exists() ? "+perms+".child('cells').child($id).child('"+field+"').val() === true : ("+perms+".child('rows').child($id).exists() ? "+perms+".child('rows').child($id).val() === true : "+perms+".child('columns').child('"+field+"').val() === true)))";
+  const unlocked=(field)=>"(!root.child('hdnd/editLocks').child($id).child('"+field+"').exists() || root.child('hdnd/editLocks').child($id).child('"+field+"').child('expiresAt').val() <= now)";
+  const oldLevel="data.parent().child('partyLevel').val()",newLevel="newData.parent().child('partyLevel').val()";
+  const statusEnum=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL','Đã có TBKL'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const buildEnum=['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const councilEnum=['Sở chưa trình','VP đang xử lý','Hoàn thành'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const levelEnum=['Không','TTTU','BTV','BCH'].map(v=>"newData.val() === '"+v+"'").join(" || ");
+  const nonNo="("+newLevel+" === 'TTTU' || "+newLevel+" === 'BTV' || "+newLevel+" === 'BCH')";
+  const allow={
+    partyLevel:"newData.isString() && ("+levelEnum+") && "+grant('partyLevel')+" && "+unlocked('partyLevel'),
+    progressParty:"newData.isString() && ("+statusEnum+") && (("+
+      newLevel+" === "+oldLevel+" && "+newLevel+" !== 'Không' && "+oldLevel+" !== 'Không phải trình' && newData.val() !== 'Không phải trình' && "+grant('progressParty')+" && "+unlocked('progressParty')+
+      ") || ("+newLevel+" !== "+oldLevel+" && (("+newLevel+" === 'Không' && newData.val() === 'Không phải trình') || (("+oldLevel+" === 'Không' || "+oldLevel+" === 'Không phải trình') && "+nonNo+" && newData.val() === 'Sở chưa trình')) && "+grant('partyLevel')+" && "+unlocked('partyLevel')+" && "+unlocked('progressParty')+"))",
+    progressBuild:"newData.isString() && ("+buildEnum+") && "+grant('progressBuild')+" && "+unlocked('progressBuild'),
+    progressCouncil:"newData.isString() && ("+councilEnum+") && "+grant('progressCouncil')+" && "+unlocked('progressCouncil'),
+    isDropped:"newData.isBoolean() && "+grant('isDropped')+" && "+unlocked('isDropped')
+  };
+  for(const [field,check] of Object.entries(allow)){
+    if(typeof row[field]?.['.validate']!=='string')throw Error('Spark direct-CAS requires existing field rule '+field);
+    row[field]['.validate']='('+row[field]['.validate']+') || ('+base+' && newData.val() !== data.val() && '+check+')';
+  }
+}
+appendDirectStatusRules(h);
+
+// RTDB does not run a leaf .validate rule when that leaf is deleted. Preserve
+// complete older audit payloads at the still-existing slot parent instead.
+// The current revision's ring slot may be replaced after 50 commits; the
+// existing verified-Admin/FROZEN maintenance route retains its restore rights.
+const legacyAuditFields=['content','department','type','partyLevel','progressParty',
+  'progressBuild','progressCouncil','specialist','room','vpLeader','ubndLeader',
+  'specificProgress','note','documentKind','isDropped'];
+const preserveOldAudit=['changes','oldValues'].flatMap(section=>
+  legacyAuditFields.map(field=>
+    `newData.child('${section}/${field}').val() === data.child('${section}/${field}').val()`)
+).join(' && ');
+const auditSlot=h.items.$id.history.$slot;
+const preserveEpoch="newData.child('maintenanceEpoch').val() === data.child('maintenanceEpoch').val()";
+auditSlot.maintenanceEpoch={'.validate':`(${simpleAdminMaintenance}) || (newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0 && ($slot === (newData.parent().parent().parent().child('revision').val() % 50) + '' ? newData.val() === ${primaryEpoch} : newData.val() === data.val()))`};
+auditSlot['.validate']=`(${auditSlot['.validate']}) && (${simpleAdminMaintenance} || $slot === (newData.parent().parent().child('revision').val() % 50) + '' || (${preserveOldAudit} && ${preserveEpoch}))`;
+
 h.sparkSessions={
   $session:{
     '.read':`auth != null && (auth.uid === $session || ${googleAdmin} || data.child('ownerUid').val() === auth.uid || (!data.exists() && auth.token.firebase.sign_in_provider === 'google.com' && auth.token.email_verified === true))`,

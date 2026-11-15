@@ -47,6 +47,7 @@ type Props={
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
   leaseManager?:CellEditSessionManager;
+  directStatusCasActive?:boolean;
   onKeepDraft:()=>boolean;
   onHistory?:(item:Item)=>void;
   onCellHistory?:(item:Item,field:TextField)=>void;
@@ -59,7 +60,7 @@ type Props={
 };
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,guestViewer=false,canEditCell,
-  onUpdate,leaseManager,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
+  onUpdate,leaseManager,directStatusCasActive=false,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
@@ -258,7 +259,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         data-editable={typeEditable?'true':undefined}
         style={cellHighlightStyle(item.type,'type',listLayout?.cellHighlights)}>
         {typeEditable
-          ?<CellPicker leaseManager={leaseManager} recordId={item.recordId} field="type"
+          ?<CellPicker directStatusCas={directStatusCasActive} leaseManager={leaseManager} recordId={item.recordId} field="type"
             label={(labelByKey.get(key)??'Loại VB')+' · '+displayId(item)} value={raw}
             options={popupFieldOptions('type',raw,catalog)}
             onChange={value=>{if(value!==raw&&mayEditField(item,'type'))safeUpdate(item.recordId,{type:value});}}/>
@@ -281,7 +282,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       return <LeaseTextInput manager={leaseManager} id={item.recordId} field={field}
         label={labelByKey.get(key)+' · '+displayId(item)} value={raw}
         onChange={value=>{if(editing&&popupMayEdit&&mayEditField(item,field))safeUpdate(item.recordId,{[field]:value});}}/>;
-    return <CellPicker leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={statusDisplayValue(field,raw)}
+    return <CellPicker directStatusCas={directStatusCasActive} leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={labelByKey.get(key)+' · '+displayId(item)} value={statusDisplayValue(field,raw)}
       displayValue={isStatusDisplayField(field)?shown:undefined}
       searchable={field==='specialist'} options={statusPickerValues(field,popupFieldOptions(field,raw,catalog).filter(value=>
         field!=='specialist'||value===item.specialist||!item.room||

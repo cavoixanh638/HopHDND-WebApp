@@ -67,6 +67,9 @@ const writes=new Map();
 let holdNextRow=null;
 let heldWrite=null;
 let releaseHeldWrite=null;
+let holdNextLease=null;
+let heldLeaseWrite=null;
+let releaseHeldLease=null;
 let writer,receiver;
 const rowIds=['demo-0001','demo-0002','demo-0003'];
 const metrics=[];
@@ -86,8 +89,13 @@ function fieldButton(page,code){
 async function open(page,code){
   const start=performance.now();
   await fieldButton(page,code).click();
-  await page.getByRole('listbox',{name:code+': Tiến độ trình HĐND ban hành NQ/BC',exact:true}).waitFor();
-  return performance.now()-start;
+  const picker=page.getByRole('listbox',{name:code+': Tiến độ trình HĐND ban hành NQ/BC',exact:true});
+  await picker.waitFor();
+  const visibleMs=performance.now()-start;
+  // Visibility is NOT permission to write. Keep the historic "lockMs"
+  // measure tied to the actual server grant, not speculative popup paint.
+  await until(()=>picker.getByRole('option').first().isEnabled(),'authorized picker '+code);
+  return {lockMs:performance.now()-start,visibleMs};
 }
 async function select(page,code,value){
   const picker=page.getByRole('listbox',{name:code+': Tiến độ trình HĐND ban hành NQ/BC',exact:true});
@@ -130,6 +138,11 @@ try{
         try{packet=JSON.parse(String(message));}catch{}
         const data=packet?.d;
         const path=data?.b?.p?.replace(/^\//,'');
+        if(index===0&&data?.a==='p'&&holdNextLease===path){
+          holdNextLease=null;
+          heldLeaseWrite={path,packet};
+          await new Promise(done=>{releaseHeldLease=done;});
+        }
         if(index===0&&data?.a==='p'&&/^hdnd\/items\/[^/]+$/.test(path??'')){
           writes.set(path,(writes.get(path)??0)+1);
           if(holdNextRow===path){
@@ -158,6 +171,37 @@ try{
     if(index===0)writer=page;else receiver=page;
   }
   assert.equal(browsers.length,2);
+  // Stall the lock transaction at the actual socket. The listbox must
+  // become visible on the original click, while all choices stay disabled
+  // and the server has not yet granted any lease or changed business data.
+  holdNextLease='hdnd/editLocks/'+rowIds[0]+'/progressCouncil';
+  const earliest=performance.now();
+  await fieldButton(writer,'NQ01').click();
+  const quickPopup=writer.getByRole('listbox',{name:'NQ01: Tiến độ trình HĐND ban hành NQ/BC',exact:true});
+  await quickPopup.waitFor();
+  const quickPopupMs=performance.now()-earliest;
+  await until(()=>heldLeaseWrite,'intercept outbound lock transaction');
+  assert.equal(await quickPopup.getByRole('option',{name:'VP đang xử lý'}).isEnabled(),false);
+  assert.equal(await writer.locator('.cell-picker-feedback').count(),0);
+  assert.equal((await request('hdnd/items/'+rowIds[0])).revision,1);
+  releaseHeldLease();releaseHeldLease=null;
+  await until(()=>quickPopup.getByRole('option',{name:'VP đang xử lý'}).isEnabled(),'choice enabled by granted lease');
+  await writer.keyboard.press('Escape');
+  await waitReleased(rowIds[0]);
+  // Dismissing an optimistic popup WHILE lease acquisition is still in
+  // flight must not leave a ghost lock. A late grant must be released once.
+  heldLeaseWrite=null;
+  holdNextLease='hdnd/editLocks/'+rowIds[0]+'/progressCouncil';
+  await fieldButton(writer,'NQ01').click();
+  const pendingPopup=writer.getByRole('listbox',{name:'NQ01: Tiến độ trình HĐND ban hành NQ/BC',exact:true});
+  await pendingPopup.waitFor();
+  await until(()=>heldLeaseWrite,'intercept second outbound lock transaction');
+  assert.equal(await pendingPopup.getByRole('option',{name:'VP đang xử lý'}).isEnabled(),false);
+  await writer.keyboard.press('Escape');
+  await pendingPopup.waitFor({state:'hidden'});
+  releaseHeldLease();releaseHeldLease=null;
+  await waitReleased(rowIds[0]);
+  assert.equal((await request('hdnd/items/'+rowIds[0])).revision,1);
   await open(writer,'NQ01');
   const firstLock=await request('hdnd/editLocks/'+rowIds[0]+'/progressCouncil');
   const firstUid=firstLock.uid;
@@ -175,7 +219,7 @@ try{
 
   for(let index=0;index<24;index++){
     const value=index%2===0?'VP đang xử lý':'Sở chưa trình';
-    const lockMs=await open(writer,'NQ01');
+    const {lockMs,visibleMs}=await open(writer,'NQ01');
     const priorMetric=metrics.length;
     const before=await request('hdnd/items/'+rowIds[0]);
     const start=performance.now();
@@ -192,7 +236,7 @@ try{
     assert.equal(after.revision,before.revision+1);
     assert.equal(Object.values(after.history).filter(event=>event?.operationId===after.operationId).length,1);
     assert.deepEqual(await normalUiHasNoSaveMessage(writer),{draftBars:0,status:false});
-    samples.push({lockMs:Math.round(lockMs),ackMs:Math.round(ackMs),receiverMs:Math.round(receiverMs)});
+    samples.push({visibleMs:Math.round(visibleMs),lockMs:Math.round(lockMs),ackMs:Math.round(ackMs),receiverMs:Math.round(receiverMs)});
   }
 
   // Hold the writer's row transaction in the network. Its locally rendered
@@ -241,9 +285,10 @@ try{
   };
   const report={result:'PASS',syntheticOnly:true,productionWrites:0,browserProcesses:2,
     distinctAnonymousPrincipals:true,externalRequests:blocked.length,
-    lock:summarize('lockMs'),clickToWriterAck:summarize('ackMs'),
+    earlyOpenWithHeldLease:{popupVisibleMs:Math.round(quickPopupMs),selectionBeforeGrant:false},
+    popupVisible:summarize('visibleMs'),lock:summarize('lockMs'),clickToWriterAck:summarize('ackMs'),
     clickToPeerRendered:summarize('receiverMs'),samples,
-    checks:['same-cell exclusion','server ACK before success','independent row while CAS held',
+    checks:['instant choice list during held lock with disabled selection','same-cell exclusion','server ACK before success','independent row while CAS held',
       '24 status saves with peer rendering','quiet success','uncertain ACK draft retained','no automatic replay']};
   writeFileSync(output+'/report.json',JSON.stringify(report,null,2)+'\n');
   console.log('PR188_TWO_BROWSER_PASS',JSON.stringify({...report,samples:undefined}));
@@ -255,6 +300,7 @@ try{
   throw error;
 }finally{
   releaseHeldWrite?.();
+  releaseHeldLease?.();
   await Promise.all(browsers.map(browser=>browser.close()));
   await new Promise(done=>server.close(done));
 }

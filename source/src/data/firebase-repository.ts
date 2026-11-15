@@ -8,6 +8,8 @@ import type {CellEditSessionManager} from './cell-edit-leases';
 import type {ActiveDatasetPointer} from './dataset-replacement-integrity';
 import {violatesProgressBuildWritePolicy} from './pr95-v5-l5-progress-build-policy';
 import {callCellEdit} from './cell-edit-api';
+import {directStatusCasField,directStatusCasPatch} from './status-direct-cas';
+import {readLegacyMaintenanceRows} from './legacy-maintenance-context';
 
 export interface CellPermissions {columns:Partial<Record<EditableField,boolean>>;rows?:Record<string,boolean>;cells?:Record<string,Partial<Record<EditableField,boolean>>>}
 /** RTDB omits empty dictionaries and may reorder keys during transactions.
@@ -69,13 +71,48 @@ export class FirebaseRepository implements Repository {
     if(!sameDatasetEpoch(current,this.expectedActive))
       throw new Error('Thế hệ Firebase đã thay đổi; phiên đọc/sửa cũ bị vô hiệu hóa.');
   }
+  private get directLegacySource(){
+    return !this.expectedActive&&this.itemPath==='hdnd/items'&&directStatusCasField('progressCouncil');
+  }
   async list(){
+    if(this.directLegacySource){
+      const snapshot=await readLegacyMaintenanceRows(this.database,this.user());
+      return rowsFrom(snapshot.value).map(item=>snapshot.context.mode==='OPEN'
+        ?{...item,legacyMaintenanceEpoch:snapshot.context.epoch}:item);
+    }
     await this.assertEpoch();
     const rows=rowsFrom((await get(ref(this.database,this.itemPath))).val());
     await this.assertEpoch();
     return rows;
   }
   subscribe(next:(items:Item[])=>void,error:(cause:Error)=>void){
+    if(this.directLegacySource){
+      // SDK cache events are triggers only. Never combine their row value with
+      // a newer epoch: each publish uses a coherent server-only sandwich.
+      let stopped=false,running=false,dirty=false;
+      const refresh=()=>{
+        dirty=true;
+        if(running)return;
+        running=true;
+        void (async()=>{
+          try{
+            while(dirty&&!stopped){
+              dirty=false;
+              try{
+                const rows=await this.list();
+                if(!stopped&&!dirty)next(rows);
+              }catch(cause){if(!stopped&&!dirty)error(cause as Error);}
+            }
+          }finally{running=false;}
+        })();
+      };
+      const fail=(cause:Error)=>{if(!stopped)error(cause);};
+      const stops=[onValue(ref(this.database,this.itemPath),refresh,fail),
+        onValue(ref(this.database,'hdnd/freezeControl'),refresh,fail),
+        onValue(ref(this.database,'.info/connected'),refresh,fail)];
+      return()=>{stopped=true;for(const stop of stops)stop();};
+    }
+
     if(!this.expectedActive)return onValue(ref(this.database,this.itemPath),snapshot=>{
       try{next(rowsFrom(snapshot.val()));}catch(cause){error(cause as Error);}
     },error);
@@ -104,14 +141,22 @@ export class FirebaseRepository implements Repository {
         const issue=validateChanges(patch.changes);
         if(issue)throw new Error(issue);
         const fields=Object.keys(patch.changes) as EditableField[];
-        // No silent fallback to the old public-token RTDB write path.
-        if(!this.leaseManager)throw new Error('Dịch vụ sửa ô chưa sẵn sàng; giữ bản nháp.');
+        // This branch exists only for a SINGLE discrete field on the legacy
+        // Spark source, with matching server Rules deployed in advance.
+        // Admin transitional/bulk tools may have intentionally acquired a
+        // lease already. Honor that credential rather than taking the new
+        // no-lease path (which correctly rejects an active older lease).
+        const heldByThisTab=Object.keys(patch.changes).every(field=>
+          !!this.leaseManager?.credential(patch.recordId,field as EditableField));
+        const direct=directStatusCasPatch(patch.changes,!!this.expectedActive)&&!heldByThisTab;
+        // No fallback: if a one-CAS status write is denied we keep its draft.
+        if(!direct&&!this.leaseManager)throw new Error('Dịch vụ sửa ô chưa sẵn sàng; giữ bản nháp.');
         if(!fields.length||fields.some(field=>!(field in patch.baseValues)||
           !mayEdit(this.permissions(),patch.recordId,field,firebaseAdmin(user))))
           throw new Error('Bạn chưa được phép sửa ô này.');
         const leases:Record<string,{token:string;secret:string}>={};
-        for(const field of fields){
-          const credential=this.leaseManager.credential(patch.recordId,field);
+        if(!direct)for(const field of fields){
+          const credential=this.leaseManager!.credential(patch.recordId,field);
           if(!credential)throw new Error('Mất khóa ô '+field+'; bản nháp được giữ.');
           leases[field]=credential;
         }
@@ -124,14 +169,16 @@ export class FirebaseRepository implements Repository {
         // Backend verifies trusted UID, private lease proof and FULL candidate
         // RTDB Rules at commit, including field grants, generation and freeze.
         const answer=await callCellEdit({
-          action:'save',scope:this.expectedActive?'v2':'legacy',
+          action:direct?'saveStatus':'save',scope:this.expectedActive?'v2':'legacy',
           generation:this.expectedActive,operationId:patch.operationId,
           recordId:patch.recordId,patch,leases
         },this.database);
         if(answer.status!=='committed'||!answer.row)
           throw new Error('Dịch vụ chưa xác nhận bản ghi; không tự lưu lại.');
         await this.assertEpoch();
-        const item=validateFirebaseItem(answer.row);
+        const item={...validateFirebaseItem(answer.row),
+          ...(Number.isSafeInteger(patch.legacyMaintenanceEpoch)&&Number(patch.legacyMaintenanceEpoch)>=0
+            ?{legacyMaintenanceEpoch:patch.legacyMaintenanceEpoch}:{})};
         if(item.recordId!==patch.recordId||
           fields.some(field=>item[field]!==patch.changes[field]))
           throw new Error('Máy chủ phản hồi giá trị không khớp bản nháp.');

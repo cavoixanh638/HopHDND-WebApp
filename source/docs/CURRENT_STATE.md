@@ -1,3 +1,27 @@
+## 15/11/2026 — PR #190: both security blockers repaired; final release gate pending
+
+Both independent review findings are repaired in the candidate. Older audit slot payloads and maintenance epoch metadata are preserved at a non-deleted parent, with the 50-slot rollover and Google Admin maintenance restore rights retained. Each lease-free status draft pins its original OPEN legacy maintenance epoch; Rules require that epoch in the new audit event at server commit. Missing/recovered old epochs, stale maintenance drafts and queued offline CAS are rejected. Current epoch is checked again before committed/idempotent acknowledgements. Coherent server-only reads never attach a new epoch to cached old rows; workspace epoch transitions retain drafts and operationIds, block replay and fence delayed callbacks.
+
+Independent security review GO is conditional on final exact-head CI and production preflight. Affected coverage passed in explicitly separate local runs: original13 + new19, then four completion/cache cases and one actual bound Google Admin case; no claim that these cumulative37 were one exact-head run. Three focused workspace callback regressions and typecheck PASS. The direct-security workflow and enabled-CAS publisher now run both security files together on the final SHA.
+
+Two independent Chromium processes, distinct Anonymous principals, 24 synthetic saves, same-field collision, lost caller ACK/no replay, zero external requests/production writes: PASS. Local p50/p95 popup80/139 ms, writer ACK129/147 ms, peer rendering198/213 ms; first open65 ms. These are Emulator measurements, not live-network claims. Candidate Rules249585 bytes, SHA256 `e180280cc5225726dee36dcb7fd5a081f06ddc4bf74e6c64c8245d6e605eba34`. V2 and prior lease authorization remain intact; only legacy audit/status validation is hardened.
+
+Next: exact-head applicable CI → fresh private full database/Rules backup + restore drill → deploy reviewed Rules first → read back exact hash, verify old-client compatibility and unchanged business data → mergePR190 at reviewed head → set confirmed Rules hash and exact main SHA in protected Actions variables → publish with `status_cas:true` version marker → verify real website and data. No production action has yet been taken in this repair phase. Runtime rollback publishes lease-mode JS first and keeps compatible Rules until all fast clients reload; never restore older business data over acknowledged writes. [PR #190](https://github.com/cavoixanh638/HopHDND-WebApp/pull/190) records final receipts.
+
+---
+
+## 14/11/2026 — PR #190: Independent review / PRODUCTION NO-GO
+
+Reviewed PR head `d7d7bdd45ab71651d0c87dbe7374a18e5380876f`: all 11 existing workflow conclusions SUCCESS. Those unchanged suites were reused, not rerun. Independent adversarial review found two additional release blockers in audit preservation and stale drafts across legacy-primary maintenance epochs. No production Rules deploy, Actions-variable change, PR merge or Pages publication was performed.
+
+A narrow legacy-only audit parent validation patch is prepared on `qa/190-security-release`; generated candidate SHA256 `63df8907823bec10233ff487187df9e1695cd9b8e42bfe5be3394aaa14817e88`, 246,767 bytes. Three deletion-rejection cases and the 50-slot rollover regression PASS. Parent/row authorization and V2 remain unchanged. This is a proposed patch, not an approved/deployed Rules digest. A separate real SDK stale-maintenance-draft regression still FAILS: the old operation may reach the replacement primary row. Release remains blocked pending server-enforced maintenance-epoch fencing and its compatibility/security acceptance. Detailed synthetic reproduction is retained privately; no live record was used.
+
+Production preflight PASS: existing OAuth identity has `firebasedatabase.instances.get/update`; billing disabled; Anonymous and Google login enabled; Pages domain authorized. Full RTDB and Rules were exported twice with equal bytes, privately saved and disk-checksummed. Full backup SHA256 `9c0a2834f6b61ce31d2c1e773bd2258f4dba56d86332e7f8a657be1bbf9bc433`; original live Rules SHA256 `a80d845eff2cb97e5ab0036450e8cb95148b2f079b11378e468a7116f9e62ae8` (LF-normalized `024d77f6adea53b4878e0be65b75515624dbf4e87d3d8fbba0475916b30bd6c3`). Fresh backup restored into loopback-only `demo-hdnd-restore` Emulator; full canonical JSON matched. Backup and test payloads are not published.
+
+Read-only before/after verification: full database and Rules unchanged; 59 primary rows, 55 mirror rows, 9 legacy root entries, profile revision113. All 885 source cells compared: 884 equal plus only the previously authorized NQ02 progressCouncil change, still `VP đang xử lý`, revision2, one original history event. Public `version.json` still identifies Spark source `b795890ba51c912571214b6c440b9b84c74d43b8`. Existing website stays operational. Status and continuation evidence: [PR #190](https://github.com/cavoixanh638/HopHDND-WebApp/pull/190).
+
+---
+
 ## 14/11/2026 — PR #188, nghiệm thu lưu ô Spark
 
 Lựa chọn trạng thái được gửi ở lượt sự kiện kế tiếp. Nhập văn bản vẫn chờ 800 ms. Trong lúc một hồ sơ chờ Firebase xác nhận, các hồ sơ khác tiếp tục sửa được. Lần lưu thành công hiển thị giá trị trong ô. Lỗi và nháp chưa được xác nhận vẫn hiện để đối chiếu, kể cả khi hồ sơ khác lưu thành công. Phản hồi từ nguồn cũ bị chặn bằng epoch sau khi chuyển nguồn.

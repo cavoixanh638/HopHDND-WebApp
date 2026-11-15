@@ -8,7 +8,7 @@ import type {CellLease,EditorKind} from './cell-edit-leases';
 // Build-time backend selection. No automatic fallback after a denied or
 // unavailable gateway. This file is lazy-loaded only when editing a cell.
 type Scope='legacy'|'v2';
-export type CellEditEnvelope={action:'acquire'|'renew'|'release'|'save'|'resolve';
+export type CellEditEnvelope={action:'acquire'|'renew'|'release'|'save'|'saveStatus'|'resolve';
   scope:Scope;generation?:ActiveDatasetPointer;operationId:string;
   recordId:string;field?:EditableField;kind?:EditorKind;token?:string;
   secret?:string;originalAction?:string;patch?:Patch;
