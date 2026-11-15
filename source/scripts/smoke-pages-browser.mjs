@@ -3892,10 +3892,14 @@ try{
     await eventually("document.querySelectorAll('.item-heading-row th').length===6",
       'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
-    if(before.party!==276||Math.abs(before.total-1448)>1||
+    const l03Viewport=await evaluate("document.querySelector('.item-table-scroll')?.clientWidth");
+    if(before.party!==276||Math.abs(before.total-l03Viewport)>1||
+      (l03LegacyWidths.length&&JSON.stringify(before.widths)!==
+        JSON.stringify(l03LegacyWidths[0].before.widths))||
       await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
-      throw Error('L03 independent tracks changed with legacy source width: '+JSON.stringify({sourceCap,before}));
-    l03LegacyWidths.push({sourceCap,before});
+      throw Error('L03 independent tracks changed with legacy source width: '+
+        JSON.stringify({sourceCap,l03Viewport,before}));
+    l03LegacyWidths.push({sourceCap,before,l03Viewport});
   }
   console.log('L03_LEGACY_SOURCE_WIDTH_INDEPENDENCE_PASS',JSON.stringify(l03LegacyWidths));
 
@@ -3903,8 +3907,15 @@ try{
   // L03 deliberately has no resize handle in the approved independent-rail UI.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?cap-progress=1'});
+  await eventually("!!document.querySelector('.item-table-scroll')",
+    'Capped ordinary column fixture did not mount');
+  // Dedicated wide synthetic viewport: a 1600px source column cannot stay
+  // physically 1600px inside a normal 1362px responsive List, by design.
+  // Expand only this QA container to test the real physical cap, without
+  // weakening responsive fit on actual screens or changing persisted widths.
+  await evaluate("(()=>{const main=document.querySelector('[data-qa=compact-real-itemlist] main');main.style.width='3000px';main.style.maxWidth='none';})()");
   await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width===1600",
-    '1600px ordinary column fixture did not mount');
+    '1600px ordinary column fixture did not fit after widening QA container');
   const capBefore=await widthSnapshot();
   const capWidth=s=>s.widths[s.keys.indexOf('specificProgress')];
   await evaluate("document.querySelector('th[data-column-key=specificProgress] .column-resizer').focus()");
