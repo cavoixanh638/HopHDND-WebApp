@@ -60,15 +60,14 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
     <div className="top-actions">
       <button type="button" className="button primary" disabled={busy||working} onClick={()=>void login()}>{isAdmin?'Đổi tài khoản Google':'Đăng nhập Google nhân viên'}</button>
       {!isGuest&&<button type="button" className="button ghost" disabled={busy||working} onClick={()=>void logout()}>Đăng xuất</button>}
-      {isAdmin&&<button type="button" className="button primary" disabled={busy||working} onClick={onOpenItemsCustomize}>Phân quyền chỉnh sửa (cột, dòng, ô)</button>}
-    </div>
+     </div>
     <div className="card-header"><div>
       <h3>Quyền tài khoản</h3>
       <p className="muted">Mã UID Firebase: <code>{userUid||'Đang kết nối'}</code>. {isGuest?'Khách được xác thực ẩn danh tự động, không cần đăng nhập Google. Chỉ các ô quản trị đã cấp quyền mới được sửa.':'Nhân viên đăng nhập Google gửi UID cho quản trị nếu cần quyền sửa theo tài khoản.'}</p>
       <p className="muted">{isAdmin?'Quản trị toàn hệ thống':isGuest?'Khách công khai: chỉ được sửa các ô mở quyền, không được thay bố cục hay cấp quyền.':editorAuthorized?'Tài khoản đã được duyệt; chỉ sửa các ô được cấp quyền.':'Chưa được duyệt UID nhân viên; chỉ được xem.'}</p>
     </div></div>
     {isAdmin&&<section className="notice" aria-label="Quản lý quyền nhân viên Google">
-      <h3>Nhân viên được phép chỉnh sửa</h3>
+      <h3>Bước 1 · Phê duyệt tài khoản nhân viên Google</h3>
       <p>Danh sách UID chỉ dành cho nhân viên Google được phê duyệt riêng. Khách công khai không cần UID trong danh sách này; họ được chỉnh sửa những ô quản trị đã mở quyền tại bảng. Mọi lượt sửa vẫn phải có khóa ô và được Firebase Rules xác nhận.</p>
       <div className="top-actions">
         <input aria-label="UID Firebase nhân viên" type="text" value={editorUid} onChange={event=>setEditorUid(event.target.value.trim())} placeholder="Dán UID của nhân viên" disabled={busy||working}/>
@@ -88,7 +87,13 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
         }}>Thu hồi</button>
       </li>)}</ul>
     </section>}
-    {isAdmin&&firebaseDatabase&&<section className="notice" aria-label="Kiểm tra vận hành Firebase">
+    {isAdmin&&<section className="notice" aria-label="Phân quyền theo cột dòng ô">
+      <h3>Bước 2 · Chọn nội dung và ô được phép sửa</h3>
+      <p>UID nhân viên được duyệt không tự có quyền sửa tất cả nội dung. Quyền cột, dòng và từng ô được quản lý riêng; khách ẩn danh chỉ sửa các ô mở công khai.</p>
+      <button type="button" className="button primary" disabled={busy||working}
+        onClick={onOpenItemsCustomize}>Mở phân quyền cột, dòng và ô</button>
+    </section>}
+    {isAdmin&&firebaseDatabase&&<details className="account-diagnostics"><summary>Kiểm tra kỹ thuật Firebase · Nâng cao</summary><section className="notice" aria-label="Kiểm tra vận hành Firebase">
       <h3>Kiểm tra vận hành Firebase</h3>
       <p className="muted">Đọc trực tiếp Firebase của website, không ghi dữ liệu hoặc thay quyền. Dùng trước khi chuyển sang nguồn chính và sau khi kiểm tra đăng nhập.</p>
       <button type="button" className="button ghost" disabled={busy||liveChecking||!connected}
@@ -109,7 +114,7 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
           :<p>Những điều kiện dữ liệu kiểm tra được đều phù hợp. Cần xác nhận Rules đã publish và kiểm thử lưu bằng hai tài khoản trước khi sử dụng.</p>}
         <p className="muted">Lưu ý: bảng trên chỉ xác nhận các dữ liệu đã đọc bằng tài khoản hiện tại. Nó không xác nhận Security Rules đang publish, khả năng ghi thực tế hay tình trạng sao lưu.</p>
       </div>}
-    </section>}
+    </section></details>}
     {isAdmin&&onChangeDataSource&&<div className="card-header"><div><h3>Nguồn dữ liệu hiển thị</h3>
       <p className="muted">Firebase chính hoạt động độc lập với link Google Sheets và hỗ trợ lưu realtime. Bản sao Excel chỉ dùng để chuyển dữ liệu ban đầu hoặc dự phòng, không phải nguồn dữ liệu lâu dài.</p>
       <label className="field">Nguồn đọc bảng
