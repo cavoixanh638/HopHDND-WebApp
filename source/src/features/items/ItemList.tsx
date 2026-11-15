@@ -496,6 +496,55 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
   const printTableRef=useRef<HTMLTableElement|null>(null);
 
+  // Guest long lists should reach the viewport floor. A fixed 64dvh cap left
+  // a visible blank strip below 59 records at Chrome 75% zoom. Measure the
+  // ACTUAL document top and the footer/floor instead of guessing header height.
+  // Only max-height changes: a short/filtered table keeps its natural height.
+  useEffect(()=>{
+    if(!anonymousViewer||!denseChrome||customizing||permissionMode||
+       typeof document==='undefined'||typeof window==='undefined')return;
+    const table=document.querySelector<HTMLElement>(
+      '.app-shell.guest-view.list-fit-page .item-data-region .item-table-scroll');
+    const footer=table?.nextElementSibling;
+    const shell=table?.closest<HTMLElement>('.app-shell.guest-view.list-fit-page');
+    if(!table||!shell||!(footer instanceof HTMLElement)||
+       !footer.classList.contains('item-list-table-footer'))return;
+    let frame=0;
+    const sync=()=>{
+      const documentTop=table.getBoundingClientRect().top+window.scrollY;
+      const footerRect=footer.getBoundingClientRect();
+      const footerMargin=Math.max(0,parseFloat(getComputedStyle(footer).marginTop)||0);
+      const floor=Math.max(0,shell.getBoundingClientRect().bottom-footerRect.bottom);
+      const remaining=Math.floor(window.innerHeight-documentTop-
+        footerRect.height-footerMargin-floor);
+      if(Number.isFinite(remaining))table.style.setProperty(
+        '--hdnd-guest-table-max-height',Math.max(220,remaining)+'px');
+    };
+    const schedule=()=>{
+      cancelAnimationFrame(frame);
+      frame=requestAnimationFrame(sync);
+    };
+    // Observe only elements BEFORE the grid; observing the grid or its parent
+    // would form a resize feedback loop as the grid fills the viewport.
+    const observer=typeof ResizeObserver==='undefined'?null:new ResizeObserver(schedule);
+    for(const child of Array.from(table.parentElement?.children??[])){
+      if(child!==table&&child!==footer)observer?.observe(child);
+    }
+    for(const child of Array.from(shell.children)){
+      if(child.tagName!=='MAIN'&&child.tagName!=='FOOTER')observer?.observe(child);
+    }
+    window.addEventListener('resize',schedule);
+    window.visualViewport?.addEventListener('resize',schedule);
+    schedule();
+    return()=>{
+      cancelAnimationFrame(frame);observer?.disconnect();
+      window.removeEventListener('resize',schedule);
+      window.visualViewport?.removeEventListener('resize',schedule);
+      table.style.removeProperty('--hdnd-guest-table-max-height');
+    };
+  },[anonymousViewer,denseChrome,customizing,permissionMode,rows.length,
+    otherFiltersOpen,activeConditions.length]);
+
   // UI preview-only: fit the internal table viewport to the remaining screen
   // without changing the source data, column widths or production layout.
   // Measure DOCUMENT top, not viewport top, so scrolling does not make the
