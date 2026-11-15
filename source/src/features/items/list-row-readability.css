@@ -69,6 +69,15 @@
   font-size:max(11px,calc(var(--table-font-size,13px) - 1px))!important;
 }
 
+/* 11px fixed caption can measure 115px in a 110px owner-selected rail.
+ * Compact letter spacing (not font size or track geometry) keeps the full
+ * Vietnamese caption within the one-line rail, removing the 5px overflow
+ * that used to create a misleading inner L03 horizontal scroll affordance. */
+.item-data-table tbody tr.color-row td[data-l03-layout]
+  .compact-stages[data-rev2="true"] .compact-stage-title {
+  letter-spacing:-.32px!important;
+}
+
 /* Do not enlarge UI affordance icons/tooltips or warning indicators. */
 .app-shell.list-visual-parity .item-data-table tbody tr.color-row
   td[data-col-key] button.inline-note-empty .inline-note-pencil {
