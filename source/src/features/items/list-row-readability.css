@@ -25,6 +25,30 @@
   ) {
   font-size:var(--hdnd-list-business-font-size,12px)!important;
 }
+/* L03 business captions used to be compact: a 110px saved label track
+ * can hold a single 11px caption without forcing all other columns smaller.
+ * Keep the selected track pixels and all report/A4 typography unchanged.
+ * Labels alone are one step smaller; read-only and editable STATUS text both
+ * retain the same List text scale (including nested "Không phải trình"). */
+.app-shell.list-visual-parity .item-data-table tbody tr.color-row
+  td[data-l03-layout] .compact-stages[data-rev2="true"]
+  :is(.compact-stage-label,.compact-stage-title,
+      .compact-stage-title .compact-stage-level) {
+  font-size:max(11px,calc(var(--hdnd-list-business-font-size,12px) - 1px))!important;
+  white-space:nowrap!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+}
+.app-shell.list-visual-parity .item-data-table tbody tr.color-row
+  td[data-l03-layout] .compact-stages[data-rev2="true"]
+  .compact-stage-state,
+.app-shell.list-visual-parity .item-data-table tbody tr.color-row
+  td[data-l03-layout] .compact-stages[data-rev2="true"]
+  .compact-stage-state :is(.workflow-status-value,.compact-part,
+      .cell-picker-trigger,.cell-picker-value-text) {
+  font-size:var(--hdnd-list-business-font-size,12px)!important;
+}
+
 /* Do not enlarge UI affordance icons/tooltips or warning indicators. */
 .app-shell.list-visual-parity .item-data-table tbody tr.color-row
   td[data-col-key] button.inline-note-empty .inline-note-pencil {
