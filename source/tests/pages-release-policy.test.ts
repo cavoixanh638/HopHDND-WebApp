@@ -9,7 +9,7 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
     const output=execFileSync(process.execPath,
       ['--test','scripts/pages-release-policy.check.mjs'],
       {cwd,encoding:'utf8',timeout:12000});
-    expect(output).toMatch(/fail\\s+0/);
+    expect(output).toMatch(/fail\s+0/);
   });
   it('keeps a separate Spark cutover gate and exact SHA approval for sensitive changes',()=>{
     const flow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');
