@@ -3817,9 +3817,12 @@ try{
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
   // Grouped Staff has 70px mandatory extra width (min physical 130px).
-  // Drag 250px: first 110px from Staff (240→130), then 140px from Note.
-  // The other physical widths stay put.
+  // A 250px pointer move is CLAMPED to the actual remaining slack in Staff
+  // then Note after responsive fit. Neither saved min nor total may be broken.
   const wideBefore=await widthSnapshot();
+  const wideStaffSlack=Math.max(0,wideBefore.staff-130);
+  const wideNoteSlack=Math.max(0,wideBefore.widths.at(-1)-60);
+  const wideDragBudget=Math.min(250,wideStaffSlack+wideNoteSlack);
   const wideEdge=await evaluate(`(()=>{
     const r=document.querySelector('th[data-column-key=specificProgress] .column-resizer')
       .getBoundingClientRect();
@@ -3832,16 +3835,20 @@ try{
     button:'left'});
   await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:wideEdge.x+250,y:wideEdge.y,
     button:'left',clickCount:1});
-  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>=449",
-    'L023 drag +250 stopped too early despite last-column fallback');
+  await eventually("document.querySelector('td[data-col-key=specificProgress]')?.getBoundingClientRect().width>="+
+    (wideBefore.widths[wideBefore.keys.indexOf('specificProgress')]+wideDragBudget-.5),
+    'L023 owner drag did not reach its dynamically clamped target');
   const wideAfter=await widthSnapshot();
   assertSameTotal(wideBefore,wideAfter,'L023 owner wide drag');
   const ix=wideBefore.keys.indexOf('specificProgress');
-  if(wideAfter.widths[ix]!==wideBefore.widths[ix]+250||
-    wideAfter.widths[ix+1]!==130||
-    wideAfter.widths.at(-1)!==wideBefore.widths.at(-1)-140||
+  const expectedStaff=wideBefore.staff-Math.min(wideDragBudget,wideStaffSlack);
+  const expectedNote=wideBefore.widths.at(-1)-Math.max(0,wideDragBudget-wideStaffSlack);
+  if(wideAfter.widths[ix]!==wideBefore.widths[ix]+wideDragBudget||
+    wideAfter.widths[ix+1]!==expectedStaff||
+    wideAfter.widths.at(-1)!==expectedNote||
     wideAfter.id!==wideBefore.id)
-    throw Error('L023 adjacent→last fallback incorrect: '+JSON.stringify({wideBefore,wideAfter}));
+    throw Error('L023 adjacent→last fallback incorrect: '+
+      JSON.stringify({wideBefore,wideAfter,wideDragBudget,expectedStaff,expectedNote}));
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
     JSON.stringify({textGeometry,wideBefore,wideAfter}));
 
