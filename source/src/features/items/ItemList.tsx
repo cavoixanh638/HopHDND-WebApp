@@ -930,7 +930,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           <button type="button" className="button admin-reference-sync-shortcut"
             title="Chỉ cập nhật cấu hình Danh sách; giữ nguyên dữ liệu, quyền và lịch sử"
             onClick={()=>{setPreviewOptionsOpen(true);setReferencePresetConfirm(true);}}>
-            Đồng bộ bố cục demo
+            Khôi phục bố cục chuẩn
           </button>}
         {denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"
           aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
@@ -958,8 +958,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         className="admin-list-controls" id={denseChrome?'admin-list-controls':undefined}
         hidden={denseChrome&&!previewOptionsOpen}
         aria-label="Tùy chọn quản trị danh sách">
-        {compactChrome&&<div className="admin-reference-preset" aria-label="Bố cục mẫu giống demo">
-          {referencePresetConfirm?<div className="admin-reference-preset-confirm" role="group"
+        {compactChrome&&referencePresetConfirm&&<div className="admin-reference-preset" aria-label="Khôi phục bố cục chuẩn">
+          <div className="admin-reference-preset-confirm" role="group"
             aria-label="Xác nhận áp dụng bố cục mẫu">
             <strong>Áp dụng thứ tự cột, độ rộng và chế độ gộp như bản demo?</strong>
             <span>Chỉ thay cấu hình hiển thị chung. Không sửa dữ liệu Excel, phân quyền,
@@ -973,12 +973,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               <button type="button" className="button ghost"
                 onClick={()=>setReferencePresetConfirm(false)}>Hủy</button>
             </div>
-          </div>:<button type="button" className="button ghost"
-            aria-label="Áp dụng bố cục mẫu như bản demo đã duyệt"
-            disabled={!canEditListSettings||personalViewActive}
-            title={personalViewActive?'Đóng giao diện cá nhân trước khi đổi bố cục dùng chung':
-              !canEditListSettings?'Chờ quyền quản trị và kết nối cấu hình dùng chung':'Không thay đổi dữ liệu nghiệp vụ'}
-            onClick={()=>setReferencePresetConfirm(true)}>Áp dụng bố cục mẫu (như demo)</button>}
+          </div>
           <small>Chỉ lưu khi quản trị xác nhận và Firebase phản hồi thành công.</small>
         </div>}
         {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
@@ -1002,7 +997,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           </button>
           {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
         </form>}
-        {denseChrome&&<fieldset className="admin-search-scope">
+        {denseChrome&&<details className="admin-control-section"><summary>Tìm kiếm không dấu · Chỉ trên trình duyệt này</summary><fieldset className="admin-search-scope">
           <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
           <div className="admin-search-scope-options">
             {searchChoices.map(key=><label key={key}>
@@ -1021,14 +1016,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           </div>
           <button type="button" className="button ghost" onClick={()=>
             setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
-          <small>Áp dụng khi chọn “Tất cả trường”; lưu trên trình duyệt hiện tại.</small>
-        </fieldset>}
+          <small>Áp dụng khi chọn “Tất cả trường” · Chỉ trên trình duyệt này, không đổi cấu hình dùng chung.</small>
+        </fieldset></details>}
         {denseChrome&&onBulkApply&&<div className="admin-bulk-paste-tools">
           <button type="button" className="button ghost" disabled={locked||!rows.length}
             onClick={()=>setBulkPasteOpen(true)}>Dán nhiều ô từ Excel</button>
           <small>Copy nhiều hàng/cột C–O, xem trước và xác nhận. {sourceKind==='firebase'?'Firebase sẽ kiểm tra khóa và tự lưu sau khi duyệt.':''}</small>
         </div>}
-        <fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
+        <details className="admin-control-section"><summary>Hiện/ẩn thẻ tổng hợp</summary><fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
           <legend>Hiện/ẩn thẻ tổng hợp</legend>
           <span className="admin-summary-fixed" title="C00 luôn hiển thị">C00 · Tổng số (luôn hiện)</span>
           {SUMMARY_CARD_KEYS.map((key,index)=><label key={key}>
@@ -1039,8 +1034,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                   party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
-        </fieldset>
-        {canEditListSettings&&<div className="admin-l03-widths">
+        </fieldset></details>
+        {canEditListSettings&&<details className="admin-control-section admin-control-section-l03"><summary>Nâng cao · 5 thông số độ rộng L03</summary><div className="admin-l03-widths">
           <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
             aria-controls="admin-l03-width-editor" disabled={viewSaving} onClick={()=>{
               if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
@@ -1081,7 +1076,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             {l03WidthErrors.global&&<p role="alert">{l03WidthErrors.global}</p>}
             <small>Tổng = rail + 8px mỗi khoảng + 23px padding/viền. Khi mode khác nhau, cột vật lý chọn tổng lớn nhất.</small>
           </form>}
-        </div>}
+        </div></details>}
       </div>}
     </>}
     {/* Admin tools stay distinct and AFTER the shared summary/heading. */}

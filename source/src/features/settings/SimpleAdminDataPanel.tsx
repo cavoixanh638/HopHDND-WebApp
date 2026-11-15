@@ -116,24 +116,39 @@ export function SimpleAdminDataPanel({database,user,items,disabled=false}:{
   });
   if(!firebaseAdmin(user))return null;
   return <section className="card admin-data-maintenance" aria-label="Sao lưu và thay dữ liệu đơn giản">
-    <h3>Quản lý dữ liệu — 3 thao tác</h3>
-    <p>Nhập trực tiếp Excel khi danh sách Firebase trống. Nếu đã có hồ sơ,
-      tải backup JSON trước khi thay thế. Không cần dịch vụ lưu trữ bên ngoài.</p>
-    <div className="toolbar">
-      <label className="field">Nhập Excel (.xlsx)
-        <input type="file" accept=".xlsx" disabled={busy||disabled}
-          onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadExcel(file);
-            e.currentTarget.value='';}}/>
-      </label>
-      <button className="button ghost" type="button" disabled={busy||disabled}
-        onClick={()=>void backup()}>Tải backup JSON</button>
-      <label className="field">Hoặc khôi phục file backup (.json)
-        <input type="file" accept=".json,application/json" disabled={busy||disabled}
-          onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadJson(file);
-            e.currentTarget.value='';}}/>
-      </label>
-      <button className="button ghost" type="button" disabled={busy||disabled}
-        onClick={()=>void stageClear()}>Xóa danh sách hiện tại</button>
+    <h3>Sao lưu, nhập và bảo trì dữ liệu</h3>
+    <p>Danh sách Firebase hiện có <strong>{items.length} hồ sơ</strong>. Nhập Excel vào danh sách trống không yêu cầu backup trước; thay thế/khôi phục/xóa dữ liệu đang có phải sao lưu và xác nhận riêng.</p>
+    <div className="admin-maintenance-steps">
+      <section className="admin-maintenance-backup" aria-label="Bước sao lưu dữ liệu">
+        <h4>1. Sao lưu dữ liệu hiện tại</h4>
+        <p className="muted">Tải JSON dữ liệu nghiệp vụ trước khi thay thế hoặc xóa. Backup này không phải JSON cấu hình bố cục.</p>
+        <button className="button primary" type="button" disabled={busy||disabled}
+          onClick={()=>void backup()}>Tải backup JSON (dữ liệu)</button>
+      </section>
+      <details className="admin-maintenance-operation">
+        <summary>2. Nhập hoặc thay thế danh sách bằng Excel A–O</summary>
+        <label className="field">Nhập Excel (.xlsx)
+          <input type="file" accept=".xlsx" disabled={busy||disabled}
+            onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadExcel(file);
+              e.currentTarget.value='';}}/>
+        </label>
+        <p className="muted">Sau khi chọn file, hãy xem trước số hồ sơ thêm, sửa, xóa và giữ nguyên rồi mới xác nhận ghi Firebase.</p>
+      </details>
+      <details className="admin-maintenance-operation">
+        <summary>3. Khôi phục từ backup JSON dữ liệu</summary>
+        <label className="field">Chọn backup dữ liệu (.json)
+          <input type="file" accept=".json,application/json" disabled={busy||disabled}
+            onChange={e=>{const file=e.currentTarget.files?.[0];if(file)void loadJson(file);
+              e.currentTarget.value='';}}/>
+        </label>
+        <p className="muted">Chỉ nhận định dạng backup dữ liệu tương thích. Xem trước và xác nhận trước khi khôi phục.</p>
+      </details>
+      <details className="admin-maintenance-operation admin-maintenance-danger">
+        <summary>Nguy hiểm · Xóa danh sách dữ liệu hiện tại</summary>
+        <p>Chỉ dùng khi thực sự cần xóa toàn bộ hồ sơ ở <code>hdnd/items</code>. Hệ thống yêu cầu backup hợp lệ và xác nhận lại.</p>
+        <button className="button danger" type="button" disabled={busy||disabled}
+          onClick={()=>void stageClear()}>Chuẩn bị xóa và xem trước</button>
+      </details>
     </div>
     {excel&&<div className="toolbar">
       <span>Excel: <strong>{excel.name}</strong></span>

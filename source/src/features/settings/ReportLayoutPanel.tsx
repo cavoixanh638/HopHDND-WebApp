@@ -52,6 +52,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
           <p className="muted">Thay đổi bố trí được áp dụng sau khi bấm Lưu.</p>
         </div>
       </div>
+      <details className="report-global-options"><summary>Thiết lập chung: độ rộng, màu sắc, phông chữ</summary>
       <div className="report-page-width-controls">
         <strong>Độ rộng trang Bảng báo cáo</strong>
         <label className="field" htmlFor="report-page-width">Độ rộng trang (px)</label>
@@ -101,6 +102,8 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
           Font Apple/Microsoft/Helvetica/Arial phụ thuộc font có sẵn trên máy; khi không tải được font web, trình duyệt dùng font dự phòng.
           Xem trước ngay, chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
       </div>
+      </details>
+      <h4 className="report-per-table-heading">Thiết lập từng bảng ({draft.length} bảng)</h4>
       <div className="settings-grid">
         {draft.map((report, index) => {
           const preview = previews.find(candidate => candidate.id === report.id)!;
@@ -149,13 +152,13 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   <option value="include">Bao gồm nội dung “Không phải trình”</option>
                   <option value="exclude">Không bao gồm nội dung “Không phải trình”</option>
                 </select>
-                <small>Chỉ ảnh hưởng thống kê của bảng này; không đổi trạng thái trong Excel hoặc Danh sách dữ liệu.</small>
+                <small><strong>Quy tắc tính số liệu:</strong> thay đổi này ảnh hưởng tổng đếm trên bảng báo cáo, không chỉ màu sắc hay cách hiển thị. Không đổi giá trị nguồn Excel hoặc Danh sách dữ liệu.</small>
               </label>}
               <div className="top-actions" aria-label={`Sắp xếp bảng ${index + 1}`}>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} lên`} onClick={() => moveReport(index, -1)} disabled={index === 0}>Lên</button>
                 <button className="button ghost" type="button" aria-label={`Đưa bảng ${index + 1} xuống`} onClick={() => moveReport(index, 1)} disabled={index === draft.length - 1}>Xuống</button>
               </div>
-              <fieldset className="advanced-settings">
+              <details className="advanced-settings report-columns-disclosure"><summary>Thứ tự và hiển thị cột · Nâng cao</summary><fieldset>
                 <legend>Thứ tự cột</legend>
                 <ol className="column-order-list">
                   {report.columnOrder.map((column, columnIndex) => <li key={column}>
@@ -181,12 +184,15 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                       })}/>{column}</label>;
                   })}
                 </div>
-              </fieldset>
+              </fieldset></details>
             </div>
             <div className="report-layout-preview">
-              <p className="muted">Xem trước bố trí này{report.visible ? '' : ' (đang ẩn trên dashboard)'} · Kéo đường phân cách ở tiêu đề để thay đổi độ rộng cột.</p>
-              <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} onSelect={() => {}} preview
-                 onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
+              <details className="report-preview-disclosure">
+                <summary>Xem trước bảng {index+1}: {report.title}{report.visible?'':' (đang ẩn)'}</summary>
+                <p className="muted">Kéo đường phân cách ở tiêu đề để điều chỉnh độ rộng cột. Chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
+                <ReportTable items={items} config={preview} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} onSelect={() => {}} preview
+                  onColumnResize={(column,width)=>update(index,{columnWidths:{...(report.columnWidths??{}),[column]:width}})} />
+              </details>
             </div>
           </article>;
         })}

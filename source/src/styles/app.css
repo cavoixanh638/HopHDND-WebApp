@@ -444,6 +444,29 @@ body:not(.is-printing) #print-target {  display:none!important}
   overflow-wrap:normal;
   word-break:normal;
 }
+/* The admin gear groups tasks while retaining role guards and existing actions. */
+.v3-settings-menu > .options-popover {
+  max-height:min(80dvh, 680px);overflow-y:auto;overscroll-behavior:contain;
+}
+
+.options-popover .settings-menu-group + .settings-menu-group {border-top:1px solid #e5ede7;margin-top:4px;padding-top:4px;}
+.options-popover .settings-menu-group-label {margin:6px 12px 3px;font-size:11px;font-weight:750;letter-spacing:.025em;color:#63736a;}
+.options-popover .settings-menu-group > button,
+.options-popover .settings-menu-advanced > button {
+  display:block;width:100%;min-height:36px;padding:8px 12px;border:0;border-radius:7px;
+  background:transparent;text-align:left;color:var(--ink);font-size:13px;font-weight:600;line-height:1.35;
+}
+.options-popover .settings-menu-group > button:hover,
+.options-popover .settings-menu-advanced > button:hover {background:var(--soft);}
+.options-popover .settings-menu-group > button:focus-visible,
+.options-popover .settings-menu-advanced > button:focus-visible,
+.options-popover .settings-menu-advanced > summary:focus-visible {
+  outline:2px solid var(--green);outline-offset:-2px;
+}
+.options-popover .settings-menu-advanced {margin-top:5px;border-top:1px solid #e5ede7;padding-top:4px;}
+.options-popover .settings-menu-advanced > summary {cursor:pointer;padding:9px 12px;font-size:12px;color:#5b7064;font-weight:650;}
+.options-popover .settings-menu-advanced .ui-reference-help {margin:6px 9px;max-height:180px;overflow:auto;font-size:11px;}
+.options-popover .v3-gear-status {padding:8px 12px;line-height:1.4;overflow-wrap:anywhere;}
 .options-popover > button + button {border-top:1px solid #edf0ed;}
 .options-popover > button:hover {background:var(--soft);}
 .options-popover > button:focus-visible {outline:2px solid var(--green);outline-offset:-2px;}
@@ -2839,3 +2862,64 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   }
   .app-shell.imperial-sky-theme > nav.nav-tabs.primary-section-switcher .primary-section-card .section-card-state {display:none;}
 }
+
+/* Popup controls stay concise until the reader chooses an optional view. */
+.report-grid-display-options {position:relative;z-index:5;max-width:100%;}
+.report-grid-display-options > summary,
+.report-grid-presets-disclosure > summary {
+  cursor:pointer;list-style:auto;border:1px solid #d4e1da;border-radius:7px;
+  background:#f8fbf9;color:#355a48;font-weight:650;font-size:12px;
+  padding:8px 10px;line-height:1.35;
+}
+.report-grid-display-options > summary:focus-visible,
+.report-grid-presets-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.report-grid-display-options[open] > summary,
+.report-grid-presets-disclosure[open] > summary {background:#edf5f0;}
+.report-grid-display-options-content {
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:9px 10px;border:1px solid #d4e1da;border-radius:8px;
+  background:#fff;max-width:100%;
+}
+.report-grid-presets-disclosure {margin:8px 0 3px;}
+.report-grid-presets-disclosure .report-grid-presets {margin:8px 0 0;}
+
+/* Report editing uses progressive disclosure: business numbers stay visible. */
+.report-global-options {margin:0 0 14px;border:1px solid #dce8e1;border-radius:9px;padding:0 10px 10px;}
+.report-global-options > summary {cursor:pointer;padding:12px 5px;font-size:13px;font-weight:750;color:#2c604d;}
+.report-global-options > summary:focus-visible,
+.report-columns-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.report-global-options:not([open]) {padding-bottom:0;}
+.report-global-options .report-page-width-controls {margin-top:8px;}
+.report-per-table-heading {margin:14px 2px 9px;font-size:14px;}
+.report-columns-disclosure {min-width:0;margin:12px 0;}
+.report-columns-disclosure > summary {cursor:pointer;font-size:12px;font-weight:650;padding:8px;color:#35664f;}
+.report-columns-disclosure > fieldset {margin-top:7px;}
+.build-count-setting small {display:block;line-height:1.45;}
+
+/* Admin data maintenance makes the backup requirement and destructive actions distinct. */
+.admin-data-hub > .admin-data-export,
+.admin-data-hub > .admin-profile-restore {margin:12px 0;padding:12px;border:1px solid #dbe5df;border-radius:9px;}
+.admin-data-hub h4,
+.admin-data-maintenance h4 {font-size:13px;margin:0 0 7px;}
+.admin-maintenance-steps {display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0;}
+.admin-maintenance-backup,
+.admin-maintenance-operation {padding:12px;border:1px solid #dce7df;border-radius:8px;background:#fbfdfb;}
+.admin-maintenance-operation > summary {cursor:pointer;font-size:13px;font-weight:700;line-height:1.45;}
+.admin-maintenance-operation[open] > summary {margin-bottom:10px;}
+.admin-maintenance-danger {border-color:#efc9c9;background:#fffafa;}
+.admin-maintenance-danger > summary {color:#a42e30;}
+.admin-maintenance-steps .field {margin-top:8px;}
+.admin-maintenance-steps summary:focus-visible {outline:2px solid var(--green);outline-offset:3px;}
+
+/* UID approval and per-cell permissions stay distinct; technical checks collapse. */
+.account-diagnostics {margin:12px 0;border:1px solid #dce7e0;border-radius:9px;padding:0 10px;}
+.account-diagnostics > summary {cursor:pointer;padding:11px 4px;font-size:12px;font-weight:700;color:#4a6456;}
+.account-diagnostics > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.account-diagnostics > .notice {margin:5px 0 12px;}
+
+/* Report preview tables expand on demand and keep native disclosure state. */
+.report-preview-disclosure {min-width:0;border:1px solid #e0e9e3;border-radius:9px;padding:0 9px 9px;}
+.report-preview-disclosure > summary {cursor:pointer;color:#375c4c;font-size:12px;font-weight:700;line-height:1.4;padding:10px 3px;}
+.report-preview-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
+.report-preview-disclosure:not([open]) {padding-bottom:0;}
+.report-preview-disclosure > .muted {margin:6px 4px 8px;}

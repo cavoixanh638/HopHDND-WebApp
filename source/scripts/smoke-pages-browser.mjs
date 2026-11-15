@@ -1230,7 +1230,7 @@ try{
     const root=document.querySelector('.app-shell');
     return !root?.hasAttribute('data-ui-reference-active')&&
       !document.querySelector('[data-ui-reference-layer]')&&
-      ![...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+      ![...document.querySelectorAll('.v3-settings-menu .options-popover button')]
         .some(button=>button.textContent?.trim()==='Hiện mã khu vực');
   })()`);
   if(!guestReferenceDenied)throw Error('UI V4 L3 guest reference codes must be absent');
@@ -1239,7 +1239,7 @@ try{
     const banner=document.querySelector('.demo-banner')?.textContent??'';
     const gear=document.querySelector('.v3-settings-menu');
     const actions=[...gear?.querySelectorAll('.options-popover > button')??[]];
-    return !!gear&&actions.length===1&&actions[0].textContent.trim()==='Đăng nhập quản trị'&&
+    return !!gear&&actions.length===1&&actions[0].textContent.trim()==='Đăng nhập Google'&&
       !document.querySelector('.guest-signin')&&!document.querySelector('.list-view-box')&&
       !document.querySelector('.version')&&
       !document.querySelector('.source-column-visibility,.compact-columns-menu,.status-palette-trigger,.column-resizer')&&
@@ -2337,7 +2337,7 @@ try{
   // List and gear without creating any admin/route bypass.
   await evaluate("(()=>{const menu=document.querySelector('details.v3-settings-menu');"+
     "if(!menu)throw Error('Admin gear missing');menu.open=true;"+
-    "const account=[...menu.querySelectorAll('.options-popover > button')].find(b=>b.textContent.trim()==='Tài khoản và dữ liệu');"+
+    "const account=[...menu.querySelectorAll('.options-popover button')].find(b=>b.textContent.trim()==='Tài khoản');"+
     "if(!account)throw Error('Verified admin account action missing');account.click();})()");
   await eventually("!!document.querySelector('section[aria-label=\"Tài khoản Firebase\"]')",
     'verified admin account panel missing',100);
@@ -2359,7 +2359,7 @@ try{
     const nav=document.querySelector('nav.primary-section-switcher');
     const tabs=[...nav?.querySelectorAll('.primary-section-card')??[]];
     const gr=gear.getBoundingClientRect(),sr=summary.getBoundingClientRect();
-    return {ok:gear.open&&links.length===1&&links[0]==='Đăng nhập quản trị'&&
+    return {ok:gear.open&&links.length===1&&links[0]==='Đăng nhập Google'&&
       !document.querySelector('.settings-hub-tabs,.account-source-actions,.source-column-visibility')&&
       !document.querySelector('.guest-signin')&&
       !document.querySelector('.app-shell.settings-page')&&
@@ -4400,6 +4400,9 @@ try{
   await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
   await eventually("!!document.querySelector('.admin-list-controls:not([hidden])')",
     'Dense admin options did not expand');
+  await evaluate("document.querySelector('.admin-control-section-l03 > summary')?.click()");
+  await eventually("!!document.querySelector('.admin-control-section-l03[open]')",
+    'L03 advanced section did not expand');
   await evaluate("document.querySelector('.admin-l03-widths button')?.click()");
   await eventually("!!document.querySelector('#admin-l03-width-editor button[type=submit]')",
     'Five L03 widths admin editor missing');
@@ -4977,10 +4980,10 @@ try{
     }));
     // V4 L3 tests the ACTUAL App with a verified Google-provider admin on
     // local Auth + RTDB Emulators, independently from synthetic full preview.
-    await adminA.until("[...document.querySelectorAll('.v3-settings-menu .options-popover > button')].some(b=>b.textContent.trim()==='Hiện mã khu vực')",
+    await adminA.until("[...document.querySelectorAll('.v3-settings-menu .options-popover button')].some(b=>b.textContent.trim()==='Hiện mã khu vực')",
       'verified admin-only region toggle');
     const referenceDefault=await adminA.js(`(()=>{
-      const button=[...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+      const button=[...document.querySelectorAll('.v3-settings-menu .options-popover button')]
         .find(b=>b.textContent.trim()==='Hiện mã khu vực');
       return !!button&&button.getAttribute('aria-pressed')==='false'&&
         !document.querySelector('[data-ui-reference-layer]')&&
@@ -4989,7 +4992,10 @@ try{
     if(!referenceDefault)throw Error('UI V4 L3 App admin reference codes must default OFF');
     await adminA.js(`(()=>{
       document.querySelector('.v3-settings-menu > summary').click();
-      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+      const advanced=document.querySelector('.v3-settings-menu .settings-menu-advanced');
+      if(!advanced)throw Error('Advanced diagnostics section missing');
+      advanced.open=true;
+      [...document.querySelectorAll('.v3-settings-menu .options-popover button')]
         .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
     })()`);
     await adminA.until("!!document.querySelector('[data-ui-reference-layer]')",
@@ -5027,7 +5033,10 @@ try{
     }
     await adminA.js(`(()=>{
       document.querySelector('.v3-settings-menu > summary').click();
-      [...document.querySelectorAll('.v3-settings-menu .options-popover > button')]
+      const advanced=document.querySelector('.v3-settings-menu .settings-menu-advanced');
+      if(!advanced)throw Error('Advanced diagnostics section missing');
+      advanced.open=true;
+      [...document.querySelectorAll('.v3-settings-menu .options-popover button')]
         .find(b=>b.textContent.trim()==='Hiện mã khu vực').click();
     })()`);
     await adminA.until("!document.querySelector('[data-ui-reference-layer]')",
@@ -5127,10 +5136,10 @@ try{
       // verified admin readiness: common profile, epoch and connected state
       // must all have passed before any admin-only menu item is rendered.
       // Wait for the *real* admin menu, never bypass or replace that guard.
-      await side.until("[...document.querySelectorAll('header.v3-shell-topbar .options-popover > button')].some(b=>b.textContent.trim()==='Tài khoản và dữ liệu')",
+      await side.until("[...document.querySelectorAll('header.v3-shell-topbar .options-popover button')].some(b=>b.textContent.trim()==='Tài khoản')",
         'verified V3 administrator tools (not the guest login menu)');
       await clickText(side,'.options-menu summary','⚙');
-      await clickText(side,'.options-popover button','Tài khoản và dữ liệu');
+      await clickText(side,'.options-popover button','Tài khoản');
       await side.until("document.querySelector('.settings-hub-tabs')!==null",'admin settings tabs');
       await clickText(side,'.settings-hub-tabs button','Excel · Nhập/Xuất');
       await side.until("document.querySelector('.business-excel-review')!==null",
