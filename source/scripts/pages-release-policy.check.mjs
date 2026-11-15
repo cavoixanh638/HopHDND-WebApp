@@ -80,7 +80,7 @@ test('single first rollout of the guarded workflow is accepted only from its exa
     '.github/workflows/publish-pages.yml',
     '.github/workflows/spark-pages-release-preflight.yml',
     'source/scripts/pages-release-policy.mjs',
-    'source/scripts/pages-release-policy.test.mjs',
+    'source/scripts/pages-release-policy.check.mjs',
     'source/tests/pages-release-policy.test.ts',
     'README.md',
   ],{parent:uiParent});
