@@ -183,7 +183,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.common.status='loading';
     let tree=render();
     expect(nodes(tree).some(n=>n.type===FirebasePanel)).toBe(false);
-    expect(button(tree,'Đăng nhập quản trị')).toBeDefined(); // Fail closed during profile verification.
+    expect(text(tree)).toContain('Đang xác minh lại kết nối quản trị'); // Fail closed without misclassifying a verified admin as guest.
     firebase.common.status='ready';
     tree=open('Tài khoản và dữ liệu');
     expect(tree.props.className).toContain('settings-page');
@@ -275,7 +275,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(list.props.allowLayout).toBe(false);
     expect(list.props.canEditCell(list.props.items[0].recordId,'note')).toBe(true);
   });
-  it('immediately closes admin editing routes on grant/profile/connection loss; keeps guest cell grants',async()=>{
+  it('closes private pages on role revocation but treats temporary admin disconnection safely',async()=>{
     grantAdmin();render();respond();await settle();
     let tree=open('Chỉnh sửa');
     expect(nodes(tree).some(n=>n.type===ItemList&&n.props.customizing)).toBe(true);
@@ -283,7 +283,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     firebase.user={isAnonymous:false,uid:'nonadmin-google',email:'member@example.com'} as FirebaseController['user'];
     tree=render();tree=render(); // simulated React effect: private page redirects
     expect(nodes(tree).some(n=>n.type===ReportSettings||n.type===FirebasePanel||n.type===ExcelTransferPanel)).toBe(false);
-    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    expect(button(tree,'Đăng xuất Google')).toBeDefined();
     const list=nodes(tree).find(n=>n.type===ItemList);
     expect(list).toBeDefined();
     expect(list.props.anonymousViewer).toBe(true);
@@ -294,7 +294,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     // Even an admin UID loses tool affordances when Firebase connection fails.
     grantAdmin();tree=render();
     firebase.connected=false;tree=render();
-    expect(button(tree,'Đăng nhập quản trị')).toBeDefined();
+    expect(text(tree)).toContain('Đang xác minh lại kết nối quản trị');
     expect(nodes(tree).some(n=>n.type===ExcelTransferPanel)).toBe(false);
   });
   it('keeps the administrator override in both list and customize views; staff remain cell-grant scoped',async()=>{
