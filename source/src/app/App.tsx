@@ -625,20 +625,33 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           <summary aria-label="Cài đặt" title="Cài đặt">⚙</summary>
           <div className="options-popover" role="group" aria-label="Công cụ theo quyền tài khoản">
             {adminTools?<>
-              <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
-              <button type="button" onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa ô</button>
-              <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
-              <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
-              {isFirebase&&<button type="button" onClick={event=>openOptions('transfer',event)}>Nhập / Xuất Excel</button>}
-              <button type="button" className="ui-reference-toggle" aria-pressed={referenceCodesVisible}
-                onClick={()=>{setReferenceCodesOn(previous=>!previous);settingsMenu.current?.removeAttribute('open');}}>
-                Hiện mã khu vực
-              </button>
-              {referenceCodesVisible&&<p className="ui-reference-help" aria-label="Bảng tra mã khu vực">
-                {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
-                Trỏ vào ô để xem mã kèm ID nội dung.
-              </p>}
-            </>:<>
+              <div className="settings-menu-group" role="group" aria-label="Giao diện và bố cục">
+                <p className="settings-menu-group-label">Giao diện và bố cục</p>
+                <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
+                <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
+              </div>
+              <div className="settings-menu-group" role="group" aria-label="Tài khoản và phân quyền">
+                <p className="settings-menu-group-label">Tài khoản và phân quyền</p>
+                <button type="button" onClick={event=>openOptions('items-permissions',event)}>Phân quyền chỉnh sửa ô</button>
+                <button type="button" onClick={event=>openOptions('connection',event)}>Tài khoản và dữ liệu</button>
+              </div>
+              {isFirebase&&<div className="settings-menu-group" role="group" aria-label="Dữ liệu và vận hành">
+                <p className="settings-menu-group-label">Dữ liệu và vận hành</p>
+                <button type="button" onClick={event=>openOptions('transfer',event)}>Nhập / Xuất Excel</button>
+                <button type="button" onClick={event=>openOptions('review',event)}>Chốt số liệu</button>
+              </div>}
+              <details className="settings-menu-advanced">
+                <summary>Công cụ kiểm tra</summary>
+                <button type="button" className="ui-reference-toggle" aria-pressed={referenceCodesVisible}
+                  onClick={()=>{setReferenceCodesOn(previous=>!previous);settingsMenu.current?.removeAttribute('open');}}>
+                  Hiện mã khu vực
+                </button>
+                {referenceCodesVisible&&<p className="ui-reference-help" aria-label="Bảng tra mã khu vực">
+                  {UI_REFERENCE_LEGEND.map(entry=><span key={entry.prefix}>{entry.prefix}: {entry.meaning}. </span>)}
+                  Trỏ vào ô để xem mã kèm ID nội dung.
+                </p>}
+              </details>
+            </><>
               <button type="button" className="v3-gear-login" disabled={gearLoginBusy||!isFirebase}
                 onClick={()=>void loginFromGear()}>{gearLoginBusy?'Đang đăng nhập…':
                   import.meta.env.MODE==='pages-test'&&import.meta.env.VITE_FIREBASE_WRITE_MODE==='spark'&&firebase?.emulator?'Đăng nhập quản trị (Emulator)':'Đăng nhập quản trị'}</button>
