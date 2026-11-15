@@ -34,7 +34,7 @@ jobs:
               "vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'",
               'node source/scripts/pages-release-policy.mjs',
               "needs.release-gate.outputs.release_allowed == 'true'",
-              'source/scripts/pages-release-policy.test.mjs',
+              'source/scripts/pages-release-policy.check.mjs',
               'HOPHDND_PAGES_APPROVED_MAIN_SHA',
               'npm run build:spark',
               'npm run test:spark',
