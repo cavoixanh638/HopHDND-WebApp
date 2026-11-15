@@ -61,7 +61,7 @@
   background:#f6faf8!important;box-shadow:none!important;
 }
 .item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-empty {
-  border-style:dashed;background:#f8faf9;
+  border-style:dashed!important;background:#f8faf9!important;
 }
 .item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-placeholder {
   color:#71877e;font-size:.91em;font-weight:400;font-style:normal;
