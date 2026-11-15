@@ -54,6 +54,7 @@ import {DETAIL_FIELDS,SEARCH_FIELDS,SEARCHABLE_ITEM_FIELDS,newToolbarState,filte
   exactChoices,shouldClearListOnEscape,
   type ListKind} from './list-toolbar-filters';
 import './list-filter-toolbar.css';
+import './list-row-readability.css';
 import {ActiveListFilters} from './ActiveListFilters';
 import {BulkPasteModal} from './BulkPasteModal';
 import type {BulkPatch} from './bulk-paste';
@@ -1173,7 +1174,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     choices={column.origin==='custom'&&column.kind==='select'?column.options:undefined}
     value={columnFilters[column.key]??''} onChange={value=>{setColumnFilters(previous=>{const next={...previous};if(value)next[column.key]=value;else delete next[column.key];return next;});}} />)}
   </tr>}</thead><tbody>
-      {rows.map(item => <tr key={item.recordId} data-ui-reference-record-id={item.recordId} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
+      {rows.map(item => <tr key={item.recordId} data-ui-reference-record-id={item.recordId} data-document-kind={item.documentKind} className={['color-row',itemColor(item,colorRules)?'color-'+itemColor(item,colorRules):''].join(' ')}>{displayedColumns.map(column=>{const key=column.key as TextField;
         const pair=compactPairs.find(pair=>pair.anchor===column.key);
         if(pair){
           const anyEditable=pair.memberFields.some(field=>editableField(item,field as TextField));

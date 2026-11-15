@@ -854,6 +854,61 @@ try{
     throw Error('Guest List font audit did not find source columns: '+JSON.stringify(visibleFontAudit));
   console.log('GUEST_LIST_COLUMN_FONT_AUDIT',JSON.stringify(visibleFontAudit));
 
+  // Default 13px should be the exact computed business-value font size
+  // across every visible source column AND every nested L03 stage element.
+  const inconsistent=visibleFontAudit.columns.flatMap(col=>{
+    const mismatches=[
+      ...(col.cellFont==='13px'?[]:[{member:'cell',size:col.cellFont}]),
+      ...(col.primaryFont==='13px'?[]:[{member:'primary',size:col.primaryFont}]),
+      ...col.segments.filter(member=>member.size!=='13px').map(member=>({member:member.name,size:member.size}))
+    ];
+    return mismatches.map(member=>({column:col.key,...member}));
+  });
+  if(visibleFontAudit.tableFont!=='13px'||inconsistent.length)
+    throw Error('Guest List business text sizes must match 13px baseline: '+JSON.stringify({inconsistent,visibleFontAudit}));
+  console.log('GUEST_LIST_FONT_UNIFIED_PASS',JSON.stringify({
+    columns:visibleFontAudit.columns.map(col=>({key:col.key,size:col.primaryFont,segments:col.segments})),
+    configured:visibleFontAudit.tableFont
+  }));
+
+  // Test three adjacent NQ records with and without a user-assigned row
+  // palette. Zebra + 2px separation may NOT erase the saved mint background,
+  // direct status tone, or an explicitly highlighted source cell.
+  const rowProbe=await evaluate(`(()=>{
+    const host=document.createElement('div');host.id='resolution-row-boundary-probe';
+    host.style.cssText='position:fixed;left:-12000px;top:80px;width:650px';
+    host.innerHTML='<table class="data-table item-data-table" style="width:640px"><tbody>'+
+      '<tr class="color-row" data-document-kind="NQ"><td data-col-key="displayCode"><span class="code">NQ01</span></td><td data-col-key="content">Nghị quyết số một</td></tr>'+
+      '<tr class="color-row" data-document-kind="NQ"><td data-col-key="displayCode"><span class="code">NQ02</span></td><td data-col-key="content">Nghị quyết số hai</td></tr>'+
+      '<tr class="color-row color-mint" data-document-kind="NQ"><td data-col-key="displayCode"><span class="code">NQ03</span></td><td data-col-key="content">Nghị quyết tô màu</td></tr>'+
+      '<tr class="color-row" data-document-kind="BC"><td data-col-key="displayCode"><span class="code">BC04</span></td><td data-col-key="content" style="background-color:rgb(255, 249, 220)">Đã đánh dấu ô</td></tr>'+
+      '</tbody></table>';
+    document.querySelector('.app-shell').appendChild(host);
+    const rows=[...host.querySelectorAll('tbody tr')];
+    const style=(n)=>getComputedStyle(n);
+    const result={
+      firstBorder:style(rows[0].cells[0]).borderTopWidth,
+      secondBorder:style(rows[1].cells[0]).borderTopWidth,
+      nqsBorderColor:style(rows[1].cells[0]).borderTopColor,
+      imperialTheme:document.querySelector('.app-shell')?.classList.contains('imperial-sky-theme')??false,
+      secondBackground:style(rows[1].cells[1]).backgroundColor,
+      mintBackground:style(rows[2].cells[1]).backgroundColor,
+      markedBackground:style(rows[3].cells[1]).backgroundColor,
+      secondIdRail:style(rows[1].cells[0]).boxShadow,
+      idSize:style(rows[1].querySelector('.code')).fontSize
+    };
+    host.remove();return result;
+  })()`);
+  if(rowProbe.firstBorder!=='0px'||rowProbe.secondBorder!=='2px'||
+    rowProbe.nqsBorderColor!=='rgb(183, 202, 192)'||
+    rowProbe.secondBackground!==(rowProbe.imperialTheme?'rgb(245, 249, 253)':'rgb(248, 250, 249)')||
+    rowProbe.mintBackground!=='rgb(229, 245, 233)'||
+    rowProbe.markedBackground!=='rgb(255, 249, 220)'||
+    !rowProbe.secondIdRail.includes('169, 194, 181')||rowProbe.idSize!=='13px')
+    throw Error('Adjacent NQ row separation/color preservation failed: '+JSON.stringify(rowProbe));
+  console.log('ADJACENT_RESOLUTION_ROWS_PASS',JSON.stringify(rowProbe));
+
+
 
   // Regression: textarea may remain focused for typing after pointer leaves.
   // That MUST NOT look like the active green/blue mouse-hover highlight.
