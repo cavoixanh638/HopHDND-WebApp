@@ -63,6 +63,10 @@
 .item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-empty {
   border-style:dashed!important;background:#f8faf9!important;
 }
+.item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) button.inline-note-trigger:hover:not(:disabled) {
+  transform:none!important;border-color:#96c7b0!important;
+  background:#f1f8f4!important;box-shadow:0 0 0 1px #d6eadf!important;
+}
 .item-data-table tbody td.editable-cell:is([data-col-key="specificProgress"],[data-col-key="note"]) .inline-note-placeholder {
   color:#71877e;font-size:.91em;font-weight:400;font-style:normal;
 }
