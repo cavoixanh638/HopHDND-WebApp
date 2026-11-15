@@ -32,7 +32,10 @@ jobs:
           flow = Path('.github/workflows/publish-pages.yml').read_text()
           required = [
               "vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'",
-              'vars.HOPHDND_PAGES_APPROVED_MAIN_SHA == github.sha',
+              'node source/scripts/pages-release-policy.mjs',
+              "needs.release-gate.outputs.release_allowed == 'true'",
+              'source/scripts/pages-release-policy.test.mjs',
+              'HOPHDND_PAGES_APPROVED_MAIN_SHA',
               'npm run build:spark',
               'npm run test:spark',
               'dist-spark/index.html',
@@ -44,7 +47,7 @@ jobs:
                        'HOPHDND_PARENT_COMMIT_ENDPOINT', 'HOPHDND_RELEASE_BACKENDS_CONFIRMED']
           for needle in forbidden:
               assert needle not in flow, f"SPARK_RELEASE_HOLD unsafe legacy build or approval: {needle}"
-          print('SPARK_PAGES_APPROVAL_GATES_PRESENT')
+          print('SPARK_PAGES_CUTOVER_AND_SENSITIVE_APPROVAL_GATES_PRESENT')
           PY
       - name: Install exact dependencies
         run: npm ci
