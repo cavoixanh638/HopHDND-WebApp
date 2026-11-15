@@ -890,6 +890,7 @@ try{
       firstBorder:style(rows[0].cells[0]).borderTopWidth,
       secondBorder:style(rows[1].cells[0]).borderTopWidth,
       nqsBorderColor:style(rows[1].cells[0]).borderTopColor,
+      imperialTheme:document.querySelector('.app-shell')?.classList.contains('imperial-sky-theme')??false,
       secondBackground:style(rows[1].cells[1]).backgroundColor,
       mintBackground:style(rows[2].cells[1]).backgroundColor,
       markedBackground:style(rows[3].cells[1]).backgroundColor,
@@ -900,7 +901,7 @@ try{
   })()`);
   if(rowProbe.firstBorder!=='0px'||rowProbe.secondBorder!=='2px'||
     rowProbe.nqsBorderColor!=='rgb(183, 202, 192)'||
-    rowProbe.secondBackground!=='rgb(248, 250, 249)'||
+    rowProbe.secondBackground!==(rowProbe.imperialTheme?'rgb(245, 249, 253)':'rgb(248, 250, 249)')||
     rowProbe.mintBackground!=='rgb(229, 245, 233)'||
     rowProbe.markedBackground!=='rgb(255, 249, 220)'||
     !rowProbe.secondIdRail.includes('169, 194, 181')||rowProbe.idSize!=='13px')
