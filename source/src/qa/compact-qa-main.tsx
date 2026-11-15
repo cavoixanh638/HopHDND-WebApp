@@ -147,7 +147,8 @@ function CompactVisualQa(){
     text:'#884422',background:'#FCDDA0'};
   if(!popupPrefsReady)return <div data-qa="popup-preparing">Đang thiết lập quyền mô phỏng popup</div>;
   return <div className={'app-shell imperial-sky-theme'+
-    (params.get('app-shell')==='1'?' wide-table-page list-fit-page':'')}
+    (params.get('app-shell')==='1'?' wide-table-page list-fit-page'+
+      (guest?' guest-view':''):'')}
     data-qa="compact-real-itemlist"
     style={statusPaletteCssVariables(palette.active) as CSSProperties}>
     <header className="topbar compact-topbar" style={{padding:'12px 18px'}}>
