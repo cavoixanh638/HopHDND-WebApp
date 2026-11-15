@@ -45,7 +45,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify UI-only release guard (NO DEPLOY)
-        run: node --test source/scripts/pages-release-policy.test.mjs
+        run: node --test source/scripts/pages-release-policy.check.mjs
       - name: Classify every unpublished commit (fail closed)
         id: policy
         env:
