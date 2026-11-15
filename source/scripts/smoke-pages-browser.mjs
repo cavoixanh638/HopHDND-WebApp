@@ -3662,6 +3662,11 @@ try{
   await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
+  // The responsive projection changes how much room the staff group can
+  // donate. Drag far enough to exhaust its actual current capacity plus the
+  // 6px compact-ID fallback, not an obsolete hard-coded 160px baseline.
+  const fallbackTravel=Math.max(160,
+    fallbackBefore.staff-130+(fallbackBefore.id-46)+8);
   const fallbackEdge=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
     el.scrollIntoView({block:'center',inline:'nearest'});
@@ -3669,8 +3674,8 @@ try{
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',...fallbackEdge});
   await send('Input.dispatchMouseEvent',{type:'mousePressed',...fallbackEdge,button:'left',clickCount:1});
-  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left'});
-  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:fallbackEdge.x+160,y:fallbackEdge.y,button:'left',clickCount:1});
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:fallbackEdge.x+fallbackTravel,y:fallbackEdge.y,button:'left'});
+  await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:fallbackEdge.x+fallbackTravel,y:fallbackEdge.y,button:'left',clickCount:1});
   await eventually("document.querySelector('td[data-col-key=displayCode]')?.getBoundingClientRect().width<=46.5",
     'L019 fallback failed to use last ID after adjacent reached minimum');
   const fallbackAfter=await widthSnapshot();
