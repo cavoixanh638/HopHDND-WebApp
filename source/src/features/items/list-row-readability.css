@@ -41,10 +41,14 @@
 /* Very quiet alternating rows ONLY where no saved row-color rule exists.
  * Data-progress-tone cells keep their existing traffic-light status styling.
  * Inline cell highlights remain authoritative over this non-important rule. */
-.app-shell.list-visual-parity:not(.imperial-sky-theme) .item-data-table tbody
+.app-shell.list-visual-parity.imperial-sky-theme {
+  --hdnd-list-alt-row-bg:#f5f9fd;
+  --hdnd-list-hover-row-bg:#edf5fa;
+}
+.app-shell.list-visual-parity .item-data-table tbody
   tr.color-row:nth-child(even):not(.color-mint):not(.color-amber):not(.color-rose):not(.color-blue)
   > td:not([data-progress-tone]) {
-  background-color:#f8faf9;
+  background-color:var(--hdnd-list-alt-row-bg,#f8faf9);
 }
 /* A small ID rail keeps the record boundary visible when horizontally
  * scanning long NQ rows without consuming additional text width. */
@@ -58,8 +62,8 @@
 }
 /* Hover a whole record gently without overriding user-colored rows, status
  * palettes, inline highlights or the stronger editable-field hover. */
-.app-shell.list-visual-parity:not(.imperial-sky-theme) .item-data-table tbody
+.app-shell.list-visual-parity .item-data-table tbody
   tr.color-row:not(.color-mint):not(.color-amber):not(.color-rose):not(.color-blue):hover
   > td:not([data-progress-tone]):not(.editable-cell) {
-  background-color:#f1f6f3;
+  background-color:var(--hdnd-list-hover-row-bg,#f1f6f3);
 }
