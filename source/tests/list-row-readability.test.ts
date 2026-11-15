@@ -36,6 +36,9 @@ describe('HĐND List reading continuity',()=>{
     expect(css).toContain('td[data-l03-layout] .compact-stages[data-rev2="true"]');
     expect(css).toContain('font-size:max(11px,calc(var(--hdnd-list-business-font-size,12px) - 1px))!important');
     expect(css).toContain('font-size:var(--hdnd-list-business-font-size,12px)!important');
+    expect(css).toContain('font-size:max(11px,calc(var(--table-font-size,13px) - 2px))!important');
+    expect(css).toContain('font-size:max(11px,calc(var(--table-font-size,13px) - 1px))!important');
+
     expect(tracks).not.toContain('--hdnd-l03-label-track:120px');
     expect(tracks).not.toContain('--hdnd-l03-label-track:132px');
   });
