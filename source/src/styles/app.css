@@ -445,6 +445,10 @@ body:not(.is-printing) #print-target {  display:none!important}
   word-break:normal;
 }
 /* The admin gear groups tasks while retaining role guards and existing actions. */
+.v3-settings-menu > .options-popover {
+  max-height:min(80dvh, 680px);overflow-y:auto;overscroll-behavior:contain;
+}
+
 .options-popover .settings-menu-group + .settings-menu-group {border-top:1px solid #e5ede7;margin-top:4px;padding-top:4px;}
 .options-popover .settings-menu-group-label {margin:6px 12px 3px;font-size:11px;font-weight:750;letter-spacing:.025em;color:#63736a;}
 .options-popover .settings-menu-group > button,
@@ -2913,7 +2917,7 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
 .account-diagnostics > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
 .account-diagnostics > .notice {margin:5px 0 12px;}
 
-/* The first report shows a preview; four other preview tables expand on demand. */
+/* Report preview tables expand on demand and keep native disclosure state. */
 .report-preview-disclosure {min-width:0;border:1px solid #e0e9e3;border-radius:9px;padding:0 9px 9px;}
 .report-preview-disclosure > summary {cursor:pointer;color:#375c4c;font-size:12px;font-weight:700;line-height:1.4;padding:10px 3px;}
 .report-preview-disclosure > summary:focus-visible {outline:2px solid var(--green);outline-offset:2px;}
