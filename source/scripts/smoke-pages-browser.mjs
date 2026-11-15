@@ -712,50 +712,54 @@ try{
   if(!listHoverRing.ok)throw Error('Editable List cell must highlight only pale compact inner control when pointer is on outer cell: '+JSON.stringify({hoverProbe,listHoverRing}));
   console.log('LIST_INNER_HOVER_PASS',JSON.stringify(listHoverRing));
 
-  // V2 note hit area is button-only: blank TD padding stays inert, actual
-  // button hover gets the inner 3D lift. Do not regress to cell-wide hovering.
+  // Owner 15/11: the permitted Note cell opens from ALL its padding.
+  // The blank row stays actionable, yet only its inner editor receives a soft
+  // hover cue; there is no retained 3D lift or broad colored background.
   const noteProbe=await evaluate(`(()=>{
     const root=document.createElement('table');
     root.className='data-table item-data-table';root.id='hover-3d-note-probe';
     root.style.cssText='position:fixed;left:20px;top:130px;width:350px;z-index:20000;background:#fff';
-    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger">Nội dung ghi chú</button></td></tr></tbody>';
+    root.innerHTML='<tbody><tr><td class="editable-cell" data-col-key="note" style="width:345px;height:80px"><button type="button" class="inline-note-trigger inline-note-empty"><span class="inline-note-placeholder">Bấm vào để thêm</span></button></td></tr></tbody>';
     document.querySelector('.app-shell').append(root);
     const box=root.querySelector('td').getBoundingClientRect();
     const inner=root.querySelector('button').getBoundingClientRect();
-    return {x:box.right-9,y:box.top+box.height/2,
+    return {x:box.left+box.width/2,y:box.bottom-3,
       innerX:inner.left+inner.width/2,innerY:inner.top+inner.height/2,
-      outsideInner:box.right-9>inner.right};
+      outsideInner:box.bottom-3>inner.bottom,
+      innerWidth:inner.width,outerWidth:box.width};
   })()`);
-  if(!noteProbe.outsideInner)throw Error('Note must retain inert outer TD padding: '+JSON.stringify(noteProbe));
+  if(!noteProbe.outsideInner||noteProbe.innerWidth<noteProbe.outerWidth-35)
+    throw Error('Note must retain whole-width editor with clickable outer TD height: '+JSON.stringify(noteProbe));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.x,y:noteProbe.y});
   await new Promise(resolve=>setTimeout(resolve,270));
-  const noteIdle=await evaluate(`(()=>{
+  const notePadding=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
     const style=getComputedStyle(button),parent=getComputedStyle(cell);
     return {outerHovered:cell.matches(':hover'),innerHovered:button.matches(':hover'),
-      outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
-      shadow:style.boxShadow};
+      cursor:parent.cursor,outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
+      shadow:style.boxShadow,placeholder:button.textContent.trim()};
   })()`);
-  if(!noteIdle.outerHovered||noteIdle.innerHovered||noteIdle.outerShadow!=='none'||
-    Math.abs(noteIdle.liftY)>.25||noteIdle.shadow!=='none')
-    throw Error('Note TD padding must not activate inner hover: '+JSON.stringify(noteIdle));
+  if(!notePadding.outerHovered||notePadding.innerHovered||notePadding.cursor!=='pointer'||
+    !notePadding.outerShadow.includes('196, 223, 211')||
+    Math.abs(notePadding.liftY)>.25||notePadding.shadow!=='none'||
+    notePadding.placeholder!=='Bấm vào để thêm')
+    throw Error('Permitted Note TD blank area must be clickable but not lift the editor: '+JSON.stringify(notePadding));
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:noteProbe.innerX,y:noteProbe.innerY});
   await new Promise(resolve=>setTimeout(resolve,270));
-  const note3d=await evaluate(`(()=>{
+  const noteButton=await evaluate(`(()=>{
     const cell=document.querySelector('#hover-3d-note-probe td'),button=cell.querySelector('button');
-    const style=getComputedStyle(button),parent=getComputedStyle(cell);
+    const style=getComputedStyle(button);
     return {active:cell.matches(':hover'),innerHovered:button.matches(':hover'),
-      outerShadow:parent.boxShadow,liftY:new DOMMatrixReadOnly(style.transform).m42,
+      liftY:new DOMMatrixReadOnly(style.transform).m42,
       shadow:style.boxShadow,border:style.borderTopColor};
   })()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:790,y:10});
   await evaluate("document.querySelector('#hover-3d-note-probe')?.remove()");
-  if(!note3d.active||!note3d.innerHovered||note3d.outerShadow!=='none'||
-    Math.abs(note3d.liftY+3)>.25||!note3d.shadow.includes('8px 16px')||
-    note3d.border!=='rgb(46, 111, 149)')
-    throw Error('3D option B note affordance mismatch: '+JSON.stringify({noteIdle,note3d}));
-  console.log('HOVER_3D_B_LIST_NOTE_PASS',JSON.stringify({noteIdle,note3d}));
-
+  if(!noteButton.active||!noteButton.innerHovered||
+    Math.abs(noteButton.liftY)>.25||!noteButton.shadow.includes('214, 234, 223')||
+    noteButton.border!=='rgb(150, 199, 176)')
+    throw Error('Note editor must show only the new subtle hover cue: '+JSON.stringify({notePadding,noteButton}));
+  console.log('LIST_NOTE_FULL_CELL_HIT_AREA_PASS',JSON.stringify({notePadding,noteButton}));
 
   // Regression: textarea may remain focused for typing after pointer leaves.
   // That MUST NOT look like the active green/blue mouse-hover highlight.
