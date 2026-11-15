@@ -105,6 +105,12 @@ function CompactVisualQa(){
     // Only this QA URL mimics a guest filter with two result rows; the
     // viewport must shrink to those rows instead of adding empty white space.
     if(params.get('short-rows')==='1')return wrap.slice(0,2);
+    // Reproduce a genuine 59-record guest List at a 75%-zoom-sized viewport.
+    // RAM-only fixtures, isolated from Firebase and saved browser preferences.
+    if(params.get('long-rows')==='1')return Array.from({length:59},(_,index)=>({
+      ...wrap[index%wrap.length],recordId:'qa-guest-long-'+index,
+      displayCode:'NQ'+String(index+1).padStart(2,'0'),stt:index+1
+    }));
     if(params.get('r05')!=='1')return wrap;
     // Synthetic only: red / amber / green in one record, neutral and
     // unknown in a second. The third includes an R03 source-specific rule.

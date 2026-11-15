@@ -4568,6 +4568,37 @@ try{
     throw Error('GUEST_SHORT_TABLE_TRAILING_SPACE_FAIL '+JSON.stringify(guestShort));
   console.log('GUEST_SHORT_TABLE_NATURAL_HEIGHT_PASS',JSON.stringify(guestShort));
 
+  // Regression for the owner screenshot: 59 guest records at a tall 75%-zoom
+  // equivalent viewport must fill down to the footer, not stop at 64dvh.
+  // The short-list test above separately proves we never add blank fake rows.
+  await send('Emulation.setDeviceMetricsOverride',
+    {width:2133,height:1200,deviceScaleFactor:0.75,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&guest=1&long-rows=1'});
+  await eventually("document.querySelector('.item-list-table-footer')?.dataset.visibleCount==='59'",
+    '59-row guest viewport fixture did not render');
+  const guestLong=await evaluate(`(()=>{
+    const shell=document.querySelector('.app-shell.guest-view.list-fit-page');
+    const table=document.querySelector('.item-table-scroll');
+    const footer=document.querySelector('.item-list-table-footer');
+    const rect=table.getBoundingClientRect();
+    const footerRect=footer.getBoundingClientRect();
+    const style=getComputedStyle(table);
+    return {count:footer.dataset.visibleCount,viewport:innerHeight,top:rect.top,
+      bottom:rect.bottom,height:rect.height,footerBottom:footerRect.bottom,
+      footGap:innerHeight-footerRect.bottom,
+      maxHeight:style.maxHeight,scrollDelta:table.scrollHeight-table.clientHeight,
+      cssMax:table.style.getPropertyValue('--hdnd-guest-table-max-height'),
+      documentOverflow:document.scrollingElement.scrollHeight-
+        document.scrollingElement.clientHeight,
+      shell:getComputedStyle(shell).overflowY};
+  })()`);
+  if(guestLong.count!=='59'||!guestLong.cssMax||
+    guestLong.scrollDelta<50||guestLong.footGap<-3||guestLong.footGap>24||
+    guestLong.height<guestLong.viewport*.60||guestLong.shell!=='visible')
+    throw Error('GUEST_LONG_LIST_VIEWPORT_FILL_FAIL '+JSON.stringify(guestLong));
+  console.log('GUEST_LONG_LIST_VIEWPORT_FILL_PASS',JSON.stringify(guestLong));
+
   // Return Chrome dimensions to the existing smoke baseline.
   await send('Emulation.setDeviceMetricsOverride',
     {width:1600,height:1000,deviceScaleFactor:1,mobile:false});

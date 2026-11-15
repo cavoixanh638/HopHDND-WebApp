@@ -2117,7 +2117,12 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
    never reserves an artificial 260–760px viewport. No permissions change. */
 @media screen {
   .app-shell.guest-view.list-fit-page {
-    height:auto;min-height:0;overflow:visible;padding-bottom:14px;
+    height:auto;min-height:0;overflow:visible;padding-bottom:0;
+  }
+  /* The old global card/shell bottom padding accumulated into a 41px blank
+     floor on the real 75%-zoom Guest List; reserve only the table footer. */
+  .app-shell.guest-view.list-fit-page .item-list-card {
+    padding-bottom:0;
   }
   .app-shell.guest-view.list-fit-page > main,
   .app-shell.guest-view.list-fit-page .item-list-card,
@@ -2127,7 +2132,10 @@ body.is-printing #print-target .report-cell-sizer {display:none!important;}
   .app-shell.guest-view.wide-table-page.list-fit-page
     .item-data-region .item-table-scroll {
     flex:0 0 auto;height:auto;min-height:0;
-    max-height:clamp(220px,64dvh,760px);
+    /* Computed from the real table offset, footer and viewport; never cap a
+       long guest list at 64dvh/760px and leave a large empty area below it.
+       Short filtered tables remain intrinsically sized. */
+    max-height:var(--hdnd-guest-table-max-height,clamp(220px,64dvh,760px));
     overflow:auto;overscroll-behavior-y:auto;
   }
 }
