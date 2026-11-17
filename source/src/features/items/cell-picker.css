@@ -3,7 +3,10 @@
   inset: auto;
   margin: 0;
   padding: 8px;
-  overflow: auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line);
