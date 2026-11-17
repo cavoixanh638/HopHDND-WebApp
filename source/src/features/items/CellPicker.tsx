@@ -52,6 +52,11 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const claimedInCycle=useRef(false);
   const placementRef=useRef<(()=>void)|null>(null);
   const switchingPointer=useRef(false);
+  // Department choices must be searchable everywhere (List, compact cells,
+  // report popup). Keep the existing specialist search unchanged.
+  const departmentPicker=field==='department';
+  const searchablePicker=searchable||departmentPicker;
+  const departmentFiltering=departmentPicker&&normalizeSearch(query).length>0;
   // A discrete status selection accepts a local draft immediately. The server
   // enforces permissions, conflicts and row history in ONE guarded transaction.
   const direct=directStatusCas&&directStatusCasField(field);
@@ -96,8 +101,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   // Preserve an unrecognized legacy current value as a selectable choice so
   // that opening the editor never silently rewrites saved source data.
   const visibleOptions = open ? [
-    ...(cellPickerCanClear(field,options) ? [{ value: '', label: '—' }] : []),
-    ...(selectedIsFilteredOut ? [{ value, label: value }] : []),
+    ...(cellPickerCanClear(field,options)&&!departmentFiltering ? [{ value: '', label: '—' }] : []),
+    ...(selectedIsFilteredOut&&!departmentFiltering ? [{ value, label: value }] : []),
     ...filteredOptions.filter(option => option !== '').map(option => ({ value: option, label: option })),
   ] : [];
 
@@ -174,17 +179,37 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       const insideTable=!clip||(rect.right>clip.left+2&&rect.left<clip.right-2&&
         rect.bottom>clip.top+2&&rect.top<clip.bottom-2);
       if(!insideViewport||!insideTable){void close();return;}
-      // Compute the natural rendered height, NOT the former 360px cap.
-      // This also recomputes after searchable option lists shrink.
-      popover.style.maxHeight='none';
+      // scrollHeight measures ALL options even when the menu is capped.
+      // Never lift maxHeight to measure: doing so during wheel scrolling can
+      // expand the popover and reset/clamp its scroll position.
       const borders=parseFloat(getComputedStyle(popover).borderTopWidth||'0')+
         parseFloat(getComputedStyle(popover).borderBottomWidth||'0');
       const natural=Math.ceil(popover.scrollHeight+borders);
-      const next=placeCellPicker(rect,natural,viewport);
+      // Use REAL rendered row heights: seven Sở/ngành names plus search and
+      // optional clear/legacy rows, versus four names for other fields.
+      // A wrap onto multiple lines must increase the threshold accordingly.
+      const list=popover.querySelector<HTMLElement>('.cell-picker-options');
+      const rows=list?Array.from(list.querySelectorAll<HTMLButtonElement>(':scope > .cell-picker-option')):[];
+      const extras=rows.filter(row=>row.dataset.pickerAux==='true').length;
+      const count=Math.min(rows.length,(departmentPicker?7:4)+extras);
+      const gap=list?parseFloat(getComputedStyle(list).rowGap)||0:0;
+      const search=popover.querySelector<HTMLElement>('.cell-picker-search');
+      const searchMargin=search?parseFloat(getComputedStyle(search).marginBottom)||0:0;
+      const css=getComputedStyle(popover);
+      const padding=(parseFloat(css.paddingTop)||0)+(parseFloat(css.paddingBottom)||0)+borders;
+      const wantedHeight=count===0?natural:Math.ceil(padding+
+        (search?.offsetHeight??0)+searchMargin+
+        rows.slice(0,count).reduce((sum,row)=>sum+row.offsetHeight,0)+
+        Math.max(0,count-1)*gap);
+      const next=placeCellPicker(rect,natural,viewport,{
+        minBelowHeight:Math.min(natural,wantedHeight),
+        maxMenuHeight:departmentPicker?420:360
+      });
       popover.style.left=next.left+'px';
       popover.style.top=next.top+'px';
       popover.style.width=next.width+'px';
-      popover.style.maxHeight=next.maxHeight+'px';
+      const maxHeight=next.maxHeight+'px';
+      if(popover.style.maxHeight!==maxHeight)popover.style.maxHeight=maxHeight;
       popover.dataset.placement=next.side;
     };
     const schedulePlace=()=>{
@@ -218,10 +243,17 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       optionRefs.current[current >= 0 ? current : 0]?.focus({preventScroll:true});
     };
 
+    const onViewportScroll=(event:Event)=>{
+      // Captured scroll events include the popover's own scroll. Its options
+      // must remain a stable, independently scrollable area.
+      if(event.target instanceof Node&&popover.contains(event.target))return;
+      schedulePlace();
+    };
+
     document.addEventListener('pointerdown', onOutsidePointer, true);
     document.addEventListener('keydown', onKeyDown);
     window.addEventListener('resize', schedulePlace);
-    window.addEventListener('scroll', schedulePlace, true);
+    window.addEventListener('scroll', onViewportScroll, true);
     window.visualViewport?.addEventListener('resize',schedulePlace);
     window.visualViewport?.addEventListener('scroll',schedulePlace);
     const observer=typeof ResizeObserver==='function'
@@ -230,7 +262,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     if(list)observer?.observe(list);
     observer?.observe(trigger);
     const firstFocus=requestAnimationFrame(() => {
-      if (searchable) searchRef.current?.focus({preventScroll:true});
+      if (searchablePicker) searchRef.current?.focus({preventScroll:true});
       else if(!waiting)focusFirstOption();
       schedulePlace();
     });
@@ -243,7 +275,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       document.removeEventListener('pointerdown', onOutsidePointer, true);
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', schedulePlace);
-      window.removeEventListener('scroll', schedulePlace, true);
+      window.removeEventListener('scroll', onViewportScroll, true);
       window.visualViewport?.removeEventListener('resize',schedulePlace);
       window.visualViewport?.removeEventListener('scroll',schedulePlace);
       if (popover.matches(':popover-open')) popover.hidePopover();
@@ -262,13 +294,13 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   // An option cannot be focused while disabled. Move focus into the list as
   // soon as the server grants the lease, preserving keyboard navigation.
   useEffect(()=>{
-    if(!open||waiting||searchable)return;
+    if(!open||waiting||searchablePicker)return;
     const frame=requestAnimationFrame(()=>{
       const current=visibleOptions.findIndex(option=>option.value===value);
       optionRefs.current[current>=0?current:0]?.focus({preventScroll:true});
     });
     return()=>cancelAnimationFrame(frame);
-  },[open,waiting,searchable]);
+  },[open,waiting,searchablePicker]);
 
   return <>
     <button
@@ -326,7 +358,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     {open && <div
       ref={popoverRef}
       className="cell-picker-popover"
-      data-choices-only={!searchable ? 'true' : undefined}
+      data-choices-only={!searchablePicker ? 'true' : undefined}
       popover="manual"
       role="dialog"
       aria-busy={waiting}
@@ -338,11 +370,14 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
           void close();
       })}
     >
-      {searchable && <label className="cell-picker-search">Tìm lựa chọn<input ref={searchRef} type="search" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
+      {searchablePicker && <label className="cell-picker-search">{departmentPicker?'Tìm Sở, ngành':'Tìm lựa chọn'}<input ref={searchRef} type="search" value={query} onChange={event => {
+        setQuery(event.target.value);
+        if(popoverRef.current)popoverRef.current.scrollTop=0;
+      }} onKeyDown={event => {
         if (event.key === 'ArrowDown') { event.preventDefault(); focusOption(0); }
         else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption(visibleOptions.length - 1); }
         else if (event.key === 'Enter' && filteredOptions.length) { event.preventDefault(); choose(filteredOptions[0]); }
-      }} placeholder="Nhập để lọc" /></label>}
+      }} placeholder={departmentPicker?'Tìm tên Sở, ngành (không dấu)':'Nhập để lọc'} /></label>}
       <div className="cell-picker-options" role="listbox" aria-label={label}>
         {visibleOptions.map((option, index) => (
           <button
@@ -353,6 +388,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
             disabled={waiting}
             aria-disabled={waiting}
             aria-selected={value === option.value}
+            data-picker-aux={option.value===''||(selectedIsFilteredOut&&option.value===value)?'true':undefined}
             className="cell-picker-option"
             onClick={() => choose(option.value)}
             onKeyDown={event => {

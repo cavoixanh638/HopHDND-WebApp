@@ -79,7 +79,9 @@ describe('PR95 UI V3 L2 single-frame grouped editors',()=>{
     expect(css).toContain('overflow-wrap:break-word;word-break:normal');
   });
   it('keeps status popup visual content choices-only while preserving aria and keyboard',()=>{
-    expect(pickerSource).toContain("data-choices-only={!searchable ? 'true' : undefined}");
+    expect(pickerSource).toContain("const departmentPicker=field==='department'");
+    expect(pickerSource).toContain('const searchablePicker=searchable||departmentPicker;');
+    expect(pickerSource).toContain("data-choices-only={!searchablePicker ? 'true' : undefined}");
     expect(pickerSource).toContain('role="dialog"');
     expect(pickerSource).toContain('aria-label={label}');
     expect(pickerSource).toContain('role="listbox"');
@@ -88,7 +90,9 @@ describe('PR95 UI V3 L2 single-frame grouped editors',()=>{
     expect(pickerSource).toContain("event.key === 'ArrowDown'");
     expect(pickerSource).not.toContain('Giá trị hiện tại “{value}” không khớp bộ lọc.');
     expect(pickerSource).not.toContain('${value} (giá trị hiện tại)');
-    expect(pickerSource).toContain("...(cellPickerCanClear(field,options) ? [{ value: '', label: '—' }] : []),");
+    // Optional clear remains present for non-department pickers and for an
+    // unfiltered department picker; only an active department search hides it.
+    expect(pickerSource).toContain("...(cellPickerCanClear(field,options)&&!departmentFiltering ? [{ value: '', label: '—' }] : []),");
   });
 });
 
@@ -123,7 +127,9 @@ describe('R-V3-01: optional non-status picker clear while status menus stay exac
     expect(pickerSource).toContain('aria-selected={value === option.value}');
     expect(pickerSource).toContain("if(nextValue===value)");
     expect(pickerSource).toContain("event.key === 'Escape'");
-    expect(pickerSource).toContain("...(selectedIsFilteredOut ? [{ value, label: value }] : []),");
+    // Legacy values remain selectable when unfiltered, including all status
+    // editors. A typed department query must show only matching names.
+    expect(pickerSource).toContain("...(selectedIsFilteredOut&&!departmentFiltering ? [{ value, label: value }] : []),");
     expect(pickerSource).not.toContain(' (giá trị hiện tại)');
   });
 });

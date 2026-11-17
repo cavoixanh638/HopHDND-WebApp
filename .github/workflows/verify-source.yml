@@ -150,6 +150,8 @@ jobs:
           node scripts/measure-baseline-id-browser.mjs "$base/source/dist-compact-qa" hophdnd-id-before-real.png
       - name: Browser smoke with mock Sheets and headless Chrome
         run: node scripts/smoke-pages-browser.mjs
+      - name: CellPicker placement and real Chrome wheel-scroll regression (synthetic only)
+        run: node scripts/pr95-v5-l1-dropdown-browser.mjs
       - name: Package owner-clickable single HTML UI preview (synthetic only)
         run: node scripts/package-compact-qa.mjs
       - name: Upload standalone UI preview — download and double-click, no server needed

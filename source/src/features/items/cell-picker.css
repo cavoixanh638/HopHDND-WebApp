@@ -3,7 +3,10 @@
   inset: auto;
   margin: 0;
   padding: 8px;
-  overflow: auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  touch-action: pan-y;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -19,6 +22,15 @@
   margin-bottom: 7px;
   color: #42564e;
   font-size: 12px;
+}
+
+/* Keep Sở/ngành name filtering reachable while the options scroll. */
+.cell-picker-popover .cell-picker-search {
+  position: sticky;
+  /* Match the popover's 8px padding so focusing/scrolling does not jump. */
+  top: 8px;
+  z-index: 1;
+  background: var(--surface);
 }
 
 .cell-picker-search input {
