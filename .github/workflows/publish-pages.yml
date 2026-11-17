@@ -81,6 +81,12 @@ jobs:
         run: npm run typecheck
       - name: Unit tests
         run: npm test
+      # Auto UI releases must pass the same real Chrome dropdown interaction
+      # checks as PR QA, not just a TypeScript/CSS build.
+      - name: Real Chromium dropdown placement and fixed-search scroll regression (synthetic)
+        run: |
+          npm run build:compact:qa
+          node scripts/pr95-v5-l1-dropdown-browser.mjs
       - name: Firebase Spark Auth/RTDB Emulator tests (no Cloud Functions)
         run: npm run test:spark
       - name: Check documentation
