@@ -71,7 +71,7 @@ export function isSafePresentationSource(path,source){
       return false;
     // Do not permit this visual leaf to become a save/auth service or
     // independently mutate record values on user interaction.
-    if(/\b(?:useEffect|useLayoutEffect|onChange|leaseManager|directStatusCas|setValue|writeDatabase|firebase|onUpdate|dispatchEvent)\b/.test(source))
+    if(/\b(?:useState|useEffect|useLayoutEffect|leaseManager|directStatusCas|setValue|writeDatabase|firebase|onUpdate|dispatchEvent)\b/.test(source))
       return false;
     return source.includes('export function CellPickerPopupView(');
   }
