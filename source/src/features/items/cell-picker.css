@@ -4,33 +4,44 @@
   margin: 0;
   padding: 8px;
   box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: auto;
-  touch-action: pan-y;
+  /* The popover itself must NEVER scroll: the search header is a separate,
+     fixed flex row and only .cell-picker-options is a scroll container. */
+  overflow: hidden;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 9px;
   box-shadow: var(--shadow);
-  overscroll-behavior: contain;
   z-index: 20;
+}
+
+/* Explicit :popover-open rule overrides the browser's top-layer display. */
+.cell-picker-popover:popover-open {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .cell-picker-search {
   display: grid;
+  flex: 0 0 auto;
   gap: 5px;
   margin-bottom: 7px;
   color: #42564e;
   font-size: 12px;
+  background: var(--surface);
 }
 
-/* Keep Sở/ngành name filtering reachable while the options scroll. */
-.cell-picker-popover .cell-picker-search {
-  position: sticky;
-  /* Match the popover's 8px padding so focusing/scrolling does not jump. */
-  top: 8px;
-  z-index: 1;
-  background: var(--surface);
+/* The only scrolling region: options cannot cross above the search row. */
+.cell-picker-options {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 2px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .cell-picker-search input {
@@ -51,10 +62,7 @@
   font-size: 12px;
 }
 
-.cell-picker-options {
-  display: grid;
-  gap: 2px;
-}
+
 
 .cell-picker-option {
   width: 100%;
