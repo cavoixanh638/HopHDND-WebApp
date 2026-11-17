@@ -3,6 +3,7 @@ import {claimCellPicker,releaseCellPickerClaim} from './pr95-v5-l1-picker-coordi
 import {placeCellPicker, type PickerViewport} from './pr95-v5-l1-picker-placement';
 import { normalizeSearch } from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
+import {CellPickerPopupView} from './CellPickerPopupView';
 import type {CellEditSessionManager,EditorKind} from '../../data/cell-edit-leases';
 import type {EditableField} from '../../../shared/types';
 import {directStatusCasField} from '../../data/status-direct-cas';
@@ -123,7 +124,10 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
   const choose = (nextValue: string) => {
     // Non-direct editing cannot accept a draft before the server lease grants.
     // Direct status saves are validated by the server transaction instead.
-    if(waiting)return;
+    // The UI-only view cannot bypass edit entitlement or invent a selection:
+    // only a currently offered value may reach the guarded onChange callback.
+    if(waiting||externallyDisabledRef.current||
+       !visibleOptions.some(option=>option.value===nextValue))return;
     if(nextValue===value){chosen.current=false;close(true);return;}
     try{
       chosen.current=onChange(nextValue)!==false;
@@ -356,58 +360,44 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/></span>
     </button>
     {leaseError&&<small className="error-text" role="alert">{leaseError}</small>}
-    {open && <div
-      ref={popoverRef}
-      className="cell-picker-popover"
-      data-choices-only={!searchablePicker ? 'true' : undefined}
-      popover="manual"
-      role="dialog"
-      aria-busy={waiting}
-      aria-label={label}
-      onBlur={() => requestAnimationFrame(() => {
-        const popover = popoverRef.current;
-        if (popover && !popover.contains(document.activeElement)&&
-            document.activeElement!==triggerRef.current&&!switchingPointer.current)
+    {open&&<CellPickerPopupView
+      label={label}
+      value={value}
+      query={query}
+      options={visibleOptions}
+      searchable={searchablePicker}
+      department={departmentPicker}
+      waiting={waiting}
+      selectedIsFilteredOut={selectedIsFilteredOut}
+      popoverRef={popoverRef}
+      searchRef={searchRef}
+      optionRefs={optionRefs}
+      onBlur={()=>requestAnimationFrame(()=>{
+        const popover=popoverRef.current;
+        if(popover&&!popover.contains(document.activeElement)&&
+          document.activeElement!==triggerRef.current&&!switchingPointer.current)
           void close();
       })}
-    >
-      {searchablePicker && <label className="cell-picker-search">{departmentPicker?'Tìm Sở, ngành':'Tìm lựa chọn'}<input ref={searchRef} type="search" value={query} onChange={event => {
-        setQuery(event.target.value);
+      onQueryChange={nextQuery=>{
+        setQuery(nextQuery);
         const optionsList=popoverRef.current?.querySelector<HTMLElement>('.cell-picker-options');
         if(optionsList)optionsList.scrollTop=0;
-      }} onKeyDown={event => {
-        if (event.key === 'ArrowDown') { event.preventDefault(); focusOption(0); }
-        else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption(visibleOptions.length - 1); }
-        else if (event.key === 'Enter' && filteredOptions.length) { event.preventDefault(); choose(filteredOptions[0]); }
-      }} placeholder={departmentPicker?'Tìm tên Sở, ngành (không dấu)':'Nhập để lọc'} /></label>}
-      <div className="cell-picker-options" role="listbox" aria-label={label}>
-        {visibleOptions.map((option, index) => (
-          <button
-            key={`${option.value}:${index}`}
-            ref={element => { optionRefs.current[index] = element; }}
-            type="button"
-            role="option"
-            disabled={waiting}
-            aria-disabled={waiting}
-            aria-selected={value === option.value}
-            data-picker-aux={option.value===''||(selectedIsFilteredOut&&option.value===value)?'true':undefined}
-            className="cell-picker-option"
-            onClick={() => choose(option.value)}
-            onKeyDown={event => {
-              if (event.key === 'ArrowDown') { event.preventDefault(); focusOption(index + 1); }
-              else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption(index - 1); }
-              else if (event.key === 'Enter' || event.key === ' ') {
-                // Avoid relying on native synthetic click ordering, and do
-                // not allow default activation to choose twice.
-                event.preventDefault();choose(option.value);
-              }
-            }}
-          >
-            {option.label}
-          </button>
-        ))}
-        {!visibleOptions.length && <p className="cell-picker-empty">Không có lựa chọn phù hợp.</p>}
-      </div>
-    </div>}
+      }}
+      onQueryKeyDown={event=>{
+        if(event.key==='ArrowDown'){event.preventDefault();focusOption(0);}
+        else if(event.key==='ArrowUp'){event.preventDefault();focusOption(visibleOptions.length-1);}
+        else if(event.key==='Enter'&&filteredOptions.length){
+          event.preventDefault();choose(filteredOptions[0]);
+        }
+      }}
+      onChoose={choose}
+      onOptionKeyDown={(event,index,selected)=>{
+        if(event.key==='ArrowDown'){event.preventDefault();focusOption(index+1);}
+        else if(event.key==='ArrowUp'){event.preventDefault();focusOption(index-1);}
+        else if(event.key==='Enter'||event.key===' '){
+          event.preventDefault();choose(selected);
+        }
+      }}
+    />}
   </>;
 }
