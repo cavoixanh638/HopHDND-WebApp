@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {claimCellPicker,releaseCellPickerClaim} from './pr95-v5-l1-picker-coordinator';
-import {placeCellPicker, type PickerViewport} from './pr95-v5-l1-picker-placement';
+import type {PickerViewport} from './pr95-v5-l1-picker-placement';
+import {positionCellPickerPopover} from './CellPickerPositioning';
 import { normalizeSearch } from '../../domain/search';
 import {SearchHighlight} from './SearchHighlight';
 import {CellPickerPopupView} from './CellPickerPopupView';
@@ -166,56 +167,16 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     let frame=0;
 
     const placePopover=()=>{
-      if (!popover.isConnected || !trigger.isConnected) return;
-      const rect=trigger.getBoundingClientRect();
       const vv=window.visualViewport;
       const viewport:PickerViewport={
         left:vv?.offsetLeft??0,top:vv?.offsetTop??0,
         width:vv?.width??document.documentElement.clientWidth,
         height:vv?.height??document.documentElement.clientHeight
       };
-      // A scrolled-away table cell cannot retain a floating editor.
-      const scrollbox=trigger.closest('.item-table-scroll,.report-grid-scroll');
-      const clip=scrollbox?.getBoundingClientRect();
-      const insideViewport=rect.right>viewport.left+4&&
-        rect.left<viewport.left+viewport.width-4&&
-        rect.bottom>viewport.top+4&&rect.top<viewport.top+viewport.height-4;
-      const insideTable=!clip||(rect.right>clip.left+2&&rect.left<clip.right-2&&
-        rect.bottom>clip.top+2&&rect.top<clip.bottom-2);
-      if(!insideViewport||!insideTable){void close();return;}
-      // The header stays outside the scrolling options region. Measuring
-      // popover.scrollHeight here is WRONG: nested overflow clips that value.
-      // Use the actual full options.scrollHeight without lifting maxHeight,
-      // so neither scroll position nor popup direction jumps during a wheel.
-      const list=popover.querySelector<HTMLElement>('.cell-picker-options');
-      if(!list)return;
-      const rows=Array.from(list.querySelectorAll<HTMLButtonElement>(':scope > .cell-picker-option'));
-      const extras=rows.filter(row=>row.dataset.pickerAux==='true').length;
-      const count=Math.min(rows.length,(departmentPicker?7:4)+extras);
-      const gap=parseFloat(getComputedStyle(list).rowGap)||0;
-      const search=popover.querySelector<HTMLElement>('.cell-picker-search');
-      const searchMargin=search?parseFloat(getComputedStyle(search).marginBottom)||0:0;
-      const css=getComputedStyle(popover);
-      const borders=(parseFloat(css.borderTopWidth)||0)+(parseFloat(css.borderBottomWidth)||0);
-      const padding=(parseFloat(css.paddingTop)||0)+(parseFloat(css.paddingBottom)||0)+borders;
-      const headerHeight=(search?.offsetHeight??0)+searchMargin;
-      const natural=Math.ceil(padding+headerHeight+list.scrollHeight);
-      // Keep the previously approved direction thresholds: seven actual
-      // department options (+ search) vs four for the other picker fields.
-      // Wrapped choices contribute their real measured row heights.
-      const wantedHeight=count===0?natural:Math.ceil(padding+headerHeight+
-        rows.slice(0,count).reduce((sum,row)=>sum+row.offsetHeight,0)+
-        Math.max(0,count-1)*gap);
-      const next=placeCellPicker(rect,natural,viewport,{
-        minBelowHeight:Math.min(natural,wantedHeight),
-        maxMenuHeight:departmentPicker?420:360
-      });
-      popover.style.left=next.left+'px';
-      popover.style.top=next.top+'px';
-      popover.style.width=next.width+'px';
-      const maxHeight=next.maxHeight+'px';
-      if(popover.style.maxHeight!==maxHeight)popover.style.maxHeight=maxHeight;
-      popover.dataset.placement=next.side;
+      // Presentation math is isolated; core retains authority to close an
+      // editor that has scrolled outside its table or the visual viewport.
+      if(positionCellPickerPopover(popover,trigger,viewport,departmentPicker)==='outside')
+        void close();
     };
     const schedulePlace=()=>{
       if(frame)cancelAnimationFrame(frame);
