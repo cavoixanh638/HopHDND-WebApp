@@ -18,10 +18,16 @@ export function placeCellPicker(anchor:PickerAnchor,renderedHeight:number,
   const above=Math.max(0,anchor.top-gap-topBound);
   const below=Math.max(0,bottomBound-anchor.bottom-gap);
   const natural=Math.max(1,Math.ceil(renderedHeight));
-  const side=natural<=below?'below':natural<=above?'above':
-    below>=above?'below':'above';
+  // A large catalog must not cover the whole screen merely because the
+  // trigger is low. Prefer the familiar downward direction whenever roughly
+  // four choices (160px including padding) can be shown with internal scroll.
+  // Small menus still use their real natural height, without an empty tail.
+  const preferredHeight=Math.min(natural,360);
+  const comfortableHeight=Math.min(preferredHeight,160);
+  const side:PickerPlacement['side']=below>=comfortableHeight?'below':
+    above>=comfortableHeight||above>below?'above':'below';
   const available=side==='below'?below:above;
-  const maxHeight=Math.max(1,Math.min(natural,available));
+  const maxHeight=Math.max(1,Math.min(preferredHeight,available));
   const top=side==='below'?anchor.bottom+gap:anchor.top-gap-maxHeight;
   return {side,top,left,width,maxHeight,
     gap,spaceAbove:above,spaceBelow:below};
