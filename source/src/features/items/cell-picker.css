@@ -24,6 +24,14 @@
   font-size: 12px;
 }
 
+/* Keep Sở/ngành name filtering reachable while the options scroll. */
+.cell-picker-popover .cell-picker-search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
 .cell-picker-search input {
   width: 100%;
   min-height: 36px;
