@@ -26,6 +26,11 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
     expect(flow).toContain('npm run build:compact:qa');
     expect(flow).toContain('node scripts/pr95-v5-l1-dropdown-browser.mjs');
     expect(flow).not.toContain('firebase deploy');
+    // Checkout credentials must not be saved for any untrusted npm/QA code.
+    expect(flow).toContain('persist-credentials: false');
+    expect(flow).not.toContain('persist-credentials: true');
+    expect(flow).toContain('RELEASE_PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+    expect(flow).toContain('push origin HEAD:main');
     expect(flow).not.toContain('npm run build:spark:operator');
   });
 });
