@@ -8,6 +8,7 @@ import {createDemoItems} from '../data/demo-items';
 import {catalogFromItems} from '../data/catalogs';
 import {defaultItemLayout,type ItemLayout,validateItemLayout} from '../data/item-preferences';
 import {ItemList} from '../features/items/ItemList';
+import {CellPicker} from '../features/items/CellPicker';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
 import {defaultStatusPaletteStore,statusPaletteCssVariables} from '../data/status-palettes';
 import '../styles/app.css';
@@ -205,6 +206,13 @@ function CompactVisualQa(){
           setLayout(validated);return validated;
         }}
       />}
+      {params.get('picker-long-list')==='1'&&<div data-qa="picker-long-list"
+        style={{position:'fixed',right:16,bottom:200,width:238,padding:6,
+          background:'#fff',border:'1px solid #b9c9bf',borderRadius:6,zIndex:12}}>
+        <CellPicker label="Sở, ngành dài (QA)" field="department" value="Sở giả lập 01"
+          options={Array.from({length:45},(_,i)=>'Sở giả lập '+String(i+1).padStart(2,'0'))}
+          onChange={()=>{}}/>
+      </div>}
     </main>
   </div>;
 }
