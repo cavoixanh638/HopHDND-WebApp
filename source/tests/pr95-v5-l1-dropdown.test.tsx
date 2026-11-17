@@ -36,14 +36,41 @@ describe('UI V5 L1 viewport-bounded, downward-first anchored picker',()=>{
     expect(p.left).toBeGreaterThanOrEqual(8);
     expect(p.left+p.width).toBeLessThanOrEqual(382);
   });
-  it('keeps a long department catalog below a low row with 176px of free space',()=>{
-    // Reproduces a 1006px-high viewport with an edit cell around y=778.
+  it('opens department ABOVE when 176px below cannot show 7 names and search',()=>{
+    // Seven department names + optional clear and search require ~375px.
+    // With less space below, use the capped scrollable area above.
     const rect=anchor(778);
-    const p=placeCellPicker(rect,1800,{left:0,top:0,width:456,height:1006});
+    const p=placeCellPicker(rect,1800,{left:0,top:0,width:456,height:1006},
+      {minBelowHeight:375,maxMenuHeight:420});
+    expect(p.side).toBe('above');
+    expect(p.maxHeight).toBe(420);
+    expect(rect.top-(p.top+p.maxHeight)).toBe(6);
+    expect(p.top).toBeGreaterThanOrEqual(8);
+  });
+  it('opens department BELOW when 7 names plus search fit there',()=>{
+    const rect=anchor(490);
+    const p=placeCellPicker(rect,1800,{left:0,top:0,width:456,height:1006},
+      {minBelowHeight:375,maxMenuHeight:420});
     expect(p.side).toBe('below');
-    expect(p.maxHeight).toBe(176);
+    expect(p.maxHeight).toBe(420);
     expect(p.top).toBe(rect.bottom+6);
-    expect(p.top+p.maxHeight).toBe(998);
+    expect(p.top+p.maxHeight).toBeLessThanOrEqual(998);
+  });
+  it('opens OTHER dropdowns below if 4 choices fit, even when department would flip',()=>{
+    const rect=anchor(778);
+    const viewport={left:0,top:0,width:456,height:1006};
+    const ordinary=placeCellPicker(rect,1800,viewport,{minBelowHeight:160,maxMenuHeight:360});
+    const department=placeCellPicker(rect,1800,viewport,{minBelowHeight:375,maxMenuHeight:420});
+    expect(ordinary.side).toBe('below');
+    expect(ordinary.maxHeight).toBe(176);
+    expect(department.side).toBe('above');
+  });
+  it('a filtered department menu can flip back below when only 1-2 names remain',()=>{
+    const rect=anchor(778);
+    const p=placeCellPicker(rect,140,{left:0,top:0,width:456,height:1006},
+      {minBelowHeight:375,maxMenuHeight:420});
+    expect(p.side).toBe('below');
+    expect(p.maxHeight).toBe(140);
   });
   it('caps a very long menu at 360px while preserving short-menu natural heights',()=>{
     const rect=anchor(240);
