@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {classifyCommits,isAutoUiPath,isPagesArtifactCommit,
-  isBootstrapPolicyCommit} from './pages-release-policy.mjs';
+  isBootstrapPolicyCommit,isSafePresentationSource} from './pages-release-policy.mjs';
 
 const baseline='cc81aee8114a969892f6a812f03ca37e44a6d5b7';
 const uiParent='937c1295cd598e8c9e7ea1878093918d0d5d884f';
@@ -24,6 +24,72 @@ test('CSS, selected UI components, QA and layout fit can publish without a new S
   assert.deepEqual(decide([commit(head,changed)]),
     {allowed:true,mode:'auto',blocked:[]});
 });
+const pickerView='source/src/features/items/CellPickerPopupView.tsx';
+const pickerGeometry='source/src/features/items/pr95-v5-l1-picker-placement.ts';
+const pickerBrowser='source/scripts/pr95-v5-l1-dropdown-browser.mjs';
+const safeView=[
+  "import type {KeyboardEvent,RefObject} from 'react';",
+  "export function CellPickerPopupView({onQueryChange}){",
+  'return <input onChange={event=>onQueryChange(event.target.value)}/>;',
+  '}',
+].join('\n');
+const safeGeometry='export function placeCellPicker(){return {side:"below"};}';
+
+test('isolated dropdown UI/geometry + browser QA auto-publish with strict source scope',()=>{
+  const files=[pickerView,pickerGeometry,pickerBrowser,
+    'source/src/features/items/cell-picker.css'];
+  assert.ok(files.every(isAutoUiPath));
+  assert.equal(isAutoUiPath('source/src/features/items/CellPicker.tsx'),false);
+  const sourceContents={
+    [pickerView]:safeView,
+    [pickerGeometry]:safeGeometry,
+  };
+  assert.equal(isSafePresentationSource(pickerView,safeView),true);
+  assert.equal(isSafePresentationSource(pickerGeometry,safeGeometry),true);
+  assert.deepEqual(decide([commit(head,files)],{sourceContents}),
+    {allowed:true,mode:'auto',blocked:[]});
+  // A later pure presentation update needs no new owner SHA approval.
+  const bot=commit('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    ['index.html','version.json','assets/style-generated.css'],{
+      author:'github-actions[bot]',
+      email:'41898282+github-actions[bot]@users.noreply.github.com',
+      message:'build(pages): publish verified Spark WebApp from approved source',
+    });
+  assert.deepEqual(decide([bot,commit(head,[pickerView])],{sourceContents}),
+    {allowed:true,mode:'auto',blocked:[]});
+});
+
+test('UI presentation allowlist fails closed on backend I/O, imports and mixed core edits',()=>{
+  const forbidden=[
+    safeView.replace('return <input','fetch("https://example.invalid");return <input'),
+    safeView+'\nimport {writeRecord} from "../../data/cell-edit-leases";',
+    safeView.replace('export function','export function').replace('return <input','window.localStorage.clear();return <input'),
+    safeView.replace('return <input','useEffect(()=>onQueryChange("x"),[]);return <input'),
+    safeView.replace('return <input','firebase.database().ref("items").set({});return <input'),
+  ];
+  for(const source of forbidden){
+    assert.equal(isSafePresentationSource(pickerView,source),false);
+    assert.deepEqual(decide([commit(head,[pickerView])],{sourceContents:{[pickerView]:source}}),
+      {allowed:false,mode:'hold',blocked:[pickerView]});
+  }
+  assert.equal(isSafePresentationSource(pickerGeometry,
+    'import {changeRole} from "./auth";export function placeCellPicker(){return null;}'),false);
+  // Fail closed if the source file is missing, deleted, or unavailable.
+  assert.deepEqual(decide([commit(head,[pickerView])]),{
+    allowed:false,mode:'hold',blocked:[pickerView]});
+  // UI-looking CSS cannot hide a modification to the guarded picker core.
+  assert.deepEqual(decide([commit(head,[
+    pickerView,'source/src/features/items/CellPicker.tsx',
+  ])],{sourceContents:{[pickerView]:safeView}}),{
+    allowed:false,mode:'hold',blocked:['source/src/features/items/CellPicker.tsx']});
+  // Previously unpublished security/data changes are checked across commits.
+  assert.deepEqual(decide([
+    commit('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',['source/src/state/firebase-state.ts']),
+    commit(head,[pickerView]),
+  ],{sourceContents:{[pickerView]:safeView}}),{
+    allowed:false,mode:'hold',blocked:['source/src/state/firebase-state.ts']});
+});
+
 test('Firebase Rules and data/auth code changes MUST retain exact-SHA approval',()=>{
   for(const path of [
     'source/firebase/database.spark.rules.json',
