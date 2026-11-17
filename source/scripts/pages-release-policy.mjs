@@ -64,6 +64,8 @@ export function isSafePresentationSource(path,source){
   if(!restrictedUiSources.has(path))return true;
   if(typeof source!=='string'||!source.trim())return false;
   if(forbiddenPresentationApis.test(source))return false;
+  // A re-export can pull in runtime privileges without an "import" line.
+  if(/^\s*export\s+(?:\*|\{[^}]*\})\s+from\b/m.test(source))return false;
   const importLines=source.split('\n').filter(line=>/^\s*import\b/.test(line));
   if(path.endsWith('CellPickerPopupView.tsx')){
     // Only React type annotations; JSX uses the automatic jsx-runtime.
