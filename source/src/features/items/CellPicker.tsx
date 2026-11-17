@@ -179,26 +179,27 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       const insideTable=!clip||(rect.right>clip.left+2&&rect.left<clip.right-2&&
         rect.bottom>clip.top+2&&rect.top<clip.bottom-2);
       if(!insideViewport||!insideTable){void close();return;}
-      // scrollHeight measures ALL options even when the menu is capped.
-      // Never lift maxHeight to measure: doing so during wheel scrolling can
-      // expand the popover and reset/clamp its scroll position.
-      const borders=parseFloat(getComputedStyle(popover).borderTopWidth||'0')+
-        parseFloat(getComputedStyle(popover).borderBottomWidth||'0');
-      const natural=Math.ceil(popover.scrollHeight+borders);
-      // Use REAL rendered row heights: seven Sở/ngành names plus search and
-      // optional clear/legacy rows, versus four names for other fields.
-      // A wrap onto multiple lines must increase the threshold accordingly.
+      // The header stays outside the scrolling options region. Measuring
+      // popover.scrollHeight here is WRONG: nested overflow clips that value.
+      // Use the actual full options.scrollHeight without lifting maxHeight,
+      // so neither scroll position nor popup direction jumps during a wheel.
       const list=popover.querySelector<HTMLElement>('.cell-picker-options');
-      const rows=list?Array.from(list.querySelectorAll<HTMLButtonElement>(':scope > .cell-picker-option')):[];
+      if(!list)return;
+      const rows=Array.from(list.querySelectorAll<HTMLButtonElement>(':scope > .cell-picker-option'));
       const extras=rows.filter(row=>row.dataset.pickerAux==='true').length;
       const count=Math.min(rows.length,(departmentPicker?7:4)+extras);
-      const gap=list?parseFloat(getComputedStyle(list).rowGap)||0:0;
+      const gap=parseFloat(getComputedStyle(list).rowGap)||0;
       const search=popover.querySelector<HTMLElement>('.cell-picker-search');
       const searchMargin=search?parseFloat(getComputedStyle(search).marginBottom)||0:0;
       const css=getComputedStyle(popover);
+      const borders=(parseFloat(css.borderTopWidth)||0)+(parseFloat(css.borderBottomWidth)||0);
       const padding=(parseFloat(css.paddingTop)||0)+(parseFloat(css.paddingBottom)||0)+borders;
-      const wantedHeight=count===0?natural:Math.ceil(padding+
-        (search?.offsetHeight??0)+searchMargin+
+      const headerHeight=(search?.offsetHeight??0)+searchMargin;
+      const natural=Math.ceil(padding+headerHeight+list.scrollHeight);
+      // Keep the previously approved direction thresholds: seven actual
+      // department options (+ search) vs four for the other picker fields.
+      // Wrapped choices contribute their real measured row heights.
+      const wantedHeight=count===0?natural:Math.ceil(padding+headerHeight+
         rows.slice(0,count).reduce((sum,row)=>sum+row.offsetHeight,0)+
         Math.max(0,count-1)*gap);
       const next=placeCellPicker(rect,natural,viewport,{
@@ -372,7 +373,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     >
       {searchablePicker && <label className="cell-picker-search">{departmentPicker?'Tìm Sở, ngành':'Tìm lựa chọn'}<input ref={searchRef} type="search" value={query} onChange={event => {
         setQuery(event.target.value);
-        if(popoverRef.current)popoverRef.current.scrollTop=0;
+        const optionsList=popoverRef.current?.querySelector<HTMLElement>('.cell-picker-options');
+        if(optionsList)optionsList.scrollTop=0;
       }} onKeyDown={event => {
         if (event.key === 'ArrowDown') { event.preventDefault(); focusOption(0); }
         else if (event.key === 'ArrowUp') { event.preventDefault(); focusOption(visibleOptions.length - 1); }
