@@ -21,7 +21,7 @@ Không yêu cầu chủ dự án cập nhật `HOPHDND_PAGES_APPROVED_MAIN_SHA` 
 - `scripts/pages-release-policy.mjs`: giữ `CellPicker.tsx` **ngoài auto allowlist**; chỉ thêm View, DOM positioning, hàm toán học placement và Chrome QA.
 - Với 3 module UI/DOM positioning/placement đã tách, policy kiểm tra **nội dung tại SHA HEAD**, cấm runtime imports không rõ, trình gọi network, browser storage, global DOM side effects, quyền/lease và ghi dữ liệu. File mất hoặc kiểm tra thất bại => HOLD.
 - `scripts/pages-release-policy.check.mjs` có ca POSITIVE/NEGATIVE: CSS, View, geometry auto; chỉnh lõi, trộn security commit, mã I/O, thay policy, thay Rules, thay import/dependency, bot artifact giả => HOLD.
-- `publish-pages.yml` giữ `HOPHDND_SPARK_PRODUCTION_CONFIRMED`, unit, typecheck, Spark Emulator, kiểm soát public bundle, nguồn SHA bất biến và push không force; không triển khai Firebase Rules hoặc ghi dữ liệu production.
+- `publish-pages.yml` giữ `HOPHDND_SPARK_PRODUCTION_CONFIRMED`, unit, typecheck, **Chrome thật**, Spark Emulator, kiểm soát public bundle, nguồn SHA bất biến và push không force; không triển khai Firebase Rules hoặc ghi dữ liệu production. Checkout không lưu token ghi trong giai đoạn test; `GITHUB_TOKEN` chỉ được cấp cho bước push cuối cùng và sử dụng dưới dạng HTTP header tạm thời.
 - Khi làm tính năng UI mới vượt ra khỏi module an toàn, không mở rộng allowlist bằng regex chung hoặc auto toàn bộ thư mục. Phải tách module trình bày và soát ranh giới quyền rồi mới cập nhật policy qua review phê duyệt riêng.
 
 ## Chuyển tiếp một lần (sau PR #207)
