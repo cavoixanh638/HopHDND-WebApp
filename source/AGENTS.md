@@ -1,3 +1,14 @@
+## CHỈ THỊ MỚI 17/11/2026 — PHÁT HÀNH GIAO DIỆN TỰ ĐỘNG CÓ KIỂM SOÁT
+
+**Tài liệu hiện hành:** [UI_AUTO_RELEASE_2026-11-17.md](docs/operations/UI_AUTO_RELEASE_2026-11-17.md).
+
+- Phần hiển thị dropdown: sửa `src/features/items/CellPickerPopupView.tsx`, `cell-picker.css`, hoặc hàm vị trí thuần `pr95-v5-l1-picker-placement.ts`. **Không sửa `CellPicker.tsx`** khi chỉ thay giao diện; đó là lõi quyền sửa/lease/CAS và không được auto-release.
+- PR UI đủ điều kiện được tự phát hành sau CI; Firebase, quyền, lưu dữ liệu, import, code nghiệp vụ, chính sách hoặc workflow vẫn buộc phê duyệt **đúng SHA main**. Đánh dấu `release-gate` PASS + `publish` SKIPPED là **HOLD**, không phải đã xuất bản.
+- Không tự thay đổi `HOPHDND_PAGES_APPROVED_MAIN_SHA`, không bypass policy. Sau chuyển tiếp có bảo vệ một lần, các thay đổi thuần UI thuộc danh sách sẽ không cần người dùng liên tục sửa variable.
+- Chrome QA bắt buộc cho menu: vùng tìm kiếm cố định, danh sách cuộn độc lập, ngưỡng Sở/ngành 7 lựa chọn kèm search, các dropdown khác 4 lựa chọn, tìm kiếm không dấu và không ghi dữ liệu khi chỉ cuộn.
+
+---
+
 ## OWNER DIRECTIVE — 29/10/2026: Adjacent-first manual column resize (PR #92, Lượt 019)
 
 **This instruction supersedes only the 23/10 rule below requiring the last visible column to compensate every drag.** Keep all other restrictions and release gates unchanged.
