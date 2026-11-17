@@ -27,7 +27,8 @@
 /* Keep Sở/ngành name filtering reachable while the options scroll. */
 .cell-picker-popover .cell-picker-search {
   position: sticky;
-  top: 0;
+  /* Match the popover's 8px padding so focusing/scrolling does not jump. */
+  top: 8px;
   z-index: 1;
   background: var(--surface);
 }
