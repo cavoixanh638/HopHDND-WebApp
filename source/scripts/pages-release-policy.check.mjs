@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {classifyCommits,isAutoUiPath,isPagesArtifactCommit,
   isBootstrapPolicyCommit,isSafePresentationSource} from './pages-release-policy.mjs';
 
@@ -57,6 +58,18 @@ test('isolated dropdown UI/geometry + browser QA auto-publish with strict source
     });
   assert.deepEqual(decide([bot,commit(head,[pickerView])],{sourceContents}),
     {allowed:true,mode:'auto',blocked:[]});
+});
+
+test('actual UI-only source remains inside the protected presentation boundary',()=>{
+  const files=[
+    [pickerView,new URL('../src/features/items/CellPickerPopupView.tsx',import.meta.url)],
+    [pickerGeometry,new URL('../src/features/items/pr95-v5-l1-picker-placement.ts',import.meta.url)],
+  ];
+  for(const [path,url] of files){
+    const source=readFileSync(url,'utf8');
+    assert.equal(isSafePresentationSource(path,source),true,
+      'UI-only module unexpectedly gained a privileged/runtime dependency: '+path);
+  }
 });
 
 test('UI presentation allowlist fails closed on backend I/O, imports and mixed core edits',()=>{
