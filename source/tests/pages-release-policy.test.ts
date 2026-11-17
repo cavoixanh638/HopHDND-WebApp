@@ -23,6 +23,9 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
     expect(flow).toContain('--assert-mode "$RELEASE_MODE"');
     expect(flow).toContain('npm run test:spark');
     expect(flow).toContain('npm run build:spark');
+    expect(flow).toContain('npm run build:compact:qa');
+    expect(flow).toContain('node scripts/pr95-v5-l1-dropdown-browser.mjs');
+    expect(flow).not.toContain('firebase deploy');
     expect(flow).not.toContain('npm run build:spark:operator');
   });
 });
