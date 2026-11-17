@@ -369,6 +369,39 @@ try {
   assert(!await evaluate('window.__l2LastPatch'),'mobile popup Escape changed source');
   console.log('PR95_V5_L1_MOBILE_POPUP_PASS '+JSON.stringify(mobilePopup));
 
+  // Reproduce the owner screenshot: a low Sở/ngành trigger with dozens of
+  // choices, ~190px below it, and abundant empty space above it. Verify a
+  // REAL Chrome wheel event scrolls the actual CellPicker without jumping up.
+  await send('Emulation.setDeviceMetricsOverride',{width:456,height:1006,deviceScaleFactor:1,mobile:false});
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa.html?edit=1&review-staff=1&picker-long-list=1'});
+  const longDept='document.querySelector("[data-qa=picker-long-list] button.cell-picker-trigger")';
+  await waitFor('!!'+longDept,'long department synthetic trigger');
+  await actual(longDept);
+  await openPop('Sở, ngành dài (QA)');
+  const longBefore=await geometry(longDept,'long-department-before-wheel');
+  assert(longBefore.side==='below'&&longBefore.scrollable&&longBefore.menu.height<=360,
+    'long department should open down and scroll internally '+JSON.stringify(longBefore));
+  const wheel=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
+    'const b=p.getBoundingClientRect();return {x:Math.round(b.left+b.width/2),'+
+    'y:Math.round(b.top+Math.min(b.height/2,95))};})()');
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:wheel.x,y:wheel.y});
+  await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:wheel.x,y:wheel.y,deltaY:420,deltaX:0});
+  await waitFor('document.querySelector(".cell-picker-popover:popover-open")?.scrollTop>40',
+    'wheel must scroll inside long department popover');
+  const longAfter=await geometry(longDept,'long-department-after-wheel');
+  const wheelState=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
+    'return {scrollTop:p?.scrollTop,top:p?.getBoundingClientRect().top,'+
+    'open:!!p,side:p?.dataset.placement,patch:window.__l2LastPatch??null};})()');
+  assert(longAfter.side==='below'&&Math.abs(longAfter.menu.y-longBefore.menu.y)<=2&&
+    wheelState.scrollTop>40&&!wheelState.patch,
+    'wheel must not reposition menu or write a draft '+JSON.stringify({longBefore,longAfter,wheelState}));
+  await screenshot('pr95-v5-l1-department-wheel-scroll.png');
+  await key('Escape',27);
+  console.log('PR95_V5_L1_LONG_DEPARTMENT_WHEEL_SCROLL_PASS '+JSON.stringify({
+    before:longBefore,after:longAfter,wheelState
+  }));
+
   const forbidden=network.filter(url=>['firebaseio','firebasedatabase','identitytoolkit',
     'securetoken','docs.google.com/spreadsheets','sheets.googleapis.com']
     .some(fragment=>url.toLowerCase().includes(fragment)));
