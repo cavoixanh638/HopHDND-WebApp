@@ -7,6 +7,7 @@ import {readFileSync} from 'node:fs';
 
 const pickerCss=readFileSync(new URL('../src/features/items/cell-picker.css',import.meta.url),'utf8');
 const pickerSource=readFileSync(new URL('../src/features/items/CellPicker.tsx',import.meta.url),'utf8');
+const positioningSource=readFileSync(new URL('../src/features/items/CellPickerPositioning.ts',import.meta.url),'utf8');
 
 describe('dropdown fixed-search scroll containment',()=>{
   it('the popover never scrolls; only its options grid can overflow',()=>{
@@ -16,7 +17,8 @@ describe('dropdown fixed-search scroll containment',()=>{
     expect(pickerCss).not.toContain('position: sticky;');
   });
   it('measures actual nested list content and resets only that scroll position on filtering',()=>{
-    expect(pickerSource).toContain('list.scrollHeight');
+    expect(positioningSource).toContain('list.scrollHeight');
+    expect(pickerSource).toContain('positionCellPickerPopover(');
     expect(pickerSource).toContain('optionsList.scrollTop=0;');
     expect(pickerSource).not.toContain('popoverRef.current.scrollTop=0;');
   });

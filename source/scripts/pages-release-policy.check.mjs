@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {classifyCommits,isAutoUiPath,isPagesArtifactCommit,
-  isBootstrapPolicyCommit} from './pages-release-policy.mjs';
+  isBootstrapPolicyCommit,isSafePresentationSource} from './pages-release-policy.mjs';
 
 const baseline='cc81aee8114a969892f6a812f03ca37e44a6d5b7';
 const uiParent='937c1295cd598e8c9e7ea1878093918d0d5d884f';
@@ -24,6 +25,95 @@ test('CSS, selected UI components, QA and layout fit can publish without a new S
   assert.deepEqual(decide([commit(head,changed)]),
     {allowed:true,mode:'auto',blocked:[]});
 });
+const pickerView='source/src/features/items/CellPickerPopupView.tsx';
+const pickerGeometry='source/src/features/items/pr95-v5-l1-picker-placement.ts';
+const pickerDomGeometry='source/src/features/items/CellPickerPositioning.ts';
+const pickerBrowser='source/scripts/pr95-v5-l1-dropdown-browser.mjs';
+const safeView=[
+  "import type {KeyboardEvent,RefObject} from 'react';",
+  "export function CellPickerPopupView({onQueryChange}){",
+  'return <input onChange={event=>onQueryChange(event.target.value)}/>;',
+  '}',
+].join('\n');
+const safeGeometry='export function placeCellPicker(){return {side:"below"};}';
+const safeDomGeometry=[
+  "import {placeCellPicker,type PickerViewport} from './pr95-v5-l1-picker-placement';",
+  'export function positionCellPickerPopover(){return "positioned";}',
+].join('\n');
+
+test('isolated dropdown UI/geometry + browser QA auto-publish with strict source scope',()=>{
+  const files=[pickerView,pickerGeometry,pickerDomGeometry,pickerBrowser,
+    'source/src/features/items/cell-picker.css'];
+  assert.ok(files.every(isAutoUiPath));
+  assert.equal(isAutoUiPath('source/src/features/items/CellPicker.tsx'),false);
+  const sourceContents={
+    [pickerView]:safeView,
+    [pickerGeometry]:safeGeometry,
+    [pickerDomGeometry]:safeDomGeometry,
+  };
+  assert.equal(isSafePresentationSource(pickerView,safeView),true);
+  assert.equal(isSafePresentationSource(pickerGeometry,safeGeometry),true);
+  assert.equal(isSafePresentationSource(pickerDomGeometry,safeDomGeometry),true);
+  assert.deepEqual(decide([commit(head,files)],{sourceContents}),
+    {allowed:true,mode:'auto',blocked:[]});
+  // A later pure presentation update needs no new owner SHA approval.
+  const bot=commit('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    ['index.html','version.json','assets/style-generated.css'],{
+      author:'github-actions[bot]',
+      email:'41898282+github-actions[bot]@users.noreply.github.com',
+      message:'build(pages): publish verified Spark WebApp from approved source',
+    });
+  assert.deepEqual(decide([bot,commit(head,[pickerView])],{sourceContents}),
+    {allowed:true,mode:'auto',blocked:[]});
+});
+
+test('actual UI-only source remains inside the protected presentation boundary',()=>{
+  const files=[
+    [pickerView,new URL('../src/features/items/CellPickerPopupView.tsx',import.meta.url)],
+    [pickerGeometry,new URL('../src/features/items/pr95-v5-l1-picker-placement.ts',import.meta.url)],
+    [pickerDomGeometry,new URL('../src/features/items/CellPickerPositioning.ts',import.meta.url)],
+  ];
+  for(const [path,url] of files){
+    const source=readFileSync(url,'utf8');
+    assert.equal(isSafePresentationSource(path,source),true,
+      'UI-only module unexpectedly gained a privileged/runtime dependency: '+path);
+  }
+});
+
+test('UI presentation allowlist fails closed on backend I/O, imports and mixed core edits',()=>{
+  const forbidden=[
+    safeView.replace('return <input','fetch("https://example.invalid");return <input'),
+    safeView+'\nimport {writeRecord} from "../../data/cell-edit-leases";',
+    safeView.replace('export function','export function').replace('return <input','window.localStorage.clear();return <input'),
+    safeView.replace('return <input','useEffect(()=>onQueryChange("x"),[]);return <input'),
+    safeView.replace('return <input','firebase.database().ref("items").set({});return <input'),
+    safeView+'\nexport * from "../../data/cell-edit-leases";',
+  ];
+  for(const source of forbidden){
+    assert.equal(isSafePresentationSource(pickerView,source),false);
+    assert.deepEqual(decide([commit(head,[pickerView])],{sourceContents:{[pickerView]:source}}),
+      {allowed:false,mode:'hold',blocked:[pickerView]});
+  }
+  assert.equal(isSafePresentationSource(pickerGeometry,
+    'import {changeRole} from "./auth";export function placeCellPicker(){return null;}'),false);
+  assert.equal(isSafePresentationSource(pickerDomGeometry,
+    safeDomGeometry.replace("'./pr95-v5-l1-picker-placement'","'../../data/cell-edit-leases'")),false);
+  // Fail closed if the source file is missing, deleted, or unavailable.
+  assert.deepEqual(decide([commit(head,[pickerView])]),{
+    allowed:false,mode:'hold',blocked:[pickerView]});
+  // UI-looking CSS cannot hide a modification to the guarded picker core.
+  assert.deepEqual(decide([commit(head,[
+    pickerView,'source/src/features/items/CellPicker.tsx',
+  ])],{sourceContents:{[pickerView]:safeView}}),{
+    allowed:false,mode:'hold',blocked:['source/src/features/items/CellPicker.tsx']});
+  // Previously unpublished security/data changes are checked across commits.
+  assert.deepEqual(decide([
+    commit('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',['source/src/state/firebase-state.ts']),
+    commit(head,[pickerView]),
+  ],{sourceContents:{[pickerView]:safeView}}),{
+    allowed:false,mode:'hold',blocked:['source/src/state/firebase-state.ts']});
+});
+
 test('Firebase Rules and data/auth code changes MUST retain exact-SHA approval',()=>{
   for(const path of [
     'source/firebase/database.spark.rules.json',

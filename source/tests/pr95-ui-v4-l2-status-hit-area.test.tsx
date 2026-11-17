@@ -12,6 +12,7 @@ import {defaultItemLayout} from '../src/data/item-preferences';
 const css=readFileSync(new URL('../src/features/items/item-frame.css',import.meta.url),'utf8');
 const pickerCss=readFileSync(new URL('../src/features/items/cell-picker.css',import.meta.url),'utf8');
 const pickerSource=readFileSync(new URL('../src/features/items/CellPicker.tsx',import.meta.url),'utf8');
+const pickerViewSource=readFileSync(new URL('../src/features/items/CellPickerPopupView.tsx',import.meta.url),'utf8');
 const group=activeCompactPairs(defaultItemLayout().columns,DEFAULT_COMPACT_DISPLAY)
   .find(x=>x.variant==='partyTogether')!;
 
@@ -113,10 +114,14 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
     expect(css).toContain('outline:2px solid #356D86!important');
   });
   it('retains unchanged CellPicker aria, keyboard, lease/save/clear contracts',()=>{
-    for(const source of ["aria-haspopup=\"dialog\"","aria-selected={value === option.value}",
-      "event.key === 'ArrowDown'","event.key === 'Escape'","leaseManager!.acquire",
-      'onChange(nextValue)']){
+    for(const source of ["aria-haspopup=\"dialog\"","event.key==='ArrowDown'",
+      "event.key === 'Escape'","leaseManager!.acquire",'onChange(nextValue)',
+      '!visibleOptions.some(option=>option.value===nextValue)']){
       expect(pickerSource).toContain(source);
+    }
+    for(const source of ['aria-selected={value===option.value}',
+      'role="listbox"','onClick={()=>onChoose(option.value)}']){
+      expect(pickerViewSource).toContain(source);
     }
     expect(cellPickerCanClear('vpLeader',['PCVP A'])).toBe(true);
     expect(cellPickerCanClear('ubndLeader',['PCT B'])).toBe(true);

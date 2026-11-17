@@ -36,6 +36,12 @@ const uiModules=new Set([
   'source/src/components/ColumnResizeHandle.tsx',
   'source/src/components/useElementWidth.ts',
   'source/scripts/smoke-pages-browser.mjs',
+  // Presentation-only UI; the guarded edit/save entrypoint CellPicker.tsx
+  // itself is deliberately NOT on this allowlist.
+  'source/src/features/items/CellPickerPopupView.tsx',
+  'source/src/features/items/CellPickerPositioning.ts',
+  'source/src/features/items/pr95-v5-l1-picker-placement.ts',
+  'source/scripts/pr95-v5-l1-dropdown-browser.mjs',
 ]);
 
 export function isAutoUiPath(path){
@@ -46,6 +52,44 @@ export function isAutoUiPath(path){
     /^source\/docs\/[a-zA-Z0-9_./-]+$/.test(path)||
     path==='README.md'||uiModules.has(path);
 }
+// Two presentation-only modules are auto-publishable only when their exact
+// HEAD contents remain DOM/pure-geometry code, with no runtime imports from
+// services, edit/lease/data modules or ambient browser/network APIs. This
+// check is in the protected policy, NOT in a mutable test fixture.
+const restrictedUiSources=new Set([
+  'source/src/features/items/CellPickerPopupView.tsx',
+  'source/src/features/items/CellPickerPositioning.ts',
+  'source/src/features/items/pr95-v5-l1-picker-placement.ts',
+]);
+const forbiddenPresentationApis=/(?:\b(?:fetch|WebSocket|XMLHttpRequest|EventSource|localStorage|sessionStorage|indexedDB|navigator|window|document|globalThis|process|Function|eval|require|importScripts|setInterval|setTimeout)\b|dangerouslySetInnerHTML|import\s*\()/;
+export function isSafePresentationSource(path,source){
+  if(!restrictedUiSources.has(path))return true;
+  if(typeof source!=='string'||!source.trim())return false;
+  if(forbiddenPresentationApis.test(source))return false;
+  // A re-export can pull in runtime privileges without an "import" line.
+  if(/^\s*export\s+(?:\*|\{[^}]*\})\s+from\b/m.test(source))return false;
+  const importLines=source.split('\n').filter(line=>/^\s*import\b/.test(line));
+  if(path.endsWith('CellPickerPopupView.tsx')){
+    // Only React type annotations; JSX uses the automatic jsx-runtime.
+    if(!importLines.every(line=>/^\s*import\s+type\s+\{[^}]+\}\s+from\s+['"]react['"];?\s*$/.test(line)))
+      return false;
+    // Do not permit this visual leaf to become a save/auth service or
+    // independently mutate record values on user interaction.
+    if(/\b(?:useState|useEffect|useLayoutEffect|leaseManager|directStatusCas|setValue|writeDatabase|firebase|onUpdate|dispatchEvent)\b/.test(source))
+      return false;
+    return source.includes('export function CellPickerPopupView(');
+  }
+  if(path.endsWith('CellPickerPositioning.ts')){
+    // DOM measurements may call ONLY the approved, pure placement function.
+    // Privileged data, persistence and editing modules are forbidden.
+    return importLines.length===1&&
+      /^import\s+\{placeCellPicker,type PickerViewport\}\s+from\s+['"]\.\/pr95-v5-l1-picker-placement['"];?$/.test(importLines[0].trim())&&
+      source.includes('export function positionCellPickerPopover(');
+  }
+  // Pure viewport math is UI; importing any module here requires review.
+  return importLines.length===0&&source.includes('export function placeCellPicker(');
+}
+
 export function isPagesArtifactCommit(commit){
   const files=commit.files??[];
   return commit.author==='github-actions[bot]'&&
@@ -62,7 +106,7 @@ export function isBootstrapPolicyCommit(commit,baseline,head){
     files.includes('source/scripts/pages-release-policy.mjs')&&
     files.length>0&&files.every(file=>bootstrapOnly.has(file));
 }
-export function classifyCommits({commits,baseline,head,approved}){
+export function classifyCommits({commits,baseline,head,approved,sourceContents={}}){
   if(!shaPattern.test(baseline)||!shaPattern.test(head))
     return {allowed:false,mode:'hold',blocked:['INVALID_BASE_OR_HEAD']};
   if(approved===head)return {allowed:true,mode:'approved',blocked:[]};
@@ -73,7 +117,9 @@ export function classifyCommits({commits,baseline,head,approved}){
     if(isBootstrapPolicyCommit(commit,baseline,head)){sourceChanged=true;continue;}
     for(const file of commit.files??[]){
       sourceChanged=true;
-      if(!isAutoUiPath(file))blocked.push(file);
+      if(!isAutoUiPath(file)||
+         (restrictedUiSources.has(file)&&
+          !isSafePresentationSource(file,sourceContents[file])))blocked.push(file);
     }
   }
   return blocked.length===0&&sourceChanged
@@ -124,7 +170,16 @@ export function getReleaseDecision({baseline,head,approved}){
   if(!shaPattern.test(baseline)||!shaPattern.test(head))
     throw Error('PAGES_RELEASE_HOLD: invalid SHA');
   const commits=readCommitChanges(baseline,head);
-  return {...classifyCommits({commits,baseline,head,approved}),baseline,head};
+  // Read the candidate commit, never the mutable checkout filesystem. We
+  // check the final source that the public Pages bundle will actually use.
+  const sourceContents={};
+  for(const file of restrictedUiSources){
+    if(commits.some(commit=>!isPagesArtifactCommit(commit)&&commit.files?.includes(file))){
+      try{sourceContents[file]=git(['show',head+':'+file]);}
+      catch{sourceContents[file]='';} // deletion or missing file => HOLD
+    }
+  }
+  return {...classifyCommits({commits,baseline,head,approved,sourceContents}),baseline,head};
 }
 function main(){
   const args=parseArgs(process.argv.slice(2));

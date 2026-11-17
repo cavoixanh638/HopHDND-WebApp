@@ -11,6 +11,7 @@ import type {Item,TextField} from '../shared/types';
 
 const css=readFileSync(new URL('../src/features/items/item-frame.css',import.meta.url),'utf8');
 const pickerSource=readFileSync(new URL('../src/features/items/CellPicker.tsx',import.meta.url),'utf8');
+const pickerViewSource=readFileSync(new URL('../src/features/items/CellPickerPopupView.tsx',import.meta.url),'utf8');
 const item:Item={...createDemoItems(1)[0],displayCode:'NQ02',
   partyLevel:'BTV',progressParty:'Sở chưa trình',
   progressBuild:'VP đang thực hiện',progressCouncil:'Đã trình HĐND'};
@@ -81,13 +82,13 @@ describe('PR95 UI V3 L2 single-frame grouped editors',()=>{
   it('keeps status popup visual content choices-only while preserving aria and keyboard',()=>{
     expect(pickerSource).toContain("const departmentPicker=field==='department'");
     expect(pickerSource).toContain('const searchablePicker=searchable||departmentPicker;');
-    expect(pickerSource).toContain("data-choices-only={!searchablePicker ? 'true' : undefined}");
-    expect(pickerSource).toContain('role="dialog"');
-    expect(pickerSource).toContain('aria-label={label}');
-    expect(pickerSource).toContain('role="listbox"');
-    expect(pickerSource).toContain('aria-selected={value === option.value}');
+    expect(pickerViewSource).toContain("data-choices-only={!searchable ? 'true' : undefined}");
+    expect(pickerViewSource).toContain('role="dialog"');
+    expect(pickerViewSource).toContain('aria-label={label}');
+    expect(pickerViewSource).toContain('role="listbox"');
+    expect(pickerViewSource).toContain('aria-selected={value===option.value}');
     expect(pickerSource).toContain("event.key === 'Escape'");
-    expect(pickerSource).toContain("event.key === 'ArrowDown'");
+    expect(pickerSource).toContain("event.key==='ArrowDown'");
     expect(pickerSource).not.toContain('Giá trị hiện tại “{value}” không khớp bộ lọc.');
     expect(pickerSource).not.toContain('${value} (giá trị hiện tại)');
     // Optional clear remains present for non-department pickers and for an
@@ -122,9 +123,11 @@ describe('R-V3-01: optional non-status picker clear while status menus stay exac
     expect(cellPickerCanClear('isDropped',['','Chưa rút','Đã rút'])).toBe(false);
   });
   it('keeps selection callback from chosen option and does not overwrite statuses',()=>{
-    expect(pickerSource).toContain('onClick={() => choose(option.value)}');
+    expect(pickerViewSource).toContain('onClick={()=>onChoose(option.value)}');
     expect(pickerSource).toContain('onChange(nextValue)');
-    expect(pickerSource).toContain('aria-selected={value === option.value}');
+    expect(pickerSource).toContain('!visibleOptions.some(option=>option.value===nextValue)');
+    expect(pickerSource).toContain('if(waiting||externallyDisabledRef.current||');
+    expect(pickerViewSource).toContain('aria-selected={value===option.value}');
     expect(pickerSource).toContain("if(nextValue===value)");
     expect(pickerSource).toContain("event.key === 'Escape'");
     // Legacy values remain selectable when unfiltered, including all status

@@ -1,5 +1,7 @@
 # Họp HĐND — one canonical Spark Pages URL (12 November 2026)
 
+> **Cập nhật 17/11/2026:** Phần dưới ghi lại checklist bàn giao ngày 12/11 và có thể mang trạng thái lịch sử. Quy trình phát hành UI đã được cập nhật tại [UI_AUTO_RELEASE_2026-11-17.md](UI_AUTO_RELEASE_2026-11-17.md): các tệp giao diện thuộc danh sách an toàn tự động phát hành sau kiểm thử; thay đổi quyền, dữ liệu, Firebase, core editor và chính sách vẫn phê duyệt SHA riêng. Đừng sử dụng đoạn hướng dẫn "mọi commit đều phải đổi variable" dưới đây như quy tắc hiện hành.
+
 **State: RELEASE PREPARED; production data/Rules and Pages NOT changed.**
 
 Canonical **daily-use** URL (after the one-time authorized cutover):
