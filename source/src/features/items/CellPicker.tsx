@@ -174,9 +174,9 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       const insideTable=!clip||(rect.right>clip.left+2&&rect.left<clip.right-2&&
         rect.bottom>clip.top+2&&rect.top<clip.bottom-2);
       if(!insideViewport||!insideTable){void close();return;}
-      // Compute the natural rendered height, NOT the former 360px cap.
-      // This also recomputes after searchable option lists shrink.
-      popover.style.maxHeight='none';
+      // scrollHeight measures ALL options even when the menu is capped.
+      // Never lift maxHeight to measure: doing so during wheel scrolling can
+      // expand the popover and reset/clamp its scroll position.
       const borders=parseFloat(getComputedStyle(popover).borderTopWidth||'0')+
         parseFloat(getComputedStyle(popover).borderBottomWidth||'0');
       const natural=Math.ceil(popover.scrollHeight+borders);
@@ -184,7 +184,8 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       popover.style.left=next.left+'px';
       popover.style.top=next.top+'px';
       popover.style.width=next.width+'px';
-      popover.style.maxHeight=next.maxHeight+'px';
+      const maxHeight=next.maxHeight+'px';
+      if(popover.style.maxHeight!==maxHeight)popover.style.maxHeight=maxHeight;
       popover.dataset.placement=next.side;
     };
     const schedulePlace=()=>{
@@ -218,10 +219,17 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       optionRefs.current[current >= 0 ? current : 0]?.focus({preventScroll:true});
     };
 
+    const onViewportScroll=(event:Event)=>{
+      // Captured scroll events include the popover's own scroll. Its options
+      // must remain a stable, independently scrollable area.
+      if(event.target instanceof Node&&popover.contains(event.target))return;
+      schedulePlace();
+    };
+
     document.addEventListener('pointerdown', onOutsidePointer, true);
     document.addEventListener('keydown', onKeyDown);
     window.addEventListener('resize', schedulePlace);
-    window.addEventListener('scroll', schedulePlace, true);
+    window.addEventListener('scroll', onViewportScroll, true);
     window.visualViewport?.addEventListener('resize',schedulePlace);
     window.visualViewport?.addEventListener('scroll',schedulePlace);
     const observer=typeof ResizeObserver==='function'
@@ -243,7 +251,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
       document.removeEventListener('pointerdown', onOutsidePointer, true);
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('resize', schedulePlace);
-      window.removeEventListener('scroll', schedulePlace, true);
+      window.removeEventListener('scroll', onViewportScroll, true);
       window.visualViewport?.removeEventListener('resize',schedulePlace);
       window.visualViewport?.removeEventListener('scroll',schedulePlace);
       if (popover.matches(':popover-open')) popover.hidePopover();
