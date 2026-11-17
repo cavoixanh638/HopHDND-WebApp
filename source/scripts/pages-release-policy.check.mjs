@@ -27,6 +27,7 @@ test('CSS, selected UI components, QA and layout fit can publish without a new S
 });
 const pickerView='source/src/features/items/CellPickerPopupView.tsx';
 const pickerGeometry='source/src/features/items/pr95-v5-l1-picker-placement.ts';
+const pickerDomGeometry='source/src/features/items/CellPickerPositioning.ts';
 const pickerBrowser='source/scripts/pr95-v5-l1-dropdown-browser.mjs';
 const safeView=[
   "import type {KeyboardEvent,RefObject} from 'react';",
@@ -35,18 +36,24 @@ const safeView=[
   '}',
 ].join('\n');
 const safeGeometry='export function placeCellPicker(){return {side:"below"};}';
+const safeDomGeometry=[
+  "import {placeCellPicker,type PickerViewport} from './pr95-v5-l1-picker-placement';",
+  'export function positionCellPickerPopover(){return "positioned";}',
+].join('\n');
 
 test('isolated dropdown UI/geometry + browser QA auto-publish with strict source scope',()=>{
-  const files=[pickerView,pickerGeometry,pickerBrowser,
+  const files=[pickerView,pickerGeometry,pickerDomGeometry,pickerBrowser,
     'source/src/features/items/cell-picker.css'];
   assert.ok(files.every(isAutoUiPath));
   assert.equal(isAutoUiPath('source/src/features/items/CellPicker.tsx'),false);
   const sourceContents={
     [pickerView]:safeView,
     [pickerGeometry]:safeGeometry,
+    [pickerDomGeometry]:safeDomGeometry,
   };
   assert.equal(isSafePresentationSource(pickerView,safeView),true);
   assert.equal(isSafePresentationSource(pickerGeometry,safeGeometry),true);
+  assert.equal(isSafePresentationSource(pickerDomGeometry,safeDomGeometry),true);
   assert.deepEqual(decide([commit(head,files)],{sourceContents}),
     {allowed:true,mode:'auto',blocked:[]});
   // A later pure presentation update needs no new owner SHA approval.
@@ -64,6 +71,7 @@ test('actual UI-only source remains inside the protected presentation boundary',
   const files=[
     [pickerView,new URL('../src/features/items/CellPickerPopupView.tsx',import.meta.url)],
     [pickerGeometry,new URL('../src/features/items/pr95-v5-l1-picker-placement.ts',import.meta.url)],
+    [pickerDomGeometry,new URL('../src/features/items/CellPickerPositioning.ts',import.meta.url)],
   ];
   for(const [path,url] of files){
     const source=readFileSync(url,'utf8');
@@ -88,6 +96,8 @@ test('UI presentation allowlist fails closed on backend I/O, imports and mixed c
   }
   assert.equal(isSafePresentationSource(pickerGeometry,
     'import {changeRole} from "./auth";export function placeCellPicker(){return null;}'),false);
+  assert.equal(isSafePresentationSource(pickerDomGeometry,
+    safeDomGeometry.replace("'./pr95-v5-l1-picker-placement'","'../../data/cell-edit-leases'")),false);
   // Fail closed if the source file is missing, deleted, or unavailable.
   assert.deepEqual(decide([commit(head,[pickerView])]),{
     allowed:false,mode:'hold',blocked:[pickerView]});
