@@ -79,6 +79,7 @@ test('UI presentation allowlist fails closed on backend I/O, imports and mixed c
     safeView.replace('export function','export function').replace('return <input','window.localStorage.clear();return <input'),
     safeView.replace('return <input','useEffect(()=>onQueryChange("x"),[]);return <input'),
     safeView.replace('return <input','firebase.database().ref("items").set({});return <input'),
+    safeView+'\nexport * from "../../data/cell-edit-leases";',
   ];
   for(const source of forbidden){
     assert.equal(isSafePresentationSource(pickerView,source),false);
