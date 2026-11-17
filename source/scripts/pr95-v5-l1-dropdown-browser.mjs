@@ -128,7 +128,12 @@ const geometry=async(expr,label)=>{
     'return {side,gap,anchor:{x:a.left,y:a.top,bottom:a.bottom,width:a.width},'+
     'menu:{x:b.left,y:b.top,bottom:b.bottom,height:b.height,scrollHeight:p.scrollHeight,clientHeight:p.clientHeight},'+
     'viewport:{top,height:h,left,width:w},count:p.querySelectorAll("[role=option]").length,'+
-    'scrollable:p.scrollHeight>p.clientHeight+1,focused:p.contains(document.activeElement)};})()');
+    'options:(()=>{const o=p.querySelector(".cell-picker-options"),s=p.querySelector(".cell-picker-search");'+
+    'const a=o?.getBoundingClientRect(),h=s?.getBoundingClientRect();'+
+    'return {scrollTop:o?.scrollTop,scrollHeight:o?.scrollHeight,clientHeight:o?.clientHeight,'+
+    'top:a?.top,bottom:a?.bottom,searchBottom:h?.bottom}})(),'+
+    'scrollable:(()=>{const o=p.querySelector(".cell-picker-options");return !!o&&o.scrollHeight>o.clientHeight+1})(),'+
+    'focused:p.contains(document.activeElement)};})()');
   assert(r&&r.gap>=3&&r.gap<=9&&r.menu.y>=r.viewport.top+6&&
     r.menu.bottom<=r.viewport.top+r.viewport.height-6,
     'menu must hug visible source '+label+' '+JSON.stringify(r));
@@ -383,22 +388,32 @@ try {
   assert(lowerBefore.side==='above'&&lowerBefore.scrollable&&lowerBefore.menu.height<=420,
     'department must flip UP if seven names and search do not fit BELOW '+JSON.stringify(lowerBefore));
   const wheel=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
-    'const b=p.getBoundingClientRect();return {x:Math.round(b.left+b.width/2),'+
-    'y:Math.round(b.top+Math.min(b.height/2,155)),'+
+    'const o=p.querySelector(".cell-picker-options"),b=o.getBoundingClientRect();'+
+    'return {x:Math.round(b.left+b.width/2),'+
+    'y:Math.round(b.top+Math.min(b.height/2,95)),'+
     'searchTop:p.querySelector("input[type=search]")?.getBoundingClientRect().top};})()');
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:wheel.x,y:wheel.y});
   await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:wheel.x,y:wheel.y,deltaY:420,deltaX:0});
-  await waitFor('document.querySelector(".cell-picker-popover:popover-open")?.scrollTop>40',
-    'wheel must scroll inside long department popover');
+  await waitFor('document.querySelector(".cell-picker-popover:popover-open .cell-picker-options")?.scrollTop>40',
+    'wheel must scroll the options without scrolling the search header');
   const lowerAfter=await geometry(longDept,'department-low-7-choices-after-wheel');
   const wheelState=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
-    'return {scrollTop:p?.scrollTop,top:p?.getBoundingClientRect().top,'+
-    'searchTop:p?.querySelector("input[type=search]")?.getBoundingClientRect().top,'+
+    'const o=p?.querySelector(".cell-picker-options"),h=p?.querySelector(".cell-picker-search");'+
+    'const sr=h?.getBoundingClientRect(),lr=o?.getBoundingClientRect(),i=h?.querySelector("input");'+
+    'const ir=i?.getBoundingClientRect(),px=ir?.left+ir?.width/2,py=ir?.top+ir?.height/2;'+
+    'return {outerScrollTop:p?.scrollTop,scrollTop:o?.scrollTop,top:p?.getBoundingClientRect().top,'+
+    'searchTop:i?.getBoundingClientRect().top,searchBottom:sr?.bottom,optionsTop:lr?.top,'+
+    'popoverOverflow:getComputedStyle(p).overflowY,optionsOverflow:getComputedStyle(o).overflowY,'+
+    'headerHit:!!document.elementFromPoint(px,py)?.closest(".cell-picker-option"),'+
     'open:!!p,side:p?.dataset.placement,patch:window.__l2LastPatch??null};})()');
   assert(lowerAfter.side==='above'&&Math.abs(lowerAfter.menu.y-lowerBefore.menu.y)<=2&&
-    wheelState.scrollTop>40&&!wheelState.patch&&
-    Math.abs(wheelState.searchTop-wheel.searchTop)<=2,
-    'wheel must preserve menu anchor, sticky search, and no draft '+JSON.stringify({lowerBefore,lowerAfter,wheelState}));
+    wheelState.scrollTop>40&&wheelState.outerScrollTop===0&&!wheelState.patch&&
+    Math.abs(wheelState.searchTop-wheel.searchTop)<=2&&
+    wheelState.popoverOverflow==='hidden'&&wheelState.optionsOverflow==='auto'&&
+    wheelState.optionsTop>=wheelState.searchBottom-1&&!wheelState.headerHit,
+    'options must scroll within their own clipped region below a fixed search row '+JSON.stringify({
+      lowerBefore,lowerAfter,wheelState
+    }));
   await screenshot('pr95-v5-l1-department-wheel-scroll.png');
   await key('Escape',27);
   console.log('PR95_V5_L1_LONG_DEPARTMENT_WHEEL_SCROLL_PASS '+JSON.stringify({
@@ -414,12 +429,14 @@ try {
   await openPop('Sở, ngành dài (QA)');
   const highBefore=await geometry(longDept,'department-7-choices-below');
   const highVisible=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
-    'const r=p.getBoundingClientRect(),search=p.querySelector(".cell-picker-search")?.getBoundingClientRect();'+
-    'const names=[...p.querySelectorAll(".cell-picker-option")].filter(x=>x.dataset.pickerAux!=="true"&&'+
-    'x.getBoundingClientRect().top>=(search?.bottom??r.top)-1&&'+
-    'x.getBoundingClientRect().bottom<=r.bottom-6);return {names:names.length,search:!!search};})()');
+    'const o=p.querySelector(".cell-picker-options"),r=o.getBoundingClientRect(),'+
+    'search=p.querySelector(".cell-picker-search")?.getBoundingClientRect();'+
+    'const names=[...o.querySelectorAll(".cell-picker-option")].filter(x=>x.dataset.pickerAux!=="true"&&'+
+    'x.getBoundingClientRect().top>=r.top-1&&'+
+    'x.getBoundingClientRect().bottom<=r.bottom-1);'+
+    'return {names:names.length,search:!!search,headerSeparate:!!search&&r.top>=search.bottom-1};})()');
   assert(highBefore.side==='below'&&highBefore.scrollable&&
-    highVisible.search&&highVisible.names>=7,
+    highVisible.search&&highVisible.headerSeparate&&highVisible.names>=7,
     'department must open BELOW and visibly fit 7 real names + search '+JSON.stringify({highBefore,highVisible}));
   await screenshot('pr95-v5-l1-department-7-visible-below.png');
 
@@ -429,8 +446,9 @@ try {
   await send('Input.insertText',{text:'ngoai vu'});
   await waitFor('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
     'const options=p?[...p.querySelectorAll("[role=option]")]:[];'+
+    'const list=p?.querySelector(".cell-picker-options");'+
     'return p?.querySelector("input[type=search]")?.value==="ngoai vu"&&'+
-    'options.length===1&&options[0].textContent.trim()==="Sở Ngoại vụ";})()',
+    'list?.scrollTop===0&&options.length===1&&options[0].textContent.trim()==="Sở Ngoại vụ";})()',
     'accent-insensitive department search matching Sở Ngoại vụ');
   const filtered=await geometry(longDept,'department-accent-insensitive-filter');
   const choice=await evaluate('(()=>{const e=document.querySelector(".cell-picker-popover:popover-open [role=option]");'+
