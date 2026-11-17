@@ -369,37 +369,84 @@ try {
   assert(!await evaluate('window.__l2LastPatch'),'mobile popup Escape changed source');
   console.log('PR95_V5_L1_MOBILE_POPUP_PASS '+JSON.stringify(mobilePopup));
 
-  // Reproduce the owner screenshot: a low Sở/ngành trigger with dozens of
-  // choices, ~190px below it, and abundant empty space above it. Verify a
-  // REAL Chrome wheel event scrolls the actual CellPicker without jumping up.
+  // Owner-approved rule: below if seven department names PLUS the search
+  // input fit; for other fields the opening threshold remains four choices.
+  // Use physical pointer/wheel/text input with the REAL CellPicker.
   await send('Emulation.setDeviceMetricsOverride',{width:456,height:1006,deviceScaleFactor:1,mobile:false});
-  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
-    '/compact-qa.html?edit=1&review-staff=1&picker-long-list=1'});
+  const deptUrl='/compact-qa.html?edit=1&review-staff=1&picker-long-list=1';
   const longDept='document.querySelector("[data-qa=picker-long-list] button.cell-picker-trigger")';
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+deptUrl});
   await waitFor('!!'+longDept,'long department synthetic trigger');
   await actual(longDept);
   await openPop('Sở, ngành dài (QA)');
-  const longBefore=await geometry(longDept,'long-department-before-wheel');
-  assert(longBefore.side==='below'&&longBefore.scrollable&&longBefore.menu.height<=360,
-    'long department should open down and scroll internally '+JSON.stringify(longBefore));
+  const lowerBefore=await geometry(longDept,'department-low-7-choices-before-wheel');
+  assert(lowerBefore.side==='above'&&lowerBefore.scrollable&&lowerBefore.menu.height<=420,
+    'department must flip UP if seven names and search do not fit BELOW '+JSON.stringify(lowerBefore));
   const wheel=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
     'const b=p.getBoundingClientRect();return {x:Math.round(b.left+b.width/2),'+
-    'y:Math.round(b.top+Math.min(b.height/2,95))};})()');
+    'y:Math.round(b.top+Math.min(b.height/2,155)),'+
+    'searchTop:p.querySelector("input[type=search]")?.getBoundingClientRect().top};})()');
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:wheel.x,y:wheel.y});
   await send('Input.dispatchMouseEvent',{type:'mouseWheel',x:wheel.x,y:wheel.y,deltaY:420,deltaX:0});
   await waitFor('document.querySelector(".cell-picker-popover:popover-open")?.scrollTop>40',
     'wheel must scroll inside long department popover');
-  const longAfter=await geometry(longDept,'long-department-after-wheel');
+  const lowerAfter=await geometry(longDept,'department-low-7-choices-after-wheel');
   const wheelState=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
     'return {scrollTop:p?.scrollTop,top:p?.getBoundingClientRect().top,'+
+    'searchTop:p?.querySelector("input[type=search]")?.getBoundingClientRect().top,'+
     'open:!!p,side:p?.dataset.placement,patch:window.__l2LastPatch??null};})()');
-  assert(longAfter.side==='below'&&Math.abs(longAfter.menu.y-longBefore.menu.y)<=2&&
-    wheelState.scrollTop>40&&!wheelState.patch,
-    'wheel must not reposition menu or write a draft '+JSON.stringify({longBefore,longAfter,wheelState}));
+  assert(lowerAfter.side==='above'&&Math.abs(lowerAfter.menu.y-lowerBefore.menu.y)<=2&&
+    wheelState.scrollTop>40&&!wheelState.patch&&
+    Math.abs(wheelState.searchTop-wheel.searchTop)<=2,
+    'wheel must preserve menu anchor, sticky search, and no draft '+JSON.stringify({lowerBefore,lowerAfter,wheelState}));
   await screenshot('pr95-v5-l1-department-wheel-scroll.png');
   await key('Escape',27);
   console.log('PR95_V5_L1_LONG_DEPARTMENT_WHEEL_SCROLL_PASS '+JSON.stringify({
-    before:longBefore,after:longAfter,wheelState
+    before:lowerBefore,after:lowerAfter,wheelState
+  }));
+
+  // Move the same low-row picker upward. Sufficient space for seven names +
+  // the search field now exists below; it must open DOWN despite more choices.
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    deptUrl+'&picker-long-position=high'});
+  await waitFor('!!'+longDept,'high department synthetic trigger');
+  await actual(longDept);
+  await openPop('Sở, ngành dài (QA)');
+  const highBefore=await geometry(longDept,'department-7-choices-below');
+  const highVisible=await evaluate('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
+    'const r=p.getBoundingClientRect(),search=p.querySelector(".cell-picker-search")?.getBoundingClientRect();'+
+    'const names=[...p.querySelectorAll(".cell-picker-option")].filter(x=>x.dataset.pickerAux!=="true"&&'+
+    'x.getBoundingClientRect().top>=(search?.bottom??r.top)-1&&'+
+    'x.getBoundingClientRect().bottom<=r.bottom-6);return {names:names.length,search:!!search};})()');
+  assert(highBefore.side==='below'&&highBefore.scrollable&&
+    highVisible.search&&highVisible.names>=7,
+    'department must open BELOW and visibly fit 7 real names + search '+JSON.stringify({highBefore,highVisible}));
+  await screenshot('pr95-v5-l1-department-7-visible-below.png');
+
+  // Search by text WITHOUT Vietnamese accents, do not show unmatched
+  // selected/clear options in the filtered department results.
+  await evaluate('document.querySelector(".cell-picker-popover:popover-open input[type=search]").focus()');
+  await send('Input.insertText',{text:'ngoai vu'});
+  await waitFor('(()=>{const p=document.querySelector(".cell-picker-popover:popover-open");'+
+    'const options=p?[...p.querySelectorAll("[role=option]")]:[];'+
+    'return p?.querySelector("input[type=search]")?.value==="ngoai vu"&&'+
+    'options.length===1&&options[0].textContent.trim()==="Sở Ngoại vụ";})()',
+    'accent-insensitive department search matching Sở Ngoại vụ');
+  const filtered=await geometry(longDept,'department-accent-insensitive-filter');
+  const choice=await evaluate('(()=>{const e=document.querySelector(".cell-picker-popover:popover-open [role=option]");'+
+    'const r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;'+
+    'return {x,y,hit:document.elementFromPoint(x,y)?.closest("[role=option]")===e};})()');
+  assert(choice.hit,'search result must be reachable by genuine click '+JSON.stringify(choice));
+  await actualAt(choice.x,choice.y);
+  await waitFor('window.__qaLongDepartmentChosen==="Sở Ngoại vụ"',
+    'selection must pass unchanged Vietnamese value to RAM-only handler');
+  await waitFor('!document.querySelector(".cell-picker-popover:popover-open")',
+    'department choice closes dropdown');
+  const chosen=await evaluate('window.__qaLongDepartmentChosen');
+  console.log('PR95_V5_L1_7_DEPARTMENT_4_OTHER_SEARCH_PASS '+JSON.stringify({
+    sevenVisible:highVisible.names,lowPlacement:lowerBefore.side,
+    highPlacement:highBefore.side,filteredCount:1,filteredHeight:filtered.menu.height,
+    chosen,productionPatch:await evaluate('window.__l2LastPatch??null')
   }));
 
   const forbidden=network.filter(url=>['firebaseio','firebasedatabase','identitytoolkit',
