@@ -39,6 +39,7 @@ const uiModules=new Set([
   // Presentation-only UI; the guarded edit/save entrypoint CellPicker.tsx
   // itself is deliberately NOT on this allowlist.
   'source/src/features/items/CellPickerPopupView.tsx',
+  'source/src/features/items/CellPickerPositioning.ts',
   'source/src/features/items/pr95-v5-l1-picker-placement.ts',
   'source/scripts/pr95-v5-l1-dropdown-browser.mjs',
 ]);
@@ -57,6 +58,7 @@ export function isAutoUiPath(path){
 // check is in the protected policy, NOT in a mutable test fixture.
 const restrictedUiSources=new Set([
   'source/src/features/items/CellPickerPopupView.tsx',
+  'source/src/features/items/CellPickerPositioning.ts',
   'source/src/features/items/pr95-v5-l1-picker-placement.ts',
 ]);
 const forbiddenPresentationApis=/(?:\b(?:fetch|WebSocket|XMLHttpRequest|EventSource|localStorage|sessionStorage|indexedDB|navigator|window|document|globalThis|process|Function|eval|require|importScripts|setInterval|setTimeout)\b|dangerouslySetInnerHTML|import\s*\()/;
@@ -76,6 +78,13 @@ export function isSafePresentationSource(path,source){
     if(/\b(?:useState|useEffect|useLayoutEffect|leaseManager|directStatusCas|setValue|writeDatabase|firebase|onUpdate|dispatchEvent)\b/.test(source))
       return false;
     return source.includes('export function CellPickerPopupView(');
+  }
+  if(path.endsWith('CellPickerPositioning.ts')){
+    // DOM measurements may call ONLY the approved, pure placement function.
+    // Privileged data, persistence and editing modules are forbidden.
+    return importLines.length===1&&
+      /^import\s+\{placeCellPicker,type PickerViewport\}\s+from\s+['"]\.\/pr95-v5-l1-picker-placement['"];?$/.test(importLines[0].trim())&&
+      source.includes('export function positionCellPickerPopover(');
   }
   // Pure viewport math is UI; importing any module here requires review.
   return importLines.length===0&&source.includes('export function placeCellPicker(');
