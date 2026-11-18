@@ -4,12 +4,16 @@ import type {ListKind} from './list-toolbar-filters';
 import type {Item} from '../../../shared/types';
 import {summarizeListItems,type SummaryStage,type SummarySelection} from '../../domain/item-summary';
 
-function StageCard({stage,selection,onSelect,showDiagnostics}: {stage:SummaryStage;selection:SummarySelection|null;
-  onSelect:(selection:SummarySelection)=>void;showDiagnostics:boolean}){
+function StageCard({stage,selection,onSelect,showDiagnostics,inlineEditing,onHide}: {stage:SummaryStage;selection:SummarySelection|null;
+  onSelect:(selection:SummarySelection)=>void;showDiagnostics:boolean;
+  inlineEditing?:boolean;onHide?:(key:SummaryStage['id'])=>void}){
   const pct=stage.percent??0;
   return <article className={'item-summary-card item-summary-'+stage.id}
     data-summary-card={stage.id}>
     <div className="item-summary-card-head"><h3>{stage.title}:</h3>
+      {inlineEditing&&<button type="button" className="inline-g01-card-hide"
+        aria-label={'Ẩn thẻ '+stage.title} title={'Ẩn thẻ '+stage.title+' (không xóa dữ liệu)'}
+        onClick={event=>{event.stopPropagation();onHide?.(stage.id);}}>Ẩn</button>}
       <strong className="item-summary-percent">{pct}%</strong></div>
     <p className="item-summary-fraction"><strong>{stage.complete}</strong> / {stage.total} hoàn thành</p>
     <div className="item-summary-progress" role="progressbar"
@@ -43,12 +47,13 @@ function StageCard({stage,selection,onSelect,showDiagnostics}: {stage:SummarySta
   </article>;
 }
 /** Rendered immediately above the MAIN ItemList table; never in report popups. */
-export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,kindSelection=null,onSelectKind,showFilterFooters=true}:{
+export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,kindSelection=null,onSelectKind,showFilterFooters=true,inlineEditing=false,onHideStage}:{
   items:Item[];selection:SummarySelection|null;onSelect:(selection:SummarySelection)=>void;
   onClear:()=>void;visibleCount:number;
   kindSelection?:ListKind|null;onSelectKind?:(kind:ListKind)=>void;
   /** L4 V6 consolidates chip footers under the toolbar; default preserves existing callers. */
   showFilterFooters?:boolean;
+  inlineEditing?:boolean;onHideStage?:(key:SummaryStage['id'])=>void;
 }){
   const value=useMemo(()=>summarizeListItems(items),[items]);
   const showDiagnostics=useSummaryDiagnosticVisibility();
@@ -79,7 +84,8 @@ export function ItemSummaryCards({items,selection,onSelect,onClear,visibleCount,
       </div>
     </article>
     {value.stages.map(stage=><StageCard key={stage.id} stage={stage}
-      selection={selection} onSelect={onSelect} showDiagnostics={showDiagnostics}/>)}
+      selection={selection} onSelect={onSelect} showDiagnostics={showDiagnostics}
+      inlineEditing={inlineEditing} onHide={onHideStage}/>)}
     {showFilterFooters&&kindSelection&&<div className="item-summary-active-filter" role="status">
       <span>Đang lọc loại văn bản: <strong>{kindSelection==='qppl'?'NQ QPPL':kindSelection==='hc'?'NQ HC':kindSelection==='bc'?'BC':kindSelection}</strong></span>
       <button type="button" className="button ghost" onClick={()=>onSelectKind?.(kindSelection)}>Bỏ lọc loại</button>
