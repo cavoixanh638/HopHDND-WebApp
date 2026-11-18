@@ -111,6 +111,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [searchScopeOpen,setSearchScopeOpen]=useState(false);
   const titleInlineInput=useRef<HTMLInputElement>(null);
   const titleInlineTrigger=useRef<HTMLButtonElement>(null);
+  const titleRestoreFocus=useRef(false);
   const [bulkPasteOpen,setBulkPasteOpen]=useState(false);
   const searchStorageKey=(compactPreview?'hdnd-preview-search-columns:':'hdnd-list-search-columns:')+sourceKey;
   const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
@@ -660,7 +661,12 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // use the Firebase CAS writer; demo edits remain in this component's RAM.
   const canViewerResize=canEditListSettings&&!customizing&&!showAllSourceColumns;
   const inlineReady=inlineMode&&canEditListSettings;
-  useEffect(()=>{if(titleEditorOpen)titleInlineInput.current?.focus();},[titleEditorOpen]);
+  useEffect(()=>{
+    if(titleEditorOpen)titleInlineInput.current?.focus();
+    else if(titleRestoreFocus.current){
+      titleRestoreFocus.current=false;titleInlineTrigger.current?.focus();
+    }
+  },[titleEditorOpen]);
   useEffect(()=>{if(!adminControls||customizing||permissionMode){setInlineMode(false);setTitleEditorOpen(false);setSearchScopeOpen(false);}},[adminControls,customizing,permissionMode]);
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
     baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
@@ -724,7 +730,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const cancelTitleInline=()=>{
     if(viewSaving)return;
     setTitleEditorOpen(false);setListTitleDraft(null);listTitleBaseline.current=null;
-    setTitleValidationError('');titleInlineTrigger.current?.focus();
+    setTitleValidationError('');titleRestoreFocus.current=true;
   };
   const closeGroupLabelEditor=()=>{
     if(viewSavingRef.current)return;
@@ -957,7 +963,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                 setTitleValidationError('');
                 void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
                   .then(saved=>{if(saved){setTitleEditorOpen(false);setListTitleDraft(null);
-                    listTitleBaseline.current=null;titleInlineTrigger.current?.focus();}});
+                    listTitleBaseline.current=null;titleRestoreFocus.current=true;}});
               }catch(error){setTitleValidationError(error instanceof Error?error.message:'Tên không hợp lệ.');}
             }}>
             <input ref={titleInlineInput} id="admin-list-title-input" aria-label="Tên danh sách mới"
