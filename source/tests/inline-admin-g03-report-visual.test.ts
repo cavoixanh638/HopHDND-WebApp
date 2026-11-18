@@ -39,7 +39,7 @@ describe('G03 presentation-only inline report adapter',()=>{
   });
   it('separates per-report emphasis and long title highlighting from global style',()=>{
     const base=defaultReportLayout();
-    const title='Nghị quyết '.repeat(14);
+    const title='Nghị quyết '.repeat(13) + 'Nghị quyết';
     const b=base.map(row=>row.id==='bc'?{...row,title}:row);
     const next=inlineG03ApplyVisualChange(b,'bc',{
       titleAccentText:'Nghị quyết',titleAccentColor:'#009955',emphasizeProgress:false,
