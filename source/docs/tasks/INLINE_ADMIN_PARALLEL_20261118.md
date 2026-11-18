@@ -41,23 +41,31 @@ Mỗi luồng tự thêm file component/CSS theo prefix `inline-gXX-` riêng, t�
 - Không ép auto-release khi source thay đổi ngoài allowlist; chỉ gộp và publish cuối cùng sau khi kiểm thử đầy đủ và đúng quy định phê duyệt một SHA tổng hợp.
 - Chỉ G00 kết luận DONE tích hợp và phát hành; nhóm con có thể DONE phần việc độc lập khi test đủ.
 
-## Sổ theo dõi G00 — kiểm tra live 18/11/2026
+## Sổ theo dõi G00 — kết quả mới 18/11/2026, 18:35 ICT
 
-**G00 staging:** `integration/20261118-inline-admin-g00` đã tạo từ `main` `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`, chưa gộp file nào. **Không tích hợp trực tiếp vào main từng PR**: cần gom đủ thành một PR release, tránh tự phát hành giao diện chưa liên kết. Đã kiểm tra diff từ BASE: 9 nhánh đều ahead>0, behind=0, các tệp source sản phẩm thuộc phạm vi owner, không trùng nhau. Tuy nhiên callback/host wiring vẫn cần G00.
+**Main/Pages chưa thay đổi:** `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`. **Staging:** `integration/20261118-inline-admin-g00` vẫn ở BASE (chưa cherry-pick/merge), không ảnh hưởng Firebase production. **Đã có 9/9 PR**, tất cả chưa merge.
 
-| Luồng | PR | PR HEAD 18/11 | CI exact HEAD (mới nhất lúc ghi) | Integration | Ghi chú / chặn |
-| --- | --- | --- | --- | --- | --- |
-| G01 | [#212](https://github.com/cavoixanh638/HopHDND-WebApp/pull/212) DRAFT | `67caadb30f1d` | 1 PASS / 9 chờ; [Verify #44290471964](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290471964) QUEUED | HOLD | Lỗi TS1005 của SHA cũ đã sửa; chưa có typecheck/test trên HEAD cuối. Nối header G05 và rail G08, xác thực CAS |
-| G02 | [#210](https://github.com/cavoixanh638/HopHDND-WebApp/pull/210) DRAFT | `9dc1e7fd68ab` | 5 PASS / 5 chờ; [Verify #44290341826](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290341826) SUCCESS | HOLD | Cần kiểm tra Chrome, A4, quyền và gắn toolbar G03 + quyền G04 vào App |
-| G03 | [#211](https://github.com/cavoixanh638/HopHDND-WebApp/pull/211) DRAFT | `be092971fb32` | **9 PASS / 1 FAIL**; [Verify #44290118049](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290118049) FAIL 3 unit | BLOCKED | Trimming title/optional accent trong adapter fixture và test font cũ; G00 comment chi tiết vào PR; đã chuyển lại DRAFT |
-| G04 | [#213](https://github.com/cavoixanh638/HopHDND-WebApp/pull/213) DRAFT | `cc99b8c1930f` | 7 PASS / 3 chờ; [Verify #44290198795](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290198795) IN_PROGRESS | HOLD | G00 gắn `canCustomizePopup={adminTools}` trong App, soát localStorage và viewport |
-| G05 | [#209](https://github.com/cavoixanh638/HopHDND-WebApp/pull/209) DRAFT | `3cf212a16ba8` | **7 PASS / 1 FAIL / 2 chờ**; [Verify #44290156765](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290156765) FAIL 3 unit | BLOCKED | `item-viewport-width.test.tsx` đòi `ColumnChoiceEditor` cũ và cho thêm status chuẩn; G00 xử lý hợp đồng test khi tích hợp, không mở khóa trạng thái để chạy test; comment PR |
-| G06 | [#217](https://github.com/cavoixanh638/HopHDND-WebApp/pull/217) DRAFT | `82a5879ccade` | 0 PASS / 9 chờ; [Verify #44291500170](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44291500170) QUEUED | HOLD | Synthetic Chrome riêng PASS trong checkpoint; real app NOT_RUN; cần kiểm palette trong dialog |
-| G07 | [#214](https://github.com/cavoixanh638/HopHDND-WebApp/pull/214) DRAFT | `90c88d95d0c7` | **0 PASS / 1 FAIL / 9 chờ**; [Schema #44290593760](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290593760) FAIL TypeScript | BLOCKED | Các ký tự `\\n` literal trong `inline-admin-g07-resize-gestures.test.tsx` dòng 140/179 gây TS1127/TS1434; đã comment G07 sửa và chạy lại exact HEAD |
-| G08 | [#215](https://github.com/cavoixanh638/HopHDND-WebApp/pull/215) DRAFT | `2e9edf9b5a94` | 1 PASS / 9 chờ; [Verify #44290589004](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290589004) QUEUED | HOLD | Chỉ PoC callback độc lập, G00 phải nối L03 widths vào ItemList CAS rồi browser QA |
-| G09 | [#216](https://github.com/cavoixanh638/HopHDND-WebApp/pull/216) DRAFT | `82e48b0f937` | 1 PASS / 9 chờ; [Verify #44291693813](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44291693813) QUEUED | HOLD | QA fixture 7 PASS trong Node local; Chrome bị URLBlocklist, không phải app QA. Chạy test script G09 trên integrated HEAD |
+Đối chiếu **đúng PR HEAD và đủ 10 workflows** của mỗi nhánh:
 
-**Lưu ý:** số lượng PASS là workflow đã kết thúc SUCCESS, không đồng nghĩa đã đạt các acceptance test G00. Checkpoint của nhiều nhánh mô tả Code SHA trước commit docs; lấy **PR HEAD + CI exact SHA** mới đủ bằng chứng. Các trạng thái ghi tại thời điểm kiểm tra và có thể thay đổi khi worker tiếp tục commit.
+| Luồng | PR / HEAD | CI exact HEAD | Quyết định G00 |
+| --- | --- | --- | --- |
+| G01 | [#212](https://github.com/cavoixanh638/HopHDND-WebApp/pull/212) / `67caadb30f1d` | **10/10 PASS**; [Verify #44290471964](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290471964) PASS | Đủ điều kiện **review tích hợp**, chưa nghiệm thu chung |
+| G02 | [#210](https://github.com/cavoixanh638/HopHDND-WebApp/pull/210) / `9dc1e7fd68ab` | **10/10 PASS**; [Verify #44290341826](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290341826) PASS | Đủ điều kiện review, G00 nối toolbar G03 và quyền G04 vào host |
+| G03 | [#211](https://github.com/cavoixanh638/HopHDND-WebApp/pull/211) / `9e702c921f71` | **10/10 PASS**; [Verify #44293993911](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44293993911) PASS | **Đã sửa 3 unit FAIL của SHA cũ**; đủ điều kiện review |
+| G04 | [#213](https://github.com/cavoixanh638/HopHDND-WebApp/pull/213) / `cc99b8c1930f` | **9/10 PASS**, [Verify #44290198795](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290198795) FAIL (Chrome) | BLOCKED: R07 heading baseline `Ba khâu tùy chỉnh✎×` thay vì đúng label `Ba khâu tùy chỉnh`; cần tách action khỏi label và test lại. Đã comment PR |
+| G05 | [#209](https://github.com/cavoixanh638/HopHDND-WebApp/pull/209) / `96ac44bb7f37` | **9/10 PASS**, [Verify #44293885023](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44293885023) FAIL (3 unit) | BLOCKED: legacy `item-viewport-width.test.tsx` còn tham chiếu `ColumnChoiceEditor` cũ và đòi sửa official status; G00 cập nhật contract test khi tích hợp, tuyệt đối không nới trạng thái chuẩn |
+| G06 | [#217](https://github.com/cavoixanh638/HopHDND-WebApp/pull/217) / `82a5879ccade` | **9/10 PASS lần 1**; [Verify #44291500170](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44291500170) FAIL (Chrome signout) | INVESTIGATE: test Firebase signout về guest List thất bại (có thể liên quan popover/focus hoặc ngắt quãng); G00 đã **rerun job Verify lần 2**, đang chạy lúc cập nhật |
+| G07 | [#214](https://github.com/cavoixanh638/HopHDND-WebApp/pull/214) / `e891a1ce07c8` | **10/10 PASS**; [Verify #44294106874](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44294106874) PASS | **Đã sửa lỗi ký tự backslash-n TypeScript**; đủ điều kiện review, cần kiểm pointer/keyboard tích hợp |
+| G08 | [#215](https://github.com/cavoixanh638/HopHDND-WebApp/pull/215) / `2e9edf9b5a94` | **9/10 PASS**, [Verify #44290589004](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290589004) FAIL (3 unit) | BLOCKED: `CompactGroupedValue` bao toàn bộ normal-mode stages trong render-prop `L03InlineWidthControl`, làm cũ shallow tests/canonical status flow không còn nhìn thấy; owner cần bảo toàn normal mode |
+| G09 | [#216](https://github.com/cavoixanh638/HopHDND-WebApp/pull/216) / `82e48b0f937` | **10/10 PASS**; [Verify #44291693813](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44291693813) PASS | QA scaffold độc lập đã đạt CI; **A01–A11 tích hợp vẫn NOT_RUN** |
+
+**Tổng: 5/9 PR đạt full 10/10 tại exact HEAD (G01, G02, G03, G07, G09), 4 PR còn lỗi Verify (G04, G05, G06, G08).** Các bài CI riêng biệt trên nhánh **không thay thế** nghiệm thu đồng thời trong staging.
+
+### G00 đã thực hiện sau kiểm tra
+- Đọc log lỗi thực tế của bốn nhánh, xác định tên test và điểm hỏng; comment chính xác vào [#213](https://github.com/cavoixanh638/HopHDND-WebApp/pull/213), [#215](https://github.com/cavoixanh638/HopHDND-WebApp/pull/215), [#217](https://github.com/cavoixanh638/HopHDND-WebApp/pull/217); yêu cầu giữ test và nghiệp vụ chuẩn, không workaround bằng cách tắt kiểm tra.
+- Đã comment trường hợp test legacy G05 vào [#209](https://github.com/cavoixanh638/HopHDND-WebApp/pull/209) từ vòng trước.
+- Rerun **chỉ Verify G06** trên đúng SHA cũ để phân biệt lỗi chập chờn với hồi quy thực. Không động Rules/Firebase production, `main` hoặc biến phát hành.
+- Thứ tự tích hợp: G09 QA, G07 primitive, G01+G05+G08 (List/cột/L03), G02+G03+G04 (Report/popup), G06 color localStorage. Giữ checkpoint 20261118 và một PR tổng hợp vào `main` sau nghiệm thu.
 
 ## Kế hoạch tích hợp và thứ tự xử lý
 
