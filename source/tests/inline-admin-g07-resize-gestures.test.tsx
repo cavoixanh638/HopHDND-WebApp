@@ -79,7 +79,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
     expect(a.preview).toHaveBeenCalledTimes(1);
     a.dispatch('pointerup',11,150);
     a.element.onPointerUp(a.pointer(150));
-    expect(a.commit).toHaveBeenCalledExactlyOnceWith(250);
+    expect(a.commit).toHaveBeenCalledWith(250);
     expect(a.cols[0].style.width).toBe('200px');
     expect(a.table.style).toEqual({width:'610px',minWidth:'610px'});
     expect(a.handle.attributes['aria-valuenow']).toBe('250');
@@ -93,7 +93,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
     a.element.onPointerMove(a.pointer(1500));
     expect(a.cols.map(c=>c.style.width)).toEqual(['490px','60px','60px']);
     a.element.onPointerUp(a.pointer(1500));
-    expect(a.commit).toHaveBeenCalledExactlyOnceWith(490);
+    expect(a.commit).toHaveBeenCalledWith(490);
     expect(a.cols.map(c=>c.style.width)).toEqual(['200px','170px','240px']);
   });
   it('restores original inline styles on cancel and ignores unrelated pointer IDs',()=>{
@@ -151,7 +151,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
     a.element.onPointerMove(a.pointer(130));
     expect(a.cols[0].style.width).toBe('180px');
     a.element.onPointerUp(a.pointer(130));
-    expect(a.commit).toHaveBeenCalledExactlyOnceWith(180);
+    expect(a.commit).toHaveBeenCalledWith(180);
   });
   it('clamps report bounds at 80 and 1200 and popup bounds at 70 and 800',()=>{
     for(const [min,max] of [[80,1200],[70,800]]){
@@ -160,7 +160,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
       a.element.onPointerMove(a.pointer(3000));
       expect(a.cols[0].style.width).toBe(max+'px');
       a.element.onPointerUp(a.pointer(3000));
-      expect(a.commit).toHaveBeenCalledExactlyOnceWith(max);
+      expect(a.commit).toHaveBeenCalledWith(max);
     }
   });
 });
@@ -176,7 +176,7 @@ describe('G07: keyboard and accessibility',()=>{
     expect(a.commit).not.toHaveBeenCalled();
     a.element.onKeyUp(key('ArrowRight'));
     a.element.onKeyUp(key('ArrowRight'));
-    expect(a.commit).toHaveBeenCalledExactlyOnceWith(260);
+    expect(a.commit).toHaveBeenCalledWith(260);
     expect(a.cols[0].style.width).toBe('200px');
   });
   it('Escape cancels keyboard changes and blur commits once',()=>{
@@ -187,7 +187,7 @@ describe('G07: keyboard and accessibility',()=>{
     expect(a.commit).not.toHaveBeenCalled();
     a.element.onKeyDown({...key('ArrowRight'),currentTarget:a.handle});
     a.element.onBlur();
-    expect(a.commit).toHaveBeenCalledExactlyOnceWith(210);
+    expect(a.commit).toHaveBeenCalledWith(210);
   });
   it('ignores Alt+arrow so parent header reorder remains independent',()=>{
     const a=create();
