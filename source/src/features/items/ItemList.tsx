@@ -975,7 +975,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
           aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setPreviewOptionsOpen(true);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
           {inlineMode?'Xong chỉnh giao diện':'Chỉnh giao diện'}
-        </button>
+        </button>}
         {denseChrome&&<button type="button"
           className="button ghost admin-preview-options-toggle"
           aria-label="Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách"
