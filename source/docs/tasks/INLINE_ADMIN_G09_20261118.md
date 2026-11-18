@@ -3,7 +3,7 @@
 **Luồng:** G09 — QA đa cửa sổ, quyền và regression. **BASE cố định:** `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`.
 **Nhánh:** `g09/20261118-inline-ui-qa`. **Phạm vi:** chỉ fixture, script QA, một tệp test và checkpoint G09, không sửa component/App, writer/Firebase, release hoặc biến.
 **Code SHA:** ghi theo commit HEAD nhánh sau cập nhật checkpoint; xem GitHub branch/PR. **Tested SHA:** tách bằng chứng local ở phần dưới; KHÔNG coi SHA branch cuối đã được full integration test.
-**PR:** cập nhật ở phần cuối sau khi tạo PR.
+**PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/216 (**DRAFT**, không merge/publish).
 
 ## Bàn giao
 
@@ -77,3 +77,11 @@ Cần thêm emulator và full app integration test chỉ sau khi G00 nối G01�
 5. Kiểm HTML report và PDF A4, drilldown, bảng tổng số thật, dữ liệu Excel nguồn A–O trong phiên bản tích hợp.
 
 **Rủi ro còn mở:** chưa chạy browser Chromium vì managed URLBlocklist; unit/typecheck/Emulator chưa chạy tại exact GitHub SHA; kịch bản staff chưa xác nhận trên UI thật; chưa có visual screenshots; A01–A11 chưa nghiệm thu app tích hợp. **Trạng thái: INDEPENDENT_QA_SCAFFOLD_DELIVERED, INTEGRATION_HOLD**, không tuyên bố DONE toàn hệ thống.
+
+## PR và trạng thái cuối của G09
+
+- **URL PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/216
+- **Base PR:** `main` tại `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`, không đổi BASE.
+- **Code SHA:** SHA của commit checkpoint sau cùng tra tại GitHub PR head; commit `2f6ae91366ac7e35e7004f1836625f89e77cbe07` là mốc trước bổ sung URL PR.
+- **Tested SHA:** `NOT_RUN_ON_GIT_CHECKOUT` (runner chạy local chưa có SHA Git), không được ghi bằng Code SHA.
+- **Status:** `INTEGRATION_HOLD`; G00 cần xác nhận CI/unit/Chrome/Emulator + chốt các acceptance sau gộp.
