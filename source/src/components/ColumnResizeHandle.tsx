@@ -95,8 +95,8 @@ export function ColumnResizeHandle({
     if(next===session.currentWidth)return; // React + window can observe the same event.
     session.currentWidth=next;
     if(session.col)session.col.style.width=String(next)+'px';
-    if(session.options.adjacent&&session.adjacentCol){
-      const {startWidth,options}=session;
+    const {startWidth,options}=session;
+    if(options.adjacent&&session.adjacentCol){
       const tail=options.fallback?.index===options.adjacent.index?undefined:options.fallback;
       const plan=planAdjacentTransfer(startWidth,next,{min:options.min,max:options.max},
         options.adjacent,tail);
