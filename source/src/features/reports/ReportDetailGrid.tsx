@@ -151,12 +151,12 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const popupMayEdit=!readOnlyViewer&&allowDraft;
   const editableFields=new Set<string>(TEXT_FIELDS.map(f=>f.key));
   const editable=popupMayEdit&&subset.some(item=>TEXT_FIELDS.some(field=>mayEditField(item,field.key)));
-  const availableWidth=Math.min(2400,Math.max(640,
-    (typeof window==='undefined'?1480:window.innerWidth||1480)-20));
+  const availableWidth=Math.min(2400,Math.max(1,
+    (typeof window==='undefined'?1480:(window.visualViewport?.width??window.innerWidth)||1480)-20));
   const minDialogWidth=Math.min(640,availableWidth);
   const changeDialogWidth=(width:number)=>{
     // Window sizing is a viewing preference, not permission to edit data.
-    if(!mayCustomize||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    if(!mayCustomize||availableWidth<640||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
     if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
     const next={...applied,dialogWidth:width};
     if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
@@ -391,7 +391,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       <div className="report-grid-window-width-control">
         <label htmlFor="report-grid-dialog-width">Độ rộng toàn cửa sổ popup</label>
         <DeferredWidthInput id="report-grid-dialog-width" label="Độ rộng toàn cửa sổ popup (px)"
-          min={640} max={2400} value={pending.dialogWidth}
+          min={minDialogWidth} max={availableWidth} value={Math.min(pending.dialogWidth,availableWidth)}
           onCommit={width=>setPending(previous=>({...previous,dialogWidth:width}))}/>
         <span>px</span>
         <span className="muted">Nhấn Enter hoặc rời ô để xem trước; Lưu cấu hình cột để ghi nhớ. Không thay đổi từng lần gõ.</span>
