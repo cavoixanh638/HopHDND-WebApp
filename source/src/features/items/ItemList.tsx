@@ -973,7 +973,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             onClick={beginTitleInline} aria-label="Sửa tên danh sách tại chỗ" title="Sửa tên danh sách">✎</button>}
         </div>
         {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
-          aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
+          aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setPreviewOptionsOpen(true);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
           {inlineMode?'Xong chỉnh giao diện':'Chỉnh giao diện'}
         </button>
         {denseChrome&&<button type="button"
@@ -1120,6 +1120,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
       {inlineReady&&<div className="inline-g01-restore-columns">
+        <details><summary>Thẻ ẩn ({SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).length})</summary>
+          <div role="group" aria-label="Khôi phục thẻ C01 C02 C03">
+            {SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).length===0
+              ?<span>Không có thẻ ẩn</span>
+              :SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).map(key=>
+                <button key={key} type="button" disabled={viewSaving} onClick={()=>changeInlineCardVisibility(key,true)}>
+                  Hiện {key==='party'?'C01':key==='build'?'C02':'C03'} · {key==='party'?'Trình Thành ủy':key==='build'?'Xây dựng NQ':'Ban hành NQ'}
+                </button>)}
+          </div>
+        </details>
         <details><summary>Cột ẩn ({activeLayout.columns.filter(c=>!c.removed&&!c.visible).length})</summary>
           <div role="group" aria-label="Khôi phục các cột đã ẩn">
             {activeLayout.columns.filter(c=>!c.removed&&!c.visible).length===0
