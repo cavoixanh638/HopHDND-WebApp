@@ -3,7 +3,7 @@
 ## Phạm vi và nhánh
 - Branch: `g04/20261118-popup-direct-edit`, base cố định `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`.
 - Pull Request: https://github.com/cavoixanh638/HopHDND-WebApp/pull/213 (**DRAFT**, không merge/publish).
-- Code SHA trước checkpoint: `ebb0e902a2d3baaefbbb07342d0a5f97647d003e`.
+- Code SHA của thay đổi sản phẩm mới nhất: `c0a7b0e732192d82693ff388f57494631aa603f3`.
 - Tested SHA: **NOT_RUN** (chưa có bằng chứng chạy đầy đủ trên mã này). Không tự nhận PASS tích hợp.
 - Chỉ sửa ReportDetailGrid.tsx, tạo module/CSS `inline-g04-*`, test G04 và tài liệu này.
 
@@ -21,7 +21,7 @@
 | Unit fixture viewport 900px / 1920px / 2K / 480px / clamp và kéo ngoài cửa sổ | NOT_RUN | Đã thêm `source/tests/inline-admin-g04-popup.test.tsx`; chờ GitHub CI |
 | Fixture admin, guest, readOnly, explicit canCustomizePopup false | NOT_RUN | Đã viết bài kiểm thử, chưa xác thực thực thi |
 | Ẩn/hiện cột, reload lưu localStorage, không gọi onUpdate/onKeepDraft | NOT_RUN | Đã viết bài kiểm thử, chưa xác thực thực thi |
-| Full `npm run typecheck && npm test` | NOT_RUN | Container không có repository/node_modules, git remote không phân giải DNS; nguồn qua GitHub plugin |
+| Full `npm run typecheck && npm test` | NOT_RUN | Container không có repository/node_modules, git remote không phân giải DNS; nguồn qua GitHub plugin. GitHub Actions `Verify HopHDND source` run [44290112639](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290112639) queued tại thời điểm cập nhật |
 | `npm run build:compact:qa` + Chrome thật (touch, zoom, Tab/Enter/Esc, scroll, sort/filter) | NOT_RUN | Không có Chromium harness/đầu vào build cục bộ |
 | `npm run test:spark` (Firebase Emulator) | NOT_RUN | Không có bộ phụ thuộc môi trường dự án, không đụng Firebase production |
 | QA tổng thể trên website đã tích hợp | NOT_RUN | G00 chủ trì tích hợp và nghiệm thu |
