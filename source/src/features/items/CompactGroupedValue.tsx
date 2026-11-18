@@ -1,5 +1,7 @@
 import './picker-parity-content.css';
 import type {CSSProperties,ReactNode} from 'react';
+import type {L03InlineWidthEditor} from './L03InlineWidthControl';
+import {L03InlineWidthControl} from './L03InlineWidthControl';
 import type {Item,TextField} from '../../../shared/types';
 import {compactTypeTone,type CompactPair} from './compact-columns';
 import {normalizeSearch} from '../../domain/search';
@@ -25,11 +27,13 @@ type Props={
  tone:(key:TextField)=>string|undefined;editable?:(key:TextField)=>boolean;
  /** Only source fields that belong to the visible group can be highlighted. */
  highlight?:(key:TextField)=>MemberHighlight;cvRoomInline?:boolean;
+ /** Optional verified-admin layout session; NEVER implies permission to edit Item. */
+ l03InlineEditor?:L03InlineWidthEditor;
 };
 /** Shared render for list + popup; source permissions, leases and conditional
  * highlights are evaluated per FIELD, never inherited from the group anchor. */
 export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
-  highlight=()=>undefined,cvRoomInline=false}:Props){
+  highlight=()=>undefined,cvRoomInline=false,l03InlineEditor}:Props){
  const includes=(key:string)=>pair.memberFields.includes(key);
  const shown=(key:TextField)=>field(key);
  const memberStyle=(key:TextField):CSSProperties|undefined=>{
@@ -72,7 +76,12 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
    </div>;
  }
  if(pair.variant==='partyTogether'){
-   const levelEditable=includes('partyLevel')&&editable('partyLevel');
+   const sourceLevelEditable=includes('partyLevel')&&editable('partyLevel');
+   const layoutSession=!!l03InlineEditor?.verifiedAdmin&&!!l03InlineEditor.layoutEditing&&
+     !l03InlineEditor.dataEditing&&!l03InlineEditor.disabled;
+   const previewMode=layoutSession?(l03InlineEditor?.previewMode??(sourceLevelEditable?'editable':'readonly')):
+     (sourceLevelEditable?'editable':'readonly');
+   const levelEditable=previewMode==='editable'&&includes('partyLevel');
    const levelNotRequired=isNotRequiredStatus('partyLevel',item.partyLevel);
    const levelText=compactPartyLevelLabel(item.partyLevel);
    // The source editor/lease remains field-scoped. Only the internal tracks
@@ -82,17 +91,15 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
      {key:'progressBuild',label:'Trình Xây dựng NQ'},
      {key:'progressCouncil',label:'Trình ban hành NQ'}
    ];
-   return <div className="compact-stages" data-rev2="true"
-     data-ui-reference-group="L03"
-     data-level-layout={levelEditable?'editable':'readonly'}>
-     {stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>{
+   return <L03InlineWidthControl actualMode={sourceLevelEditable?'editable':'readonly'}
+     editor={l03InlineEditor}>{()=>stages.filter(s=>includes(s.key)||(s.key==='progressParty'&&includes('partyLevel'))).map(stage=>{
        const isParty=stage.key==='progressParty';
        const levelIncluded=isParty&&includes('partyLevel');
        const showLevel=levelIncluded&&(levelEditable||(!levelNotRequired&&!!levelText));
        const statusNotRequired=isParty&&levelIncluded&&levelNotRequired;
        // A stored "Không" forces an inert UI projection even when this user
        // separately has progressParty edit rights. DATA owns its transaction.
-       const statusEditable=editable(stage.key)&&!statusNotRequired;
+       const statusEditable=!layoutSession&&editable(stage.key)&&!statusNotRequired;
        const stageValue=statusNotRequired?'Không phải trình':item[stage.key];
        const stageTone=compactStageVisualTone(stageValue,
          statusNotRequired?undefined:tone(stage.key));
@@ -117,7 +124,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
          {showLevel&&levelEditable&&<span className="compact-stage-level"
            data-ui-reference-part="partyLevel" data-ui-picker-skin="standard"
            data-level-editor="true" {...memberAttributes('partyLevel')}>
-           {shown('partyLevel')}
+           {layoutSession?levelText:shown('partyLevel')}
          </span>}
          {includes(stage.key)&&<span className="compact-stage-state"
            data-ui-reference-part={stage.key}
@@ -127,11 +134,11 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
            {...memberAttributes(stage.key)}>
            {statusNotRequired?
              <span className="workflow-status-value">Không phải trình</span>:
-             shown(stage.key)}
+             layoutSession?stageValue:shown(stage.key)}
          </span>}
        </div>;
      })}
-   </div>;
+   </L03InlineWidthControl>;
  }
  if(pair.variant==='teamTogether'&&cvRoomInline&&includes('room')&&includes('specialist')){
    const leadFields=(['ubndLeader','vpLeader'] as TextField[]).filter(includes);
