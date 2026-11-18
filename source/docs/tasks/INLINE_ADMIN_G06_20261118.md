@@ -3,7 +3,7 @@
 - **Branch:** `g06/20261118-status-colors`
 - **Fixed base:** `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`
 - **Code SHA / Tested SHA (isolated):** `6529c3ff1d90010de4e58fac14fc1c0f1908ffb9` (latest code/test commit before checkpoint; the subsequent checkpoint-only commit does not alter runtime code).
-- **PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pulls (replace with PR URL on creation).
+- **PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/217 (Draft, NO MERGE).
 - **Scope:** `src/features/items/StatusPaletteManager.tsx`, new `src/features/items/inline-g06-status-palette.css`, new `tests/inline-admin-g06-status-palette.test.tsx`; this checkpoint only. No shared config, rules, external data or writer changes.
 
 ## Independent implementation
@@ -22,11 +22,15 @@
 | Component isolated typecheck | PASS (limited) | `tsc --noEmit` with lightweight local React declarations; **not** full repository typecheck |
 | Independent interaction harness | PASS | Verified draft preview without write, blur commit once, invalid rollback, Escape cancel, reset, pure preview |
 | Chrome native popover in dialog, focus, Esc, clipping | PASS (synthetic fixture) | Headless Chromium 360×640, 900×700, 1920×1080; fixture reproduces native popover/CSS, not React WebApp |
-| Vitest regression added to repository | NOT_RUN locally | `tests/inline-admin-g06-status-palette.test.tsx`; local Node dependencies unavailable; should run `cd source && npm ci && npm run typecheck && npm test` |
+| Vitest regression added to repository | NOT_RUN locally / GitHub CI queued | `tests/inline-admin-g06-status-palette.test.tsx`; local Node dependencies unavailable; should run `cd source && npm ci && npm run typecheck && npm test` |
 | Real integrated Chrome WebApp | NOT_RUN | Full application installation and online source unavailable in isolated execution environment |
 | `npm run build:compact:qa` | NOT_RUN | Required application npm dependencies unavailable |
 | `npm run test:spark` Emulator | NOT_RUN | Required dependencies unavailable; no production write or Rules deployment |
 | Production Firebase / live Pages | NOT_RUN | Explicitly forbidden, no production mutation attempted |
+
+## PR checks
+
+- Github Actions: `Verify HopHDND source` run https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44291442120 was **QUEUED** at checkpoint time, not yet PASS. Other PR workflows also queued.
 
 ## Integration and risk for G00
 
