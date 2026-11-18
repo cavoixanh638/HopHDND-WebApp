@@ -3,7 +3,8 @@
 .inline-g02-mode-panel [role=alert]{color:#b42318}
 .inline-g02-restore{display:flex;gap:7px;align-items:center;flex-wrap:wrap;width:100%}
 .inline-g02-restore button,.inline-g02-column-toolbar button,.inline-g02-table-actions button,.inline-g02-rename button{border:1px solid #8eabc2;background:#fff;color:#16436b;border-radius:6px;padding:5px 9px;cursor:pointer}
-.inline-g02-report-slot{position:relative;margin-bottom:14px}
+.inline-g02-report-slot{position:relative}
+.inline-g02-report-slot-editing{margin-bottom:14px}
 .inline-g02-hide-report{position:absolute;right:130px;top:8px;z-index:2;border:1px solid #bad1db;border-radius:6px;background:#fff;color:#365b74;padding:5px 8px;cursor:pointer;font-size:12px}
 .inline-g02-table-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:6px}
 .inline-g02-grip{cursor:grab;display:inline-flex;align-items:center;justify-content:center;border:1px dashed #9ab2c5;border-radius:5px;padding:3px 6px;color:#365a74;user-select:none;touch-action:none;white-space:nowrap}
