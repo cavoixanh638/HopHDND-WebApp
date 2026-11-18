@@ -1,0 +1,4 @@
+.inline-g05-catalog-panel .inline-g05-catalog-toolbar{position:sticky;top:0;z-index:2;background:var(--surface,#fff);padding:8px 0}
+.inline-g05-catalog-panel .inline-g05-catalog-list{max-height:min(52vh,500px);overflow-y:auto;overscroll-behavior:contain}
+.inline-g05-catalog-panel .inline-g05-catalog-list li{overflow-wrap:anywhere}
+@media(max-width:900px){.inline-g05-catalog-panel .inline-g05-catalog-toolbar{position:static}}

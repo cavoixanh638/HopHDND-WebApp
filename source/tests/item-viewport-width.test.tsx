@@ -11,7 +11,7 @@ const hook=vi.hoisted(()=>({
 }));
 vi.mock('react',()=>({useState:(value:any)=>hook.useState(value),useRef:(value:any)=>({current:value}),useEffect:vi.fn()}));
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
-import {ColumnChoiceEditor} from '../src/features/items/ColumnChoiceEditor';
+import {G05ChoiceEditor} from '../src/features/items/G05ChoiceEditor';
 import {catalogFromItems} from '../src/data/catalogs';
 import {createDemoItems} from '../src/data/demo-items';
 import {DeferredWidthInput,parseCommittedWidth} from '../src/features/items/DeferredWidthInput';
@@ -66,22 +66,25 @@ describe('drag-only widths and compact column manager',()=>{
   it('shows one dropdown editor inside selected source column and allows a new choice to be saved separately',async()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
     const onSaveCatalog=vi.fn().mockResolvedValue(undefined);
+    const column=layout.columns.find(c=>c.key==='department')!;
     hook.begin();
     let tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,onSaveCatalog});
-    const open=all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột Tiến độ xin ý kiến Thành ủy');
+    const open=all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột '+column.label);
     expect(open).toBeDefined();open.props.onClick();
     hook.begin();
     tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,onSaveCatalog});
-    const chooser=all(tree).find(n=>n.type===ColumnChoiceEditor);
+    const chooser=all(tree).find(n=>n.type===G05ChoiceEditor);
     expect(chooser).toBeDefined();
-    expect(chooser.props.options).toEqual(catalog.options.progressParty);
-    chooser.props.onChange([...chooser.props.options,'Thêm lựa chọn thử']);
+    expect(chooser.props.locked).toBe(false);
+    expect(chooser.props.options).toEqual(catalog.options.department);
+    chooser.props.onApply({type:'add',value:'Thêm lựa chọn thử'});
     hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,onSaveCatalog});
     const save=button(tree,'Lưu thay đổi');
     expect(save.props.disabled).toBe(false);
     save.props.onClick();
     await vi.waitFor(()=>expect(onSaveCatalog).toHaveBeenCalledOnce());
-    expect(onSaveCatalog.mock.calls[0][0].options.progressParty).toContain('Thêm lựa chọn thử');
+    expect(onSaveCatalog.mock.calls[0][0].options.department).toContain('Thêm lựa chọn thử');
+    expect(onSaveCatalog.mock.calls[0][0].options.progressParty).toEqual(catalog.options.progressParty);
   });
   it('exposes the source dropdown choices even when a legacy layout still says text',()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
@@ -90,9 +93,10 @@ describe('drag-only widths and compact column manager',()=>{
     let tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items});
     all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột Tiến độ xin ý kiến Thành ủy').props.onClick();
     hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items});
-    const editor=all(tree).find(n=>n.type===ColumnChoiceEditor);
+    const editor=all(tree).find(n=>n.type===G05ChoiceEditor);
     expect(editor).toBeDefined();
     expect(editor.props.options).toEqual(catalog.options.progressParty);
+    expect(editor.props.locked).toBe(true); // Canonical status choices are immutable even with legacy kind=text.
   });
   it('saves layout, source dropdown and column rights with one Save action',async()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
@@ -104,11 +108,13 @@ describe('drag-only widths and compact column manager',()=>{
     hook.begin();let tree=ItemColumnPanel(base);
     const grant=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
     grant.props.onChange({currentTarget:{checked:true}});
-    const open=all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột Tiến độ xin ý kiến Thành ủy');
+    const department=layout.columns.find(c=>c.key==='department')!;
+    const open=all(tree).find(n=>n.type==='button'&&n.props['aria-label']==='Thiết lập cột '+department.label);
     open.props.onClick();
     hook.begin();tree=ItemColumnPanel(base);
-    const choice=all(tree).find(n=>n.type===ColumnChoiceEditor);
-    choice.props.onChange([...choice.props.options,'Mục riêng']);
+    const choice=all(tree).find(n=>n.type===G05ChoiceEditor);
+    expect(choice.props.locked).toBe(false);
+    choice.props.onApply({type:'add',value:'Mục riêng'});
     hook.begin();tree=ItemColumnPanel(base);
     button(tree,'Lưu thay đổi').props.onClick();
     await vi.waitFor(()=>expect(onSaveLayout).toHaveBeenCalledOnce());

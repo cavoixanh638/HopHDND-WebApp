@@ -8,11 +8,12 @@ type ColumnHeaderProps = {
   inlineEditing?:boolean; canHide?:boolean; saving?:boolean;
   onRename?:(key:string,label:string)=>Promise<boolean>|boolean;
   onHide?:(key:string)=>void;
+  onOpenColumnSettings?:(key:string)=>void;
 };
 
 /** Pointer capture supports embedded browsers and touch without native HTML drag/drop. */
 export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey, onMove,onSort,sortDirection,sortLabel, children,
-  inlineEditing=false,canHide=false,saving=false,onRename,onHide }: ColumnHeaderProps) {
+  inlineEditing=false,canHide=false,saving=false,onRename,onHide,onOpenColumnSettings }: ColumnHeaderProps) {
   const start=useRef<{x:number;y:number;pointer:number}|null>(null);
   const [dragging,setDragging]=useState(false);
   const justDragged=useRef(false);
@@ -89,6 +90,9 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
         {menuOpen&&<span className="inline-g01-column-menu" role="group" aria-label={'Thao tác cột '+(sortLabel??columnKey)}>
           <button type="button" onClick={beginRename}>Đổi tên cột</button>
           <button type="button" disabled={!canHide} onClick={()=>{setMenuOpen(false);onHide?.(columnKey);}}>Ẩn cột (không xóa)</button>
+          {onOpenColumnSettings&&<button type="button" onClick={()=>{
+            setMenuOpen(false);onOpenColumnSettings(columnKey);
+          }}>Thiết lập cột và danh sách chọn…</button>}
           <button type="button" onClick={()=>{setMenuOpen(false);menuRef.current?.focus();}}>Đóng</button>
         </span>}
         {renaming&&<form className="inline-g01-column-rename"
