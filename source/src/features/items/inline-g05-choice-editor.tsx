@@ -11,6 +11,7 @@ export type G05ChoiceEditorProps={
 /** Self-contained mini-editor: draft keystrokes never reach the persistence callback. */
 export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onApply}:G05ChoiceEditorProps){
   const [query,setQuery]=useState('');
+  const [dragging,setDragging]=useState<string|null>(null);
   const [addValue,setAddValue]=useState('');
   const [editing,setEditing]=useState<string|null>(null);
   const [renameValue,setRenameValue]=useState('');
@@ -53,7 +54,11 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
     <ol className="inline-g05-values">
       {visible.map(value=>{
         const index=options.indexOf(value),used=count(value),isEditing=editing===value;
-        return <li key={value} className="inline-g05-entry">
+        return <li key={value} className="inline-g05-entry" draggable={!locked&&!isEditing}
+          onDragStart={e=>{if(locked||isEditing)return;e.dataTransfer.effectAllowed="move";setDragging(value);}}
+          onDragOver={e=>{if(dragging!==null&&dragging!==value)e.preventDefault();}}
+          onDrop={e=>{e.preventDefault();if(dragging&&dragging!==value)apply({type:"move",value:dragging,to:index});setDragging(null);}}
+          onDragEnd={()=>setDragging(null)}>
           {isEditing?<div className="inline-g05-rename">
             <input autoFocus aria-label={'Tên mới cho '+value} maxLength={200} value={renameValue}
               onChange={e=>setRenameValue(e.currentTarget.value)}
@@ -61,7 +66,7 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
             <button type="button" className="button primary" onClick={()=>apply({type:'rename',previous:value,value:renameValue})}>Lưu tên</button>
             <button type="button" className="button ghost" onClick={()=>setEditing(null)}>Hủy</button>
           </div>:<>
-            <span className="inline-g05-name">{value} <small className="muted">({used} nội dung)</small></span>
+            <span className="inline-g05-name" title={!locked?'Kéo mục này để đổi thứ tự, hoặc dùng nút mũi tên':undefined}>{value} <small className="muted">({used} nội dung)</small></span>
             {!locked&&<div className="inline-g05-actions">
               <button type="button" className="button ghost" disabled={index===0} aria-label={'Đưa '+value+' lên'} onClick={()=>apply({type:'move',value,to:index-1})}>↑</button>
               <button type="button" className="button ghost" disabled={index===options.length-1} aria-label={'Đưa '+value+' xuống'} onClick={()=>apply({type:'move',value,to:index+1})}>↓</button>
