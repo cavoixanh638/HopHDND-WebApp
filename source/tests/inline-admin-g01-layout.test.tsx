@@ -54,9 +54,9 @@ describe('G01 visible role affordances (SSR fixture)',()=>{
    expect(guest).toContain('data-summary-card="total"');
    expect(guest).not.toContain('inline-g01-card-hide');
    expect(admin).toContain('data-summary-card="total"');
-   expect((admin.match(/class="inline-g01-card-hide"/g)??[]).toHaveLength(3);
+   expect((admin.match(/class="inline-g01-card-hide"/g)??[])).toHaveLength(3);
    expect(admin).not.toContain('Ẩn thẻ Tổng số');
-   expect((guest.match(/data-summary-card="/g)??[]).toHaveLength(4);
+   expect((guest.match(/data-summary-card="/g)??[])).toHaveLength(4);
  });
  const heading=(editing:boolean)=>renderToStaticMarkup(createElement(ColumnHeader,{
    columnKey:'content',disabled:false,onMove:vi.fn(),onSort:vi.fn(),
