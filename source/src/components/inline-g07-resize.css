@@ -1,0 +1,22 @@
+/* G07: enlarge the invisible pointer hit-target without widening the visible divider.
+   These selectors intentionally leave all other table/header styling untouched. */
+.column-resizer.inline-g07-resizer {
+  min-width: 18px;
+  box-sizing: border-box;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.column-resizer.inline-g07-resizer:focus-visible {
+  outline: 2px solid #08777b;
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  .column-resizer.inline-g07-resizer {
+    min-width: 24px;
+    margin-right: -3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .column-resizer.inline-g07-resizer {transition: none;}
+}
