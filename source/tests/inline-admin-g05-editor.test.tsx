@@ -62,6 +62,26 @@ describe('G05 catalog mini-editor keyboard, save boundary, and reload fixtures',
     expect(all(tree).filter(n=>n.type==='li')).toHaveLength(1);
   });
 
+  it('Vietnamese IME Enter does not commit an unfinished composition',()=>{
+    const onApply=vi.fn();
+    const props:G05ChoiceEditorProps={label:'Sở',options:['Phòng Một'],onApply};
+    let tree=draw(props);
+    input(tree,'Thêm lựa chọn Sở').props.onChange({currentTarget:{value:'Sở Hải Phòng'}});
+    tree=draw(props);
+    const prevented=vi.fn();
+    input(tree,'Thêm lựa chọn Sở').props.onKeyDown({
+      key:'Enter',nativeEvent:{isComposing:true},keyCode:229,preventDefault:prevented,
+    });
+    expect(onApply).not.toHaveBeenCalled();
+    expect(prevented).not.toHaveBeenCalled();
+    button(tree,'Đổi tên').props.onClick();
+    tree=draw(props);
+    input(tree,'Tên mới cho Phòng Một').props.onKeyDown({
+      key:'Enter',nativeEvent:{isComposing:true},keyCode:229,preventDefault:prevented,
+    });
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
   it('Escape cancels an unfinished rename without mutation; rename Enter commits once',()=>{
     const onApply=vi.fn();
     const props:G05ChoiceEditorProps={label:'Phòng',options:['Phòng Một','Phòng Hai'],onApply};
