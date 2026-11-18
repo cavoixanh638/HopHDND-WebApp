@@ -14,7 +14,7 @@
 @media (pointer: coarse) {
   .column-resizer.inline-g07-resizer {
     min-width: 24px;
-    margin-right: -3px;
+
   }
 }
 @media (prefers-reduced-motion: reduce) {
