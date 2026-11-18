@@ -799,7 +799,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
                 + Hiện {row.title}</button>)}
           </div>}
         </div>}
-        {reports.map(config => <div key={config.id} className="inline-g02-report-slot"
+        {reports.map(config => <div key={config.id} className={inlineEditing&&inlineAllowed?"inline-g02-report-slot inline-g02-report-slot-editing":"inline-g02-report-slot"}
           onDragOver={inlineEditing&&inlineAllowed?event=>event.preventDefault():undefined}
           onDrop={inlineEditing&&inlineAllowed?event=>{event.preventDefault();inlineReportDrop(config.id);}:undefined}>
           {inlineEditing&&inlineAllowed&&<button type="button" className="inline-g02-hide-report"
