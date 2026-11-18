@@ -784,7 +784,8 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span>
         {inlineAllowed&&<button type="button" className="button ghost inline-g02-mode"
           aria-pressed={inlineEditing} disabled={inlinePending}
-          onClick={()=>{setInlineEditing(value=>!value);setInlineError('');}}>
+          onClick={()=>{if(!inlineEditing&&isFirebase)firebaseEditRevision.current=firebase?.profile?.revision??0;
+            setInlineEditing(value=>!value);setInlineError('');}}>
           {inlineEditing?'✓ Xong chỉnh giao diện':'✎ Chỉnh giao diện báo cáo'}
         </button>}</div>
         {inlineEditing&&inlineAllowed&&<div className="inline-g02-mode-panel" role="group" aria-label="Chỉnh giao diện báo cáo">
