@@ -64,7 +64,7 @@ export function inlineG03ApplyVisualChange(
     shared.reportVariant = patch.reportVariant;
 
   const next = Object.keys(shared).length ? withReportVisuals(layout, shared) : layout;
-  const perReport: Pick<ReportInlineVisualChange, 'emphasizeProgress' | 'titleAccentText' | 'titleAccentColor'> = {};
+  const perReport: { emphasizeProgress?: boolean; titleAccentText?: string; titleAccentColor?: string } = {};
   if (typeof patch.emphasizeProgress === 'boolean') perReport.emphasizeProgress = patch.emphasizeProgress;
   if (typeof patch.titleAccentText === 'string' && patch.titleAccentText.length <= 80)
     perReport.titleAccentText = patch.titleAccentText;
