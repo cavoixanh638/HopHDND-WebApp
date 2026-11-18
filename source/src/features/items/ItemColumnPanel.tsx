@@ -285,7 +285,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
                 <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
               </select>
             </label>
-            {(column.origin==='custom'?column.kind==='select':CATALOG_KEYS.includes(column.key as CatalogKey)&&column.kind!=='text')&&
+            {(column.origin==='custom'?column.kind==='select':CATALOG_KEYS.includes(column.key as CatalogKey))&&
               <div className="column-manager-options">
                 <G05ChoiceEditor key={column.key} label={column.label}
                   locked={column.origin!=='custom'&&g05LockedCatalog(column.key as CatalogKey)}
