@@ -15,7 +15,6 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
   const [editing,setEditing]=useState<string|null>(null);
   const [renameValue,setRenameValue]=useState('');
   const [error,setError]=useState('');
-  const [undo,setUndo]=useState<{before:readonly string[];after:readonly string[]}|null>(null);
   const usage=useMemo(()=>{
     const counts=new Map<string,number>();
     for(const value of usedValues){const key=g05Identity(value);counts.set(key,(counts.get(key)??0)+1);}
@@ -27,8 +26,6 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
     try{
       onApply(action);
       setError('');
-      // Undo is supplied by a host draft snapshot, never by automatic source-row updates.
-      setUndo(null);
       if(action.type==='add')setAddValue('');
       if(action.type==='rename')setEditing(null);
     }catch(error){setError(error instanceof Error?error.message:'Không thực hiện được thay đổi.');}
@@ -50,7 +47,6 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
     </div>
     {locked&&<p className="muted" role="status">Danh sách trạng thái chuẩn đã khóa; chỉ được tra cứu, không được thêm, đổi tên hoặc xóa.</p>}
     {error&&<p role="alert" className="error-text">{error}</p>}
-    {undo&&<button type="button" onClick={()=>setUndo(null)}>Đóng thông báo</button>}
     <ol className="inline-g05-values">
       {visible.map(value=>{
         const index=options.indexOf(value),used=count(value),isEditing=editing===value;
