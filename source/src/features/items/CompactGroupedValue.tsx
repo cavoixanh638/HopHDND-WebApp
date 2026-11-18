@@ -122,7 +122,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
            </span>
          </span>
          {showLevel&&levelEditable&&<span className="compact-stage-level"
-           data-ui-reference-part="partyLevel" data-ui-picker-skin="standard"
+           data-ui-reference-part="partyLevel" data-ui-picker-skin={layoutSession?undefined:'standard'}
            data-level-editor="true" {...memberAttributes('partyLevel')}>
            {layoutSession?levelText:shown('partyLevel')}
          </span>}
