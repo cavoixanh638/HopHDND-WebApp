@@ -12,6 +12,8 @@ import {canonicalStatus} from '../domain/status-contract';
 import {partyProgressEditIssue} from '../domain/party-progress-edit';
 import { MemoReportTable } from '../features/reports/ReportTable';
 import { applyInlineReportAction, type InlineReportAction } from '../features/reports/inline-g02-report-actions';
+import {ReportInlineVisualToolbar} from '../features/settings/inline-g03-ReportInlineVisualToolbar';
+import {inlineG03ApplyVisualChange,inlineG03VisualEqual,inlineG03VisualValue,inlineG03RestoreVisual,type ReportInlineVisualChange} from '../features/settings/inline-g03-report-visual-adapter';
 import { validateReportLayout } from '../data/report-preferences';
 import '../features/reports/inline-g02-report.css';
 import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
@@ -484,13 +486,16 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
   const [inlineEditing,setInlineEditing]=useState(false);
   const [inlinePending,setInlinePending]=useState(false);
   const [inlineDraft,setInlineDraft]=useState<ReportLayout[]|null>(null);
+  // G00: G03 visual changes are preview-only until the Admin clicks Save.
+  // They may never mutate a report config or write Firebase per keystroke.
+  const [inlineVisualDraft,setInlineVisualDraft]=useState<ReportLayout[]|null>(null);
   const inlineSaving=useRef(false);
   const reportDrag=useRef<string|null>(null);
   const [inlineError,setInlineError]=useState('');
   const inlineAllowed=adminTools&&page==='overview'&&
     (!isFirebase||(firebase?.connected&&common.status==='ready'&&firebase?.datasetEpochReady));
-  useEffect(()=>{if(!inlineAllowed){setInlineEditing(false);setInlineDraft(null);setInlineError('');}},[inlineAllowed]);
-  const currentReportLayout=inlineDraft??layout;
+  useEffect(()=>{if(!inlineAllowed){setInlineEditing(false);setInlineDraft(null);setInlineVisualDraft(null);setInlineError('');}},[inlineAllowed]);
+  const currentReportLayout=inlineVisualDraft??inlineDraft??layout;
   const reports = useMemo(() => configuredReports(currentReportLayout), [currentReportLayout]);
   const tableFont=getReportFont(layout);
   useEffect(()=>{loadSelectedWebFont(tableFont);},[tableFont]);
@@ -501,8 +506,41 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(!isDemo&&!privateTest){await common.save('reports',next);setLayoutMessage('');}
     else{if(!saveReportLayout(sourceKey,next))throw new Error('Không lưu được cách hiển thị trên máy. Nháp được giữ.');setLayoutState({source:sourceKey,layout:next});setLayoutMessage('');}
   };
+  const changeInlineVisual=(reportId:string,change:ReportInlineVisualChange)=>{
+    if(!inlineAllowed||!inlineEditing||inlineSaving.current||inlinePending)return;
+    setInlineVisualDraft(previous=>{
+      const next=inlineG03ApplyVisualChange(previous??layout,reportId,change);
+      return JSON.stringify(next)===JSON.stringify(layout)?null:next;
+    });
+    setInlineError('');
+  };
+  const cancelInlineVisual=(reportId:string)=>{
+    if(!inlineAllowed||!inlineEditing||inlinePending)return;
+    setInlineVisualDraft(previous=>{
+      if(!previous)return null;
+      const next=inlineG03RestoreVisual(previous,layout,reportId);
+      return JSON.stringify(next)===JSON.stringify(layout)?null:next;
+    });
+    setInlineError('');
+  };
+  const saveInlineVisual=async()=>{
+    if(!inlineAllowed||!inlineEditing||!inlineVisualDraft||inlineSaving.current)return;
+    let next:ReportLayout[];
+    try{next=validateReportLayout(inlineVisualDraft);}
+    catch(cause){setInlineError(cause instanceof Error?cause.message:'Bố cục không hợp lệ.');return;}
+    if(JSON.stringify(next)===JSON.stringify(layout)){setInlineVisualDraft(null);return;}
+    inlineSaving.current=true;setInlinePending(true);setInlineError('');
+    try{await saveLayout(next);setInlineVisualDraft(null);}
+    catch(cause){
+      setInlineVisualDraft(null); // rollback the visual preview; no unauthorized local profile
+      setInlineError((cause instanceof Error?cause.message:'Không lưu được kiểu bảng.')+
+        ' Đã khôi phục giao diện đã xác nhận; vui lòng kiểm tra lại dữ liệu chung.');
+      if(common.refresh)void common.refresh().catch(()=>{});
+    }finally{inlineSaving.current=false;setInlinePending(false);}
+  };
   const commitInlineReportAction=async(action:InlineReportAction)=>{
     if(!inlineAllowed||!inlineEditing||inlineSaving.current)return;
+    if(inlineVisualDraft){setInlineError('Hãy lưu hoặc hủy thay đổi kiểu bảng trước khi sắp xếp báo cáo.');return;}
     const before=layout;
     let next:ReportLayout[];
     try{next=validateReportLayout(applyInlineReportAction(before,action));}
@@ -784,8 +822,14 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span>
         {inlineAllowed&&<button type="button" className="button ghost inline-g02-mode"
           aria-pressed={inlineEditing} disabled={inlinePending}
-          onClick={()=>{if(!inlineEditing&&isFirebase)firebaseEditRevision.current=firebase?.profile?.revision??0;
-            setInlineEditing(value=>!value);setInlineError('');}}>
+          onClick={()=>{
+            if(inlineEditing&&inlineVisualDraft){
+              setInlineError('Hãy lưu hoặc hủy kiểu bảng đang xem trước trước khi thoát chế độ chỉnh giao diện.');
+              return;
+            }
+            if(!inlineEditing&&isFirebase)firebaseEditRevision.current=firebase?.profile?.revision??0;
+            setInlineEditing(value=>!value);setInlineError('');
+          }}>
           {inlineEditing?'✓ Xong chỉnh giao diện':'✎ Chỉnh giao diện báo cáo'}
         </button>}</div>
         {inlineEditing&&inlineAllowed&&<div className="inline-g02-mode-panel" role="group" aria-label="Chỉnh giao diện báo cáo">
@@ -813,6 +857,16 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           return <div key={config.id} className="inline-g02-report-slot inline-g02-report-slot-editing"
             onDragOver={event=>event.preventDefault()}
             onDrop={event=>{event.preventDefault();inlineReportDrop(config.id);}}>
+            <ReportInlineVisualToolbar reportId={config.id} reportTitle={config.title}
+              canEdit={inlineAllowed&&inlineEditing}
+              value={inlineG03VisualValue(currentReportLayout,config.id)}
+              dirty={!!inlineVisualDraft&&!inlineG03VisualEqual(
+                inlineG03VisualValue(currentReportLayout,config.id),
+                inlineG03VisualValue(layout,config.id))}
+              disabled={inlinePending}
+              onChange={change=>changeInlineVisual(config.id,change)}
+              onSave={saveInlineVisual}
+              onCancel={()=>cancelInlineVisual(config.id)}/>
             <button type="button" className="inline-g02-hide-report"
               disabled={inlinePending} onClick={()=>inlineAction({type:'report-visible',reportId:config.id,visible:false})}>
               Ẩn bảng này (có thể hiện lại)</button>
