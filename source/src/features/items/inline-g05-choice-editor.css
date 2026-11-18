@@ -1,0 +1,15 @@
+.inline-g05-editor{min-width:0;border:1px solid var(--border,#d4dce5);border-radius:9px;padding:10px;max-width:100%}
+.inline-g05-top{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline;margin-bottom:10px}
+.inline-g05-sticky{position:sticky;top:0;z-index:2;background:var(--surface,#fff);padding:6px 0 10px}
+.inline-g05-sticky .field{display:block}
+.inline-g05-sticky input{max-width:100%;width:100%;box-sizing:border-box}
+.inline-g05-add{display:flex;gap:8px;margin-top:8px}
+.inline-g05-add input{min-width:0;flex:1}
+.inline-g05-values{list-style:decimal inside;max-height:min(45vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:0 4px;margin:0}
+.inline-g05-entry{display:flex;align-items:center;flex-wrap:wrap;gap:7px;justify-content:space-between;padding:8px 2px;border-bottom:1px solid var(--border,#e1e6ed)}
+.inline-g05-name{overflow-wrap:anywhere;flex:1;min-width:140px}
+.inline-g05-actions,.inline-g05-rename{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.inline-g05-rename input{min-width:125px;flex:1}
+.inline-g05-actions button{min-width:30px}
+@media(max-width:900px){.inline-g05-entry{align-items:flex-start}.inline-g05-actions{width:100%}}
+@media(prefers-reduced-motion:reduce){.inline-g05-editor *{scroll-behavior:auto!important;transition:none!important}}
