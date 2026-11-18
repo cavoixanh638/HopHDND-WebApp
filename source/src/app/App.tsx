@@ -925,6 +925,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         (!firebase||selectedSource==='primary'&&(!firebase.editingLocked||firebase.isAdmin))}
       guestViewer={guestViewer}
       readOnlyViewer={isFirebase&&!adminTools&&!viewerMayEditText}
+      canCustomizePopup={adminTools}
       canEditCell={(id,field)=>!workspace.savingRows.has(id)&&!partyStatusLocked(id,field)&&(!firebase||selectedSource==='primary'&&
         ((firebase.canEdit(id,field)||(firebase.freezeControl?.mode==='DRAINING'&&!!leaseManager?.has(id,field)))&&
         mayEdit(firebase.permissions,id,field,firebase.isAdmin)))}
