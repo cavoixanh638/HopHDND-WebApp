@@ -973,7 +973,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             onClick={beginTitleInline} aria-label="Sửa tên danh sách tại chỗ" title="Sửa tên danh sách">✎</button>}
         </div>
         {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
-          aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setPreviewOptionsOpen(true);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
+          aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setShowAllSourceColumns(false);setPreviewOptionsOpen(true);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
           {inlineMode?'Xong chỉnh giao diện':'Chỉnh giao diện'}
         </button>}
         {denseChrome&&<button type="button"
@@ -1142,7 +1142,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       </div>}
       {adminControls&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
-        <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
+        <button type="button" className="button ghost" aria-pressed={showAllSourceColumns} disabled={inlineMode}
           onClick={()=>setShowAllSourceColumns(current=>!current)}>
           {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
         </button>
