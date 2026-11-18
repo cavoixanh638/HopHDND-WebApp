@@ -79,7 +79,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
     expect(a.preview).toHaveBeenCalledTimes(1);
     a.dispatch('pointerup',11,150);
     a.element.onPointerUp(a.pointer(150));
-    expect(a.commit).toHaveBeenCalledWith(250);
+    expect(a.commit).toHaveBeenCalledTimes(1);\n    expect(a.commit).toHaveBeenCalledWith(250);
     expect(a.cols[0].style.width).toBe('200px');
     expect(a.table.style).toEqual({width:'610px',minWidth:'610px'});
     expect(a.handle.attributes['aria-valuenow']).toBe('250');
@@ -93,7 +93,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
     a.element.onPointerMove(a.pointer(1500));
     expect(a.cols.map(c=>c.style.width)).toEqual(['490px','60px','60px']);
     a.element.onPointerUp(a.pointer(1500));
-    expect(a.commit).toHaveBeenCalledWith(490);
+    expect(a.commit).toHaveBeenCalledTimes(1);\n    expect(a.commit).toHaveBeenCalledWith(490);
     expect(a.cols.map(c=>c.style.width)).toEqual(['200px','170px','240px']);
   });
   it('restores original inline styles on cancel and ignores unrelated pointer IDs',()=>{
@@ -137,7 +137,7 @@ describe('G07: pointer capture and commit-on-end gestures',()=>{
     a.dispatch('pointerup',11,100);
     expect(a.commit).not.toHaveBeenCalled();
   });
-  it('does not start drag with non-primary touch or right mouse button',()=>{
+  it('uses pen and touch primary pointer as normal gestures',()=>{\n    for(const pointerType of ['touch','pen']){\n      const a=create();\n      a.element.onPointerDown(a.pointer(0,{pointerType}));\n      a.element.onPointerMove(a.pointer(20,{pointerType}));\n      a.element.onPointerUp(a.pointer(20,{pointerType}));\n      expect(a.commit).toHaveBeenCalledTimes(1);\n      expect(a.commit).toHaveBeenCalledWith(220);\n    }\n  });\n  it('does not start drag with non-primary touch or right mouse button',()=>{
     const a=create();
     a.element.onPointerDown(a.pointer(0,{button:2}));
     a.element.onPointerDown(a.pointer(0,{isPrimary:false,pointerType:'touch'}));
@@ -176,7 +176,7 @@ describe('G07: keyboard and accessibility',()=>{
     expect(a.commit).not.toHaveBeenCalled();
     a.element.onKeyUp(key('ArrowRight'));
     a.element.onKeyUp(key('ArrowRight'));
-    expect(a.commit).toHaveBeenCalledWith(260);
+    expect(a.commit).toHaveBeenCalledTimes(1);\n    expect(a.commit).toHaveBeenCalledWith(260);
     expect(a.cols[0].style.width).toBe('200px');
   });
   it('Escape cancels keyboard changes and blur commits once',()=>{
