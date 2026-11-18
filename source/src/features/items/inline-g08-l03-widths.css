@@ -58,3 +58,14 @@
 @media(prefers-reduced-motion:reduce) {
   .inline-g08-handle,.inline-g08-handle::after {transition:none!important}
 }
+
+/* The legacy five-rail sheet intentionally keeps normal L03 labels in one
+   line. In layout preview, long Vietnamese labels must reflow in the saved
+   rail, not bleed into the neighbouring picker or increase the parent col. */
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages.inline-g08-active .compact-stage-label,
+:is(.item-data-table,.report-detail-grid) tbody td[data-l03-layout]
+  .compact-stages.inline-g08-active .compact-stage-title {
+  white-space:normal!important;overflow-wrap:anywhere!important;
+  min-width:0;max-width:100%;
+}
