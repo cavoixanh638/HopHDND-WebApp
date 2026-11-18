@@ -76,7 +76,10 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
           {sortDirection==='asc'?'↑':sortDirection==='desc'?'↓':'↕'}
         </button>}
       {inlineEditing&&<span className="inline-g01-column-tools" onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}
-        onKeyDown={e=>e.stopPropagation()}>
+        onKeyDown={e=>{
+          e.stopPropagation();
+          if(e.key==='Escape'&&!renaming){e.preventDefault();setMenuOpen(false);menuRef.current?.focus();}
+        }}>
         <button ref={menuRef} type="button" className="inline-g01-column-menu-trigger"
           aria-label={'Tùy chọn cột '+(sortLabel??columnKey)}
           aria-expanded={menuOpen} aria-haspopup="true"
