@@ -1,29 +1,36 @@
 # G05 — Checkpoint quản trị cột và danh mục (18/11/2026)
 
-## Git và ranh giới
+## Git và phân định phạm vi
 - Branch: `g05/20261118-column-catalog`
-- PR: https://github.com/cavoixanh638/HopHDND-WebApp/pull/209 (Draft, chưa merge)
-- BASE: `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`
-- **Code SHA trước checkpoint:** `ffb75b53f5af01011208bc8d28e37fdbdca7ed30`
-- **Tested SHA (GitHub Actions đã chạy vòng đầu):** `fa3786776ee70942930ff2e4f991784983b471f8`; các commit tiếp theo cần CI xác nhận lại; không suy diễn PASS cho SHA chưa chạy.
-- Các tệp đổi: `ItemColumnPanel.tsx`, `CatalogPanel.tsx`, hai tệp `inline-g05-*.css`, `inline-g05-choice-editor.tsx`, `inline-g05-catalog-logic.ts`, `tests/inline-admin-g05-catalog.test.ts` và checkpoint này. Không sửa tệp G01/G02/G04, main, Firebase Rules, workflow hay package.
+- PR DRAFT: https://github.com/cavoixanh638/HopHDND-WebApp/pull/209 (chưa merge/publish)
+- BASE cố định: `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`
+- **Code SHA (commit source/test trước khi cập nhật checkpoint):** `6147ca9340f9d19ed255fd4ea0255cd156f144da`
+- **Tested SHA (GitHub Actions chạy chính SHA đó):** `6147ca9340f9d19ed255fd4ea0255cd156f144da`
+- **Trạng thái nghiệm thu:** `HOLD` — code/fixture G05 có PASS nhưng Verify tổng thể FAIL do 3 test cũ không cùng hợp đồng với trạng thái bị khóa. GitHub Actions cho Code SHA: **9 SUCCESS / 1 FAILURE**, đầy đủ 10 workflow đã kết thúc.
+- File thay đổi thuộc quyền G05: `source/src/features/items/ItemColumnPanel.tsx`, `source/src/features/catalogs/CatalogPanel.tsx`, component/CSS `inline-g05-*`, test riêng `source/tests/inline-admin-g05-*.test.ts(x)` và checkpoint này.
+- Không sửa `ItemList.tsx`, `App.tsx`, `CellPicker*`, schema/auth/CAS/lease, workflow, Rules, release policy hoặc `main`.
 
-## Phần đã lập trình
-1. Mini-editor nằm ngay cấu hình cột: tìm không dấu, thêm, đổi tên lựa chọn chưa dùng, xóa chưa dùng, kéo/thả hoặc lên/xuống, đếm số lần nguồn dùng, cuộn riêng, giữ tìm kiếm ở trên, Enter/Escape, thao tác trên draft và hoàn tác thao tác gần nhất.
-2. Các danh mục `partyLevel`, `progressParty`, `progressBuild`, `progressCouncil` bị khóa chỉnh sửa; cảnh báo/khóa thao tác cả trong panel nâng cao.
-3. Kiểm tra tên trống, giới hạn độ dài, trùng sau bỏ dấu/chuẩn hóa Unicode/NFC, khoảng trắng, phân biệt đang dùng và chưa dùng; cấm xóa phòng/chuyên viên còn liên kết.
-4. Đổi tên danh mục chuyên viên/phòng chưa dùng vẫn bảo toàn quan hệ; nhóm báo cáo tiếp tục dùng `renameReportGroupIdentity`, giữ ID và alias; cấu hình catalog được sao chép cả `groupIdentities`.
-5. Cột custom có loại nhập Văn bản/Danh sách, giới hạn 20 cột dựa trên validator cũ, giá trị nguồn A–O không bị sửa. `focusColumnKey` là API riêng cho G00 nối thao tác header.
-6. Chỉ thao tác lưu hiện hữu `onSaveCatalog` và `onSaveLayout`/permissions; không gọi Firebase SDK mới hoặc chạm dữ liệu sản xuất.
+## Việc đã thực hiện
+1. Mini-editor danh sách ngay trong chi tiết cột: tìm không dấu, thêm/đổi tên/xóa giá trị chưa dùng, kéo thả hoặc mũi tên lên/xuống, đếm số lần dùng, thông báo lỗi, cuộn riêng và vùng tìm kiếm cố định.
+2. Bảo vệ `partyLevel`, `progressParty`, `progressBuild`, `progressCouncil` cả ở mini-editor lẫn `CatalogPanel`: chỉ xem/tìm, không được thêm/sửa/xóa/reorder trạng thái chuẩn.
+3. Kiểm tra rỗng, trùng sau chuẩn hóa bỏ dấu, Unicode NFC, khoảng trắng cuối, giới hạn dài, những giá trị đã sử dụng, quan hệ chuyên viên–phòng và ID nhóm báo cáo. Không sửa hàng Excel chỉ vì sửa một nhãn danh mục.
+4. Đổi tên chuyên viên/phòng chưa dùng giữ liên kết; đổi tên nhóm báo cáo giữ ID và aliases; sao chép catalog giữ `groupIdentities`.
+5. Giữ chuyển kiểu văn bản/danh sách, tối đa 20 cột custom, bảo toàn dữ liệu A–O, quyền từng ô và callback lưu dùng CAS hiện có.
+6. Bổ sung khả năng hoàn tác *nháp* một thao tác và `focusColumnKey` để G00 nối hành động từ header cột.
+7. Sửa Enter/Escape cho nhập tiếng Việt: không commit khi bàn phím đang trong IME composition hoặc keyCode 229; Enter chỉ commit khi hoàn tất, Esc hủy rename và không vô tình đóng cha.
 
-## Evidence / CI
-- **PASS (SHA `fa378677...`):** `npm run typecheck`; unit mới `inline-admin-g05-catalog.test.ts` 8/8; tổng 1.049 test khác PASS; CI `schema`, `original-excel-parser`, `chromium-fixture` PASS tại lần quan sát.
-- **FAIL (SHA `fa378677...`):** 3 bài hồi quy cũ ở `tests/item-viewport-width.test.tsx`. Các test này tìm `ColumnChoiceEditor` cũ; hai test còn yêu cầu *thêm giá trị tuỳ ý* vào danh mục trạng thái `progressParty`. Yêu cầu cũ xung đột chỉ thị G05 khóa danh mục trạng thái. Không sửa tệp test không thuộc quyền G05, không tạo đường tắt cho phép sửa trạng thái nghiệp vụ chỉ để PASS test. G00 cần điều chỉnh test cũ theo contract mới sau tích hợp.
-- **NOT_RUN tại thời điểm ghi:** Vòng đầy đủ `npm run typecheck && npm test` của Code SHA mới nhất; `npm run test:spark` ở đúng SHA cuối, Chrome keyboard/scroll 7/4 trong giao diện tích hợp, hai tài khoản Firebase thật và kiểm tra production (không được phép).
-- **Không xác nhận DONE tích hợp:** CI tại đúng SHA cuối và Chrome/E2E cần đối chiếu thêm. Vòng CI đầu đã có FAIL cần được G00 xử lý vì test contract cũ.
+## Chứng cứ kiểm thử (đúng Tested SHA)
+- **PASS — `npm run typecheck`** trong [Verify workflow](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44293458955) tại `6147ca9340f9d19ed255fd4ea0255cd156f144da`.
+- **PASS — 16/16 tests riêng G05**: `inline-admin-g05-catalog.test.ts` 8/8; `inline-admin-g05-editor.test.tsx` 8/8. Bao gồm used/unused, duplicate Unicode/không dấu, status locked, chuyên viên–phòng, ID nhóm, 20 custom columns, Enter/Escape, IME, drag/drop, undo, danh mục 140 lựa chọn, serialize/deserialize reload fixture.
+- **PASS — các kiểm thử không xung đột:** `npm test` ghi nhận 1.057 PASS; 170 SKIPPED; không có bài G05 FAIL.
+- **FAIL — toàn bộ `npm test` / Verify:** 3 assertions *cũ* tại `tests/item-viewport-width.test.tsx`, đang tìm `ColumnChoiceEditor` cũ và cố thêm giá trị tùy tiện vào `progressParty` chuẩn. [Nhật ký lỗi](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44293458955/job/134764283146). Không nới danh sách trạng thái để qua test. **G00 đã nhận cập nhật fixture này tại nhánh integration** trong comment PR #209; G05 không sửa test thuộc phạm vi khác.
+- **PASS (CI tự động trên cùng SHA):** `schema`, `original-excel-parser`, `chromium-fixture`, `real-spark-list`, `guest-save`, `two-browser`, `simple-admin`, `direct-status-security`, `Permissions/lock/realtime/audit/freeze/import`. Đây là các workflow có sẵn, **không phải** Chrome QA live G05 riêng.
+- **NOT_RUN:** `npm run test:spark` tự chạy cục bộ tại SHA G05; Chrome thực tế danh mục dài và keyboard với editor G05 đã tích hợp; 7/4 dropdown threshold, viewport 1920/2K/900/390, hai phiên CAS catalog đồng thời; production Firebase/UID thật (bị cấm). Test reload hiện là **JSON roundtrip/validator fixture**, chưa phải reload trình duyệt thật.
 
-## Rủi ro / điểm tích hợp G00
-- Header inline: nối action mở quản lý cột đến `ItemColumnPanel.focusColumnKey` qua `ItemList.tsx` (owner G01); G05 không sửa ItemList.
-- Writer: giữ callback `onSaveCatalog` đang được `ItemList`/App cấp quyền, CAS/revision và rollback; component chỉ cập nhật nháp.
-- Test legacy: `tests/item-viewport-width.test.tsx` đang giả định danh mục trạng thái cho phép thêm lựa chọn; phải đổi assertion thành *khóa lựa chọn*, đồng thời dùng `G05ChoiceEditor` thay vì `ColumnChoiceEditor`.
-- Nhánh G05 không tự merge, không publish, không thay release biến, không deploy Firebase.
+## Phân công tích hợp G00
+1. Gắn action header từ G01-owned `ItemList.tsx`/header vào `ItemColumnPanel.focusColumnKey` (không chuyển dữ liệu sang editor; chỉ mở trang quản lý). `ItemColumnPanel` vẫn dùng `onSaveCatalog`, `onSaveLayout`, permissions writer của host.
+2. Cập nhật 3 legacy assertions tại `tests/item-viewport-width.test.tsx` cho `G05ChoiceEditor` và hợp đồng *không chỉnh trạng thái chuẩn*, sau đó chạy lại full tests/CI trên **integration SHA**. Không làm giả PASS ở G05 PR.
+3. Chrome QA integrated: Admin có nút chỉnh; guest/staff không mở editor; keyboard/IME; danh mục >100 mục search sticky/scroll, drag vs sort, không phát sinh network write chỉ do search/scroll, reload/2 admin CAS; kiểm ngưỡng dropdown 7/4 không hồi quy.
+4. Không tự merge, không deploy, không thay production Firebase, release gate hoặc cấu hình cá nhân localStorage.
+
+**G05 độc lập đã bổ sung code và fixture, nhưng PR vẫn DRAFT/HOLD cho đến khi G00 hoàn thành hợp đồng test và nghiệm thu integration.**
