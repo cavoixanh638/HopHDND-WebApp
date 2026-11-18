@@ -3,8 +3,8 @@
 - **Owner:** G07, không sửa file owned bởi G01–G06/G08/G09.
 - **BASE:** `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`; nhánh `g07/20261118-resize-gestures`.
 - **PR:** https://github.com/cavoixanh638/HopHDND-WebApp/pull/214 (Draft; G00 review/merge).
-- **Code SHA (candidate trước checkpoint):** `c55fa2c96a988749246e26ac4d5d50ea0192e0a9`.
-- **Tested SHA:** `NOT_RUN` tại thời điểm lập checkpoint; kết quả Actions phải được kiểm tra trên exact head mới nhất trước khi kết luận.
+- **Code SHA (source/tests trước checkpoint):** `96fde859a773ee609ef25b1512e9b19b9e90d393`.
+- **Tested SHA:** `NOT_RUN` (chưa có kết quả PASS của CI trên `96fde859a773ee609ef25b1512e9b19b9e90d393`); [Verify source run #44290496357](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290496357) đang QUEUED. Cần đọc lại đúng head trước khi G00 kết luận.
 - **Integration status:** HOLD — không merge, publish hoặc deploy Firebase.
 
 ## Thay đổi đã push
@@ -20,9 +20,9 @@
 
 | Hạng mục | Trạng thái ban đầu | Lý do/đối chiếu |
 | --- | --- | --- |
-| Base đúng và chỉ thay file G07 | **PASS** | GitHub compare base...branch 8 commits ahead, 0 behind, chỉ 5 file thuộc G07 trước checkpoint |
+| Base đúng và chỉ thay file G07 | **PASS** | GitHub compare base...branch 9 commits ahead, 0 behind tại lúc cập nhật; chỉ file thuộc G07 trước checkpoint |
 | Trạng thái PR | **PASS** | PR #214 tạo dưới dạng Draft, base main, chưa merge |
-| Unit G07 trên Node | **NOT_RUN** | Workflow Verify source đang queued khi lập checkpoint; không đồng nhất fixture đã viết với bài đã chạy |
+| Unit G07 trên Node | **NOT_RUN** | Workflow Verify source #44290496357 đang queued khi lập checkpoint; không đồng nhất fixture đã viết với bài đã chạy |
 | `npm run typecheck`, `npm test` | **NOT_RUN** | Môi trường container không truy cập npm/GitHub host; phải kiểm Actions sau chạy |
 | `npm run build:compact:qa` + Chromium thực | **NOT_RUN** | Chưa chạy browser trực tiếp với source mới |
 | `npm run test:spark` emulator | **NOT_RUN** | Chưa có executable setup local; không viết Firebase sản xuất |
