@@ -111,7 +111,7 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
       </label>
       <div className="top-actions inline-g05-catalog-toolbar">
         <label className="field search-field">Tìm trong danh mục<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nhập để lọc" /></label>
-        <label className="field">Thêm giá trị<input value={form.newValue} maxLength={200} disabled={locked||form.renaming !== null} onChange={event => setForm({ ...form, newValue: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addValue(); } }} placeholder="Tên mới" /></label>
+        <label className="field">Thêm giá trị<input value={form.newValue} maxLength={200} disabled={locked||form.renaming !== null} onChange={event => setForm({ ...form, newValue: event.target.value })} onKeyDown={event => { if (event.key === 'Enter'&&!event.nativeEvent?.isComposing&&event.keyCode!==229) { event.preventDefault(); addValue(); } }} placeholder="Tên mới" /></label>
         <button type="button" className="button primary" onClick={addValue} disabled={locked||form.renaming !== null}>Thêm</button>
       </div>
       {locked&&<p className="muted" role="status">Các giá trị trạng thái nghiệp vụ là danh sách chuẩn được mã nguồn khóa, chỉ xem và tìm kiếm.</p>}
@@ -124,7 +124,7 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
           const count = usageCount(value);
           return <li key={value}>
             {form.renaming === value ? <>
-              <label className="field"><span className="sr-only">Tên mới cho {value}</span><input autoFocus maxLength={200} value={form.renameValue} onChange={event => setForm({ ...form, renameValue: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') saveRename(value); if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); discardForm(); } }} /></label>
+              <label className="field"><span className="sr-only">Tên mới cho {value}</span><input autoFocus maxLength={200} value={form.renameValue} onChange={event => setForm({ ...form, renameValue: event.target.value })} onKeyDown={event => { if(event.nativeEvent?.isComposing||event.keyCode===229)return; if (event.key === 'Enter') {event.preventDefault();saveRename(value);} if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); discardForm(); } }} /></label>
               <span className="top-actions"><button type="button" className="button primary" onClick={() => saveRename(value)}>Lưu tên</button><button type="button" className="button ghost" onClick={discardForm}>Hủy</button></span>
             </> : <>
               <span>{value} <small className="muted">({count} nội dung)</small></span>
