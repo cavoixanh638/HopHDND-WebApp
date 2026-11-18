@@ -6,7 +6,7 @@ import './inline-g05-choice-editor.css';
 
 export type G05ChoiceEditorProps={
   label:string;options:readonly string[];usedValues?:readonly string[];
-  locked?:boolean; onApply:(action:G05ChoiceAction)=>void;
+  locked?:boolean; onApply:(action:G05ChoiceAction)=>void|(()=>void);
 };
 /** Self-contained mini-editor: draft keystrokes never reach the persistence callback. */
 export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onApply}:G05ChoiceEditorProps){
@@ -15,6 +15,7 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
   const [editing,setEditing]=useState<string|null>(null);
   const [renameValue,setRenameValue]=useState('');
   const [error,setError]=useState('');
+  const [undo,setUndo]=useState<null|(()=>void)>(null);
   const usage=useMemo(()=>{
     const counts=new Map<string,number>();
     for(const value of usedValues){const key=g05Identity(value);counts.set(key,(counts.get(key)??0)+1);}
@@ -24,7 +25,8 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
   const visible=options.filter(value=>normalizeSearch(value).includes(normalizeSearch(query)));
   const apply=(action:G05ChoiceAction)=>{
     try{
-      onApply(action);
+      const rollback=onApply(action);
+      setUndo(typeof rollback==='function'?()=>rollback:null);
       setError('');
       if(action.type==='add')setAddValue('');
       if(action.type==='rename')setEditing(null);
@@ -47,6 +49,7 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
     </div>
     {locked&&<p className="muted" role="status">Danh sách trạng thái chuẩn đã khóa; chỉ được tra cứu, không được thêm, đổi tên hoặc xóa.</p>}
     {error&&<p role="alert" className="error-text">{error}</p>}
+    {undo&&<button type="button" className="button ghost" onClick={()=>{try{undo();setError('');setUndo(null);}catch(cause){setError(cause instanceof Error?cause.message:'Không thể hoàn tác.');}}}>↶ Hoàn tác thay đổi danh sách vừa thực hiện</button>}
     <ol className="inline-g05-values">
       {visible.map(value=>{
         const index=options.indexOf(value),used=count(value),isEditing=editing===value;
