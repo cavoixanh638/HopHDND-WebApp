@@ -91,7 +91,7 @@ describe('G08 L03 inline resize isolated geometry and permissions',()=>{
     expect(readonly).toContain('Sở chưa trình');
     expect(readonly).toContain('Hoàn thành');
     expect(readonly).toContain('aria-valuenow="110"');
-    expect(readonly).toContain('on'); // render includes a stable, visible L03 group
+    expect(readonly).toContain('data-ui-reference-group="L03"');
     const editable=render(true,true,false,false,'editable');
     expect(editable.match(/role="separator"/g)).toHaveLength(2);
     expect(editable).toContain('data-inline-g08-mode="editable"');
