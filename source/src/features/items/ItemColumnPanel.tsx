@@ -297,9 +297,11 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
                     if(column.origin==='custom'){
                       const options=g05ApplyCustomChoices(column.options??[],Object.values(column.values??{}),action);
                       update(column.key,{kind:'select',options});
+                      return ()=>update(column.key,{kind:'select',options:column.options??[]});
                     }else{
                       const next=g05ApplyCatalogAction(choiceDraft,items,column.key as CatalogKey,action);
                       setChoiceDraft(next);
+                      return ()=>setChoiceDraft(choiceDraft);
                     }
                   }}/>
                 {column.origin!=='custom'&&<p className="muted">Danh sách chọn của cột này dùng chung cho bảng. Nếu đang để kiểu nhập tự do, chọn “Danh sách chọn” phía trên để áp dụng các lựa chọn.</p>}
