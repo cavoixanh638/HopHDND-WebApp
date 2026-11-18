@@ -84,6 +84,23 @@ Mỗi luồng tự thêm file component/CSS theo prefix `inline-gXX-` riêng, t�
 
 **Chốt an toàn:** PR #218 vẫn Draft, `main`/Pages chưa thay đổi, production Firebase Rules/dữ liệu không được chạm tới. Không tuyên bố DONE khi CI G04/G05/G08 hoặc browser A01–A11 chưa đạt trên exact staging HEAD.
 
+## G00 – tích hợp đầy đủ 9/9 luồng, checkpoint 18/11/2026
+
+**PR staging [#218](https://github.com/cavoixanh638/HopHDND-WebApp/pull/218) vẫn DRAFT, không merge/publish.** `main` và GitHub Pages vẫn ở nguồn phát hành trước chiến dịch. Không thao tác Firebase sản xuất.
+
+| Tích hợp | Commit staging | Bằng chứng |
+| --- | --- | --- |
+| G01+G02+G03+G07+G09 | `c96b3aa7aeae2bc1f53aea2857d244463e86fa47` | 10/10 workflow PASS |
+| + G06, G03 toolbar nối App thực | `8f4b43cfd1b90e906e4b1423a67402725b6a66ed` | 10/10 PASS (Chrome rerun cùng SHA) |
+| Chrome QA G03 trên báo cáo thật | `58d76eadbabd534cdf40a48ec58238bbf031c357` | 10/10 PASS; 10 font/5 kiểu, preview & hủy, số đếm không đổi |
+| + G04 popup, fix R07 heading / verified Admin gate | `400533975c87068e0b773d85491b95bff97c6ae1` | 10/10 PASS |
+| + G08 L03 track overlay và CAS | `b5e82c6fe7489a842af709ac8541da04a2420153` | 10/10 PASS; normal status picker không bị render-prop che |
+| + G05 mini catalog, menu đầu cột và legacy tests | **`9cc27dea0822d1bcfee246e43d93c3ab722bc705`** | Typecheck + toàn bộ unit PASS; 9/10 workflows PASS tại checkpoint, còn Chrome Verify đang chạy. Chưa DONE |
+
+G00 đã bổ sung các điều chỉnh tích hợp không xóa nghiệp vụ: (1) icon G04 bằng CSS pseudo để không làm bẩn tên nhóm; (2) G08 chỉ render-prop khi Admin chỉnh giao diện, luồng sửa trạng thái còn nguyên; (3) G05 `focusColumnKey` mở từ đầu cột, giữ khóa official statuses, kiểm thử lại Save Catalog/Permissions/Layout; (4) G03 live visual toolbar chỉ lưu qua writer Firebase revision và rollback khi lỗi; (5) G09 QA scaffold nằm trong tree nhưng bài QA WebApp phối hợp A01–A11 cần nghiệm thu theo mức PASS/NOT_RUN.
+
+G00 giao rà soát song song read-only cho G01/G02/G07/G09 trên PR #218, worker G05 kiểm tra legacy tests trên nhánh riêng, G04/G08 tự hoàn thiện chính PR nếu muốn; không được commit vào nhánh khác. Mọi phát hành phải qua GitHub Pages exact-SHA release-gate, không yêu cầu owner thay variable mỗi commit. Chỉ một SHA nguồn tổng hợp sau khi kiểm thử.
+
 ## Kế hoạch tích hợp và thứ tự xử lý
 
 1. **P0 unblock ngay:** G07 sửa TS syntax literal backslash-n và chạy Typecheck; G03 chữa 3 unit FAIL (soát title trim, optional accent, legacy 10-font UI test); G05 giữ status chuẩn immutable, G00 cập nhật legacy test dựa trên contract mới. Không nới logic an toàn để qua test.
