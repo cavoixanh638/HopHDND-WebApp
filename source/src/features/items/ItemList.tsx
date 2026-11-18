@@ -68,6 +68,8 @@ import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
 import {createReferenceListLayout,referenceListLayoutNeedsSync} from '../../data/reference-list-layout';
 import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placement';
+import {canHideInlineColumn,renameInlineColumn,setInlineColumnVisibility,setInlineSummaryVisibility} from './inline-g01-layout';
+import './inline-g01-list.css';
 
 export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,directStatusCasActive=false,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; savingRows?:ReadonlySet<string>; busy: boolean; onUpdate: (id: string, changes: Changes) => boolean|void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;directStatusCasActive?:boolean;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
@@ -105,6 +107,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
+  const [inlineMode,setInlineMode]=useState(false);
+  const [searchScopeOpen,setSearchScopeOpen]=useState(false);
+  const titleInlineInput=useRef<HTMLInputElement>(null);
+  const titleInlineTrigger=useRef<HTMLButtonElement>(null);
   const [bulkPasteOpen,setBulkPasteOpen]=useState(false);
   const searchStorageKey=(compactPreview?'hdnd-preview-search-columns:':'hdnd-list-search-columns:')+sourceKey;
   const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
@@ -653,6 +659,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // A visual column drag is not a shared-layout write. Only verified admins
   // use the Firebase CAS writer; demo edits remain in this component's RAM.
   const canViewerResize=canEditListSettings&&!customizing&&!showAllSourceColumns;
+  const inlineReady=inlineMode&&canEditListSettings;
+  useEffect(()=>{if(titleEditorOpen)titleInlineInput.current?.focus();},[titleEditorOpen]);
+  useEffect(()=>{if(!adminControls||customizing||permissionMode){setInlineMode(false);setTitleEditorOpen(false);setSearchScopeOpen(false);}},[adminControls,customizing,permissionMode]);
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
     baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
     kind:'title'|'cards'|'layout'='layout'):Promise<boolean>=>{
@@ -693,6 +702,29 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       setSaveFeedback('Chưa lưu được thay đổi; bản hiển thị đã được hoàn lại.');
       return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
+  };
+  const changeInlineColumnVisibility=(key:string,visible:boolean)=>{
+    if(!inlineReady)return;
+    void applyViewerLayout(base=>setInlineColumnVisibility(base,key,visible));
+  };
+  const changeInlineColumnName=(key:string,label:string):Promise<boolean>=>{
+    if(!inlineReady)return Promise.resolve(false);
+    return applyViewerLayout(base=>renameInlineColumn(base,key,label));
+  };
+  const changeInlineCardVisibility=(key:(typeof SUMMARY_CARD_KEYS)[number],visible:boolean)=>{
+    if(!inlineReady)return;
+    void applyViewerLayout(base=>setInlineSummaryVisibility(base,key,visible),undefined,{},'cards');
+  };
+  const beginTitleInline=()=>{
+    if(!inlineReady)return;
+    listTitleBaseline.current=validateItemLayout(sharedBase.current);
+    setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
+    setTitleValidationError('');setTitleEditorOpen(true);
+  };
+  const cancelTitleInline=()=>{
+    if(viewSaving)return;
+    setTitleEditorOpen(false);setListTitleDraft(null);listTitleBaseline.current=null;
+    setTitleValidationError('');titleInlineTrigger.current?.focus();
   };
   const closeGroupLabelEditor=()=>{
     if(viewSavingRef.current)return;
@@ -861,7 +893,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               'Trình duyệt không cho xóa lựa chọn đã lưu.');}}>Khôi phục cách hiển thị chung</button>}
         </div>,document.body)}
     </>);
-  return <section className="card item-list-card" data-compact-chrome={denseChrome?"true":undefined} data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
+  return <section className="card item-list-card" data-inline-g01-mode={inlineMode?"editing":"view"} data-compact-chrome={denseChrome?"true":undefined} data-hide-party={activeLayout.summaryCards?.party===false} data-hide-build={activeLayout.summaryCards?.build===false} data-hide-nq={activeLayout.summaryCards?.nq===false} data-visible-stages={SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]!==false).length}>
     {customizing&&anonymousViewer&&<div className="guest-edit-bar">
       <strong>Sửa thử nội dung được cấp quyền</strong>
       <div className="top-actions">
@@ -900,7 +932,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         selection={summarySelection} onSelect={selectSummary}
         kindSelection={kindSelection} onSelectKind={selectKind}
         onClear={()=>setSummarySelection(null)} visibleCount={filtered.length}
-        showFilterFooters={false}/>
+        showFilterFooters={false} inlineEditing={inlineReady}
+        onHideStage={key=>changeInlineCardVisibility(key,false)}/>
       {Object.keys(errors).length>0&&<section className="list-save-errors"
         role="alert" aria-live="polite">
         <strong>{Object.keys(errors).length} hồ sơ chưa được Firebase xác nhận lưu.</strong>
@@ -917,7 +950,32 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         </details>
       </section>}
       {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
-        <h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>
+        <div className="inline-g01-title-group">
+          {titleEditorOpen&&inlineReady?<form id="admin-list-title-editor" className="inline-g01-title-editor"
+            onSubmit={event=>{event.preventDefault();
+              try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
+                setTitleValidationError('');
+                void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
+                  .then(saved=>{if(saved){setTitleEditorOpen(false);setListTitleDraft(null);
+                    listTitleBaseline.current=null;titleInlineTrigger.current?.focus();}});
+              }catch(error){setTitleValidationError(error instanceof Error?error.message:'Tên không hợp lệ.');}
+            }}>
+            <input ref={titleInlineInput} id="admin-list-title-input" aria-label="Tên danh sách mới"
+              maxLength={100} aria-invalid={!!titleValidationError} value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
+              onChange={event=>{setTitleValidationError('');setListTitleDraft(event.currentTarget.value);}}
+              onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancelTitleInline();}}}
+              disabled={viewSaving}/>
+            <button className="button" type="submit" disabled={viewSaving}>Lưu</button>
+            <button className="button ghost" type="button" onClick={cancelTitleInline} disabled={viewSaving}>Hủy</button>
+            {titleValidationError&&<span role="alert">{titleValidationError}</span>}
+          </form>:<h2 className="item-list-page-title" onDoubleClick={inlineReady?beginTitleInline:undefined}>{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
+          {inlineReady&&!titleEditorOpen&&<button ref={titleInlineTrigger} type="button" className="inline-g01-title-trigger"
+            onClick={beginTitleInline} aria-label="Sửa tên danh sách tại chỗ" title="Sửa tên danh sách">✎</button>}
+        </div>
+        {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
+          aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
+          {inlineMode?'Xong chỉnh giao diện':'Chỉnh giao diện'}
+        </button>
         {denseChrome&&<button type="button"
           className="button ghost admin-preview-options-toggle"
           aria-label="Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách"
@@ -941,18 +999,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               displayedColumns.map(col=>col.label));}
             catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
           }}>In / PDF A4</button>}
-        <button type="button"
-          className="button ghost admin-list-rename-trigger"
-          aria-expanded={titleEditorOpen} aria-controls="admin-list-title-editor"
-          disabled={!canEditListSettings||viewSaving}
-          onClick={()=>{if(titleEditorOpen){setTitleEditorOpen(false);setListTitleDraft(null);
-            listTitleBaseline.current=null;setTitleValidationError('');}
-          else {if(denseChrome)setPreviewOptionsOpen(true);
-            listTitleBaseline.current=validateItemLayout(sharedBase.current);
-            setListTitleDraft(activeLayout.listTitle??DEFAULT_LIST_TITLE);
-            setTitleEditorOpen(true);setTitleValidationError('');}}}>
-          {titleEditorOpen?'Đóng sửa tên':'Đổi tên danh sách'}
-        </button>
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
       {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
         className="admin-list-controls" id={denseChrome?'admin-list-controls':undefined}
@@ -976,27 +1022,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           </div>
           <small>Chỉ lưu khi quản trị xác nhận và Firebase phản hồi thành công.</small>
         </div>}
-        {titleEditorOpen&&<form id="admin-list-title-editor" className="admin-list-title-editor"
-          onSubmit={event=>{event.preventDefault();
-            try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
-              setTitleValidationError('');
-              void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
-                .then(saved=>{if(saved){setListTitleDraft(null);listTitleBaseline.current=null;
-                  setTitleEditorOpen(false);}});
-            }catch(error){setTitleValidationError(error instanceof Error?error.message:'Tên không hợp lệ.');}
-          }}>
-          <label htmlFor="admin-list-title-input">Tên danh sách mới</label>
-          <input id="admin-list-title-input" aria-label="Tên danh sách mới" maxLength={100}
-            aria-invalid={!!titleValidationError}
-            aria-describedby={titleValidationError?'admin-list-title-error':undefined}
-            value={listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE}
-            onChange={event=>{setTitleValidationError('');setListTitleDraft(event.currentTarget.value);}}
-            disabled={!canEditListSettings||viewSaving}/>
-          <button type="submit" className="button" disabled={!canEditListSettings||viewSaving}>
-            Lưu tên danh sách
-          </button>
-          {titleValidationError&&<p id="admin-list-title-error" role="alert">{titleValidationError}</p>}
-        </form>}
         {denseChrome&&<details className="admin-control-section"><summary>Tìm kiếm không dấu · Chỉ trên trình duyệt này</summary><fieldset className="admin-search-scope">
           <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
           <div className="admin-search-scope-options">
@@ -1030,8 +1055,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <input type="checkbox" checked={activeLayout.summaryCards?.[key]!==false}
               aria-label={'Hiện C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}
               onChange={event=>{const checked=event.currentTarget.checked;
-                void applyViewerLayout(base=>({...base,summaryCards:{
-                  party:true,build:true,nq:true,...base.summaryCards,[key]:checked}}),undefined,{},'cards');}}/>
+                void applyViewerLayout(base=>setInlineSummaryVisibility(base,key,checked),undefined,{},'cards');}}/>
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset></details>
@@ -1095,6 +1119,17 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
+      {inlineReady&&<div className="inline-g01-restore-columns">
+        <details><summary>Cột ẩn ({activeLayout.columns.filter(c=>!c.removed&&!c.visible).length})</summary>
+          <div role="group" aria-label="Khôi phục các cột đã ẩn">
+            {activeLayout.columns.filter(c=>!c.removed&&!c.visible).length===0
+              ?<span>Không có cột ẩn</span>
+              :activeLayout.columns.filter(c=>!c.removed&&!c.visible).map(c=>
+                <button key={c.key} type="button" disabled={viewSaving}
+                  onClick={()=>changeInlineColumnVisibility(c.key,true)}>Hiện {c.label}</button>)}
+          </div>
+        </details>
+      </div>}
       {adminControls&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
         <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
         <button type="button" className="button ghost" aria-pressed={showAllSourceColumns}
@@ -1124,10 +1159,30 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
          Ordinary List uses compact AND toolbar, without a tall header row. */}
     {!customizing&&!permissionMode&&<>
       <div className="list-filter-toolbar" role="search" aria-label="Bộ lọc Danh sách">
-        <input className={'list-filter-search'+(toolbar.search.trim()?' is-filter-active':'')} data-filter-active={toolbar.search.trim()?'true':'false'} type="search"
+        <div className="inline-g01-search-group"><input className={'list-filter-search'+(toolbar.search.trim()?' is-filter-active':'')} data-filter-active={toolbar.search.trim()?'true':'false'} type="search"
           aria-label="Tìm kiếm không dấu" placeholder="Tìm kiếm không dấu…"
           value={toolbar.search}
           onChange={e=>setToolbar(old=>({...old,search:e.currentTarget.value}))}/>
+          <button type="button" className="inline-g01-search-trigger" aria-label="Chọn cột tìm kiếm không dấu"
+            aria-expanded={searchScopeOpen} onClick={()=>setSearchScopeOpen(open=>!open)}>Cột tìm ▾</button>
+          {searchScopeOpen&&<fieldset className="inline-g01-search-popover"><legend>Phạm vi tìm kiếm trên trình duyệt này</legend>
+            <label>Trường tìm kiếm <select aria-label="Chọn trường tìm kiếm nhanh" value={toolbar.field}
+                onChange={event=>setToolbar(old=>({...old,field:event.currentTarget.value}))}>
+                {SEARCH_FIELDS.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}
+                {activeLayout.columns.filter(c=>c.origin==='custom'&&!c.removed).map(c=><option key={c.key} value={c.key}>{c.label}</option>)}
+              </select></label>
+            <div className="inline-g01-search-choices">{searchChoices.map(key=><label key={key}>
+              <input type="checkbox" checked={selectedSearchColumns.includes(key)}
+                onChange={event=>{const next=event.currentTarget.checked
+                  ?searchChoices.filter(value=>value===key||selectedSearchColumns.includes(value))
+                  :selectedSearchColumns.filter(value=>value!==key);
+                  if(next.length)setSelectedSearchColumns(next);
+                }}/>
+              {key==='*'?'Cột tùy chỉnh':EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key}
+            </label>)}</div>
+            <button type="button" onClick={()=>setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
+            <button type="button" onClick={()=>setSearchScopeOpen(false)}>Đóng</button>
+          </fieldset>}</div>
         <select className={'list-filter-organisation'+(toolbar.department?' is-filter-active':'')} data-filter-active={toolbar.department?'true':'false'} aria-label="Lọc Sở, ngành"
           value={toolbar.department}
           onChange={e=>setToolbar(old=>({...old,department:e.currentTarget.value}))}>
@@ -1180,6 +1235,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
+   inlineEditing={inlineReady} saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)}
+   onRename={changeInlineColumnName} onHide={key=>changeInlineColumnVisibility(key,false)}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
