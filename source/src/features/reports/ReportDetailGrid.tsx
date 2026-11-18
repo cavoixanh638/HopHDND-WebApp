@@ -74,6 +74,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const [previewWidth,setPreviewWidth]=useState<number|null>(null);
   const [renameKey,setRenameKey]=useState<string|null>(null);
   const [renameValue,setRenameValue]=useState('');
+  const cancelRenameRef=useRef(false);
   const [hiddenOpen,setHiddenOpen]=useState(false);
   const [editing,setEditing]=useState(false);
   const [filters,setFilters]=useState<Record<string,string>>({});
@@ -486,8 +487,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
                         onChange={e=>setRenameValue(e.currentTarget.value)}
                         onKeyDown={e=>{e.stopPropagation();
                           if(e.key==='Enter'){e.preventDefault();saveInlineGroupName(renameKey!,renameValue);}
-                          if(e.key==='Escape'){e.preventDefault();setRenameKey(null);}}}
-                        onBlur={()=>{if(renameKey)saveInlineGroupName(renameKey,renameValue);}}/>
+                          if(e.key==='Escape'){e.preventDefault();cancelRenameRef.current=true;setRenameKey(null);}}}
+                        onBlur={()=>{if(renameKey&&!cancelRenameRef.current)saveInlineGroupName(renameKey,renameValue);}}/>
                     </span>
                   :<span className="inline-g04-heading-title">{c.label}</span>}
                 {mayCustomize&&popupPairs.some(pair=>pair.anchor===c.key)&&
@@ -496,8 +497,8 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
                     onPointerDown={e=>e.stopPropagation()}
                     onClick={e=>{e.stopPropagation();
                       const group=popupPairs.find(pair=>pair.anchor===c.key)!.variant;
-                      setRenameValue(displayedLayout.groupLabels?.[group as keyof typeof displayedLayout.groupLabels]??'');
-                      setRenameKey(group);}}>✎</button>}
+                      setRenameValue(displayedLayout.groupLabels?.[group as keyof NonNullable<DetailGridPreferences['groupLabels']>]??'');
+                      cancelRenameRef.current=false;setRenameKey(group);}}>✎</button>}
                 {mayCustomize&&<button type="button" className="inline-g04-heading-action"
                   aria-label={'Ẩn cột '+c.label} title="Ẩn cột/nhóm này"
                   onPointerDown={e=>e.stopPropagation()}
