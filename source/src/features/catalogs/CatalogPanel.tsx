@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Item,GroupField } from '../../../shared/types';
-import {REPORT_GROUP_FIELDS,renameReportGroupIdentity,validateReportGroupIdentities} from '../../domain/report-reference-identity';
+import {REPORT_GROUP_FIELDS} from '../../domain/report-reference-identity';
 import { normalizeSearch } from '../../domain/search';
+import {g05ApplyCatalogAction,g05LockedCatalog,g05UsageCount} from '../items/inline-g05-catalog-logic';
+import './inline-g05-catalog-panel.css';
 import { CATALOG_KEYS, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
 import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
 import { useRecoverableDraft } from '../../state/use-recoverable-draft';
@@ -57,64 +59,38 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
   const selectedLabel=columnLabels?.[selected]??config.label;
   const values = draft.options[selected] ?? [];
   const visibleValues = useMemo(() => values.filter(value => normalizeSearch(value).includes(normalizeSearch(query))), [values, query]);
-  const usageCount = (value: string) => items.filter(item => String(item[config.field] ?? '') === value).length;
+  const usageCount = (value: string) => g05UsageCount(items,selected,value);
+  const locked=g05LockedCatalog(selected);
 
   const groupField=REPORT_GROUP_FIELDS.includes(selected as GroupField)?selected as GroupField:null;
-  const setOptions = (next: string[]) => {const options={ ...draft.options, [selected]: next };onChange({ ...draft, options, groupIdentities:validateReportGroupIdentities(draft.groupIdentities,options) });};
-  const validateValue = (value: string, excluding?: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return 'Tên danh mục không được để trống.';
-    if (values.some(option => option !== excluding && option.trim().toLocaleLowerCase('vi') === trimmed.toLocaleLowerCase('vi')) &&
-      !(excluding&&groupField&&usageCount(excluding)===0&&usageCount(trimmed)>0))
-      return 'Tên này đã có trong danh mục.';
-    return '';
-  };
-  const addValue = () => {
-    const message = validateValue(form.newValue);
-    if (message) { setError(message); return; }
-    setOptions([...values, form.newValue.trim()]);
-    discardForm();
-  };
-  const startRename = (value: string) => { if(pending){setError('Hãy hoàn tất hoặc hủy phần đang nhập trước khi đổi mục khác.');return;} if(usageCount(value)>0){setError('Mục này đang dùng trong dữ liệu. Đổi tên cần đối chiếu và thay giá trị nguồn; bản hiện tại không tự sửa Sheets.');return;} setForm({ selected,newValue: '', renaming: value, renameValue: value }); setError(''); };
-  const saveRename = (oldValue: string) => {
-    if(usageCount(oldValue)>0){setError('Mục này đã được dùng; chưa đổi tên để tránh tách quan hệ với dữ liệu nguồn.');return;}
-    const nextValue = form.renameValue.trim();
-    const message = validateValue(nextValue, oldValue);
-    if (message) { setError(message); return; }
-    // If the source was already renamed, reconcile the newly observed label
-    // explicitly instead of silently merging two source business groups.
-    const options = values.filter(value => value === oldValue || value !== nextValue)
-      .map(value => value === oldValue ? nextValue : value);
-    const specialistRooms = selected === 'specialist'
-      ? Object.fromEntries(Object.entries(draft.specialistRooms).map(([name, rooms]) => [name === oldValue ? nextValue : name, rooms]))
-      : selected === 'room'
-        ? Object.fromEntries(Object.entries(draft.specialistRooms).map(([name, rooms]) => [name, rooms.map(room => room === oldValue ? nextValue : room)]))
-        : draft.specialistRooms;
-    let groupIdentities=draft.groupIdentities;
-    if(groupField){
-      try{groupIdentities=renameReportGroupIdentity(
-        validateReportGroupIdentities(draft.groupIdentities,draft.options),groupField,oldValue,nextValue);
-      }catch(cause){setError(cause instanceof Error?cause.message:'Không thể chuyển ID nhóm.');return;}
+  const mutate=(action:Parameters<typeof g05ApplyCatalogAction>[3])=>{
+    try{
+      onChange(g05ApplyCatalogAction(draft,items,selected,action));
+      setError('');
+      return true;
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:'Không cập nhật được danh mục.');
+      return false;
     }
-    onChange({ ...draft, options: { ...draft.options, [selected]: options }, specialistRooms,groupIdentities });
-    if (selected === 'specialist' && selectedSpecialist === oldValue) setSelectedSpecialist(nextValue);
-    discardForm();
   };
-  const removeValue = (value: string) => {
-    if (usageCount(value) > 0) { setError(`Không thể xóa “${value}” vì đang được dùng trong ${usageCount(value)} nội dung.`); return; }
-    if (selected === 'room' && Object.values(draft.specialistRooms).some(rooms => rooms.includes(value))) {
-      setError(`Không thể xóa “${value}” vì đang được liên kết với chuyên viên.`); return;
-    }
-    const specialistRooms = selected === 'specialist'
-      ? Object.fromEntries(Object.entries(draft.specialistRooms).filter(([name]) => name !== value))
-      : draft.specialistRooms;
-    onChange({ ...draft, options: { ...draft.options, [selected]: values.filter(option => option !== value) }, specialistRooms });
-    setError('');
+  const addValue=()=>{
+    if(mutate({type:'add',value:form.newValue}))discardForm();
   };
-  const moveValue = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= values.length) return;
-    const next = [...values]; [next[index], next[target]] = [next[target], next[index]]; setOptions(next);
+  const startRename=(value:string)=>{
+    if(locked){setError('Danh mục trạng thái chuẩn được khóa.');return;}
+    if(pending){setError('Hãy hoàn tất hoặc hủy phần đang nhập trước.');return;}
+    if(usageCount(value)>0){setError('Mục đang có dữ liệu nguồn; không thể đổi tên.');return;}
+    setForm({selected,newValue:'',renaming:value,renameValue:value});setError('');
+  };
+  const saveRename=(oldValue:string)=>{
+    if(mutate({type:'rename',previous:oldValue,value:form.renameValue}))discardForm();
+  };
+  const removeValue=(value:string)=>{
+    mutate({type:'remove',value});
+  };
+  const moveValue=(index:number,direction:-1|1)=>{
+    if(index+direction>=0&&index+direction<values.length)
+      mutate({type:'move',value:values[index],to:index+direction});
   };
   const updateRooms = (specialist: string, room: string, checked: boolean) => {
     const current = draft.specialistRooms[specialist] ?? [];
@@ -122,7 +98,7 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
     onChange({ ...draft, specialistRooms: { ...draft.specialistRooms, [specialist]: rooms } });
   };
 
-  return <section className="card" aria-labelledby="catalog-panel-heading">
+  return <section className="card inline-g05-catalog-panel" aria-labelledby="catalog-panel-heading">
     <div className="card-header"><div>
       <h3 id="catalog-panel-heading">Giá trị danh sách chọn theo cột</h3>
       <p className="muted">Chọn một cột nguồn Excel để thêm, sửa, xóa hoặc sắp xếp các lựa chọn. Danh sách này được dùng trực tiếp tại bảng. Giá trị hiện có trong Excel không tự thay đổi.</p>
@@ -133,15 +109,16 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
           {catalogLabels.map(option => <option key={option.key} value={option.key}>{columnLabels?.[option.key]??option.label}</option>)}
         </select>
       </label>
-      <div className="top-actions">
+      <div className="top-actions inline-g05-catalog-toolbar">
         <label className="field search-field">Tìm trong danh mục<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Nhập để lọc" /></label>
-        <label className="field">Thêm giá trị<input value={form.newValue} maxLength={200} disabled={form.renaming !== null} onChange={event => setForm({ ...form, newValue: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addValue(); } }} placeholder="Tên mới" /></label>
-        <button type="button" className="button primary" onClick={addValue} disabled={form.renaming !== null}>Thêm</button>
+        <label className="field">Thêm giá trị<input value={form.newValue} maxLength={200} disabled={locked||form.renaming !== null} onChange={event => setForm({ ...form, newValue: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addValue(); } }} placeholder="Tên mới" /></label>
+        <button type="button" className="button primary" onClick={addValue} disabled={locked||form.renaming !== null}>Thêm</button>
       </div>
+      {locked&&<p className="muted" role="status">Các giá trị trạng thái nghiệp vụ là danh sách chuẩn được mã nguồn khóa, chỉ xem và tìm kiếm.</p>}
       {error && <p className="error-text" role="alert">{error}</p>}
       <p className="muted" role="status">{selectedLabel}: {values.length} giá trị · số nội dung đang dùng được hiển thị bên cạnh từng giá trị.</p>
       {groupField&&<p className="muted">ID nhóm báo cáo không phụ thuộc hồ sơ. Nếu nguồn đã đổi tên, chọn Đổi tên ở nhãn cũ (sau khi không còn hồ sơ mang nhãn cũ), nhập nhãn mới và Lưu danh mục chung để giữ ID. Không tự đoán hai nhóm là một.</p>}
-      {visibleValues.length === 0 ? <p className="muted">Không có giá trị khớp tìm kiếm.</p> : <ol className="column-order-list">
+      {visibleValues.length === 0 ? <p className="muted">Không có giá trị khớp tìm kiếm.</p> : <ol className="column-order-list inline-g05-catalog-list">
         {visibleValues.map(value => {
           const index = values.indexOf(value);
           const count = usageCount(value);
@@ -152,10 +129,10 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
             </> : <>
               <span>{value} <small className="muted">({count} nội dung)</small></span>
               <span className="top-actions">
-                <button type="button" className="button ghost" aria-label={`Đưa ${value} lên`} onClick={() => moveValue(index, -1)} disabled={index === 0}>Lên</button>
-                <button type="button" className="button ghost" aria-label={`Đưa ${value} xuống`} onClick={() => moveValue(index, 1)} disabled={index === values.length - 1}>Xuống</button>
-                <button type="button" className="button ghost" onClick={() => startRename(value)}>Đổi tên</button>
-                <button type="button" className="button danger" onClick={() => removeValue(value)}>Xóa</button>
+                <button type="button" className="button ghost" aria-label={`Đưa ${value} lên`} onClick={() => moveValue(index, -1)} disabled={locked||index === 0}>Lên</button>
+                <button type="button" className="button ghost" aria-label={`Đưa ${value} xuống`} onClick={() => moveValue(index, 1)} disabled={locked||index === values.length - 1}>Xuống</button>
+                <button type="button" className="button ghost" disabled={locked||count>0} onClick={() => startRename(value)}>Đổi tên</button>
+                <button type="button" className="button danger" disabled={locked||count>0||(selected==='room'&&Object.values(draft.specialistRooms).some(rooms=>rooms.includes(value)))||(selected==='specialist'&&(draft.specialistRooms[value]?.length??0)>0)} onClick={() => removeValue(value)}>Xóa</button>
               </span>
             </>}
           </li>;
