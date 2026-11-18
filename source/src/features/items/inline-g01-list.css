@@ -1,0 +1,61 @@
+/* G01: Inline controls only; layout persistence is delegated to the existing CAS writer. */
+.inline-g01-title-group{display:flex;align-items:center;gap:6px;flex:1 1 240px;min-width:0}
+.inline-g01-title-group .item-list-page-title{flex:0 1 auto;min-width:0}
+.inline-g01-title-trigger,.inline-g01-column-menu-trigger,.inline-g01-card-hide{
+  border:1px solid #a8cabb;border-radius:6px;background:#f1f9f4;
+  color:#215b44;cursor:pointer;font:inherit;min-height:28px;padding:3px 7px}
+.inline-g01-title-trigger{font-size:17px}
+.inline-g01-mode-toggle[aria-pressed="true"]{border-color:#367c5a;background:#e0f3e9;color:#195b3a}
+.inline-g01-title-editor{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;flex-wrap:wrap}
+.inline-g01-title-editor input{flex:1 1 190px;min-width:125px;border:1px solid #82b2a3;border-radius:6px;padding:7px;font:inherit}
+.inline-g01-title-editor [role="alert"]{flex:1 1 100%;font-size:12px;color:#ac2635}
+.item-data-table .item-heading-row th .inline-g01-column-tools{display:inline-flex;position:relative;vertical-align:middle;flex:0 0 auto;margin-left:3px;white-space:normal}
+.inline-g01-column-tools button{cursor:pointer}
+.inline-g01-column-menu{position:absolute;top:100%;right:0;z-index:25;background:#fff;color:#243e35;
+  border:1px solid #a4c8ba;border-radius:8px;box-shadow:0 8px 20px #0002;
+  display:flex;flex-direction:column;gap:2px;width:175px;padding:5px}
+.inline-g01-column-menu button{min-height:32px;border:0;border-radius:5px;background:transparent;
+  color:inherit;text-align:left;padding:5px;font:inherit;font-size:12px}
+.inline-g01-column-menu button:hover{background:#ebf5ef}
+.inline-g01-column-rename{position:absolute;z-index:26;top:100%;right:0;width:220px;
+  padding:8px;display:flex;align-items:center;flex-wrap:wrap;gap:5px;background:#fff;color:#243e35;
+  border:1px solid #a4c8ba;border-radius:8px;box-shadow:0 8px 20px #0002}
+.inline-g01-column-rename input{width:100%;min-width:0;padding:5px;font:inherit;font-size:13px}
+.inline-g01-column-rename button{min-height:28px;border:1px solid #b2c9be;background:#f6fbf8;border-radius:5px;padding:3px 8px}
+.inline-g01-column-rename [role="alert"]{font-size:12px;color:#a12435}
+.inline-g01-restore-columns details{position:relative}
+.inline-g01-restore-columns summary{cursor:pointer;border:1px solid #b0cfc1;border-radius:6px;padding:7px;font-size:12px}
+.inline-g01-restore-columns details>div{position:absolute;z-index:20;right:0;top:100%;
+  min-width:190px;max-height:260px;overflow:auto;padding:7px;background:#fff;color:#243e35;
+  border:1px solid #b0cfc1;border-radius:7px;box-shadow:0 8px 20px #0002;
+  display:flex;flex-direction:column;gap:4px}
+.inline-g01-restore-columns button{border:0;background:#f2f8f4;border-radius:5px;text-align:left;
+  color:#234e3c;font:inherit;font-size:12px;padding:8px;cursor:pointer}
+.inline-g01-card-hide{font-size:12px;margin:0;flex:0 0 auto}
+.inline-g01-search-group{position:relative;display:flex;flex:2 1 280px;min-width:170px;gap:5px;align-items:center}
+.list-filter-toolbar .inline-g01-search-group .list-filter-search{flex:1 1 160px;min-width:0}
+.inline-g01-search-trigger{flex:0 0 auto;min-height:36px;border:1px solid #b4c9db;border-radius:6px;
+  background:#f4f9fd;color:#264a63;padding:4px 8px;font:inherit;font-size:12px;cursor:pointer}
+.inline-g01-search-popover{position:absolute;top:calc(100% + 5px);left:0;z-index:26;box-sizing:border-box;
+  width:min(380px,calc(100vw - 32px));max-height:65vh;overflow:auto;
+  padding:10px;border:1px solid #b4c9db;border-radius:8px;background:#fff;color:#233c4e;
+  box-shadow:0 8px 20px #0002;display:flex;flex-wrap:wrap;gap:7px}
+.inline-g01-search-popover legend{font-size:12px;font-weight:700}
+.inline-g01-search-popover>label{width:100%;font-size:12px}
+.inline-g01-search-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;width:100%}
+.inline-g01-search-choices label{font-size:12px;display:flex;gap:5px;align-items:center}
+.list-filter-toolbar .inline-g01-search-choices input{width:auto}
+.inline-g01-search-popover button{padding:5px 8px;cursor:pointer}
+.inline-g01-title-trigger:focus-visible,.inline-g01-column-tools button:focus-visible,
+.inline-g01-card-hide:focus-visible,.inline-g01-search-trigger:focus-visible,
+.inline-g01-restore-columns summary:focus-visible,.inline-g01-restore-columns button:focus-visible{
+  outline:2px solid #245f94;outline-offset:2px}
+@media(max-width:700px){
+ .inline-g01-title-group{flex-basis:100%}
+ .inline-g01-search-group{flex-basis:100%;min-width:0}
+ .inline-g01-search-choices{grid-template-columns:minmax(0,1fr)}
+ .inline-g01-column-menu,.inline-g01-column-rename{right:auto;left:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .inline-g01-title-trigger,.inline-g01-column-menu-trigger,.inline-g01-card-hide{transition:none}
+}
