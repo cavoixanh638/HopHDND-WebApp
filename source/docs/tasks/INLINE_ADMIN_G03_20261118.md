@@ -6,7 +6,7 @@
 - Fixed base and merge-base: `2ace3304a299d23ca6414c6ba6dc30f16266e9c2` — verified with GitHub compare.
 - Pull request: https://github.com/cavoixanh638/HopHDND-WebApp/pull/211 (open, not merged).
 - Implementation SHA before this checkpoint: `62900b15bfc38e19c70e16f3f16f85c1b0805746`.
-- **Code SHA**: see final branch HEAD after this checkpoint commit. **Tested SHA**: NOT_RUN (no executable environment for the full repository in this session; CI in progress at PR creation).
+- **Code SHA (latest implementation)**: `7f29bc2941f8d6a5b03e5a95861fd3b68dc9dad8` (checkpoint commit itself is documentation-only). **Tested SHA**: NOT_RUN until latest-implementation CI completes. CI run for latest implementation: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44289966904.
 
 ## Implementation
 - `source/src/features/settings/inline-g03-ReportInlineVisualToolbar.tsx`: reusable Aa/palette, native keyboard-enabled controls, five styles, 10px size range 11–20, font list, per-report status emphasis and keyword highlight; explicit save/cancel, no direct DB access.
@@ -24,7 +24,7 @@
 | Fonts, every size 11–20, keyword/state toggles | NOT_RUN | Unit and toolbar functional tests committed |
 | Cancel and no change to totals/KPI/Không phải trình | NOT_RUN | Regression assertions committed |
 | Admin-only visibility, explicit save, Escape | NOT_RUN | Functional invocation fixture committed; role enforcement in G00 host needed for live inline mounting |
-| `npm run typecheck && npm test` | NOT_RUN | Full dependency tree unavailable in local workspace; waiting on GitHub CI |
+| `npm run typecheck && npm test` | FAIL on obsolete SHA / NOT_RUN latest | CI on SHA `62900b15...` caught TS2540 (3 readonly property assignments); fixed in `7f29bc29...`. CI for fixed SHA queued; npm test not yet executed |
 | `npm run build:compact:qa` and Chrome viewport 1920/900/narrow + zoom | NOT_RUN | No installed browser fixture for G03 preview in local runtime |
 | `npm run test:spark` emulator | NOT_RUN | Requires dependencies and isolated emulator; never accessed production |
 | Firebase production data/rules, release/publish | NOT_RUN (prohibited) | No production connection or mutation |
@@ -40,5 +40,5 @@ G03 is independently implemented in the ReportSettings preview; **not mounted on
 ## Known limitations
 - Preview remains within the existing report configuration page and preserves its manual collapsible disclosure; G00 must integrate into live overview.
 - The Save button calls the existing whole-report settings writer; it saves other pending report layout edits as well, by the same existing settings contract. Cancellation only resets visual fields.
-- CI result is pending at the time of checkpoint creation: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44289784004.
+- Early CI error TS2540 (readonly accumulator in G03 adapter) was **fixed** at `7f29bc2941f8d6a5b03e5a95861fd3b68dc9dad8`; do not treat previous failed SHA as current evidence. Latest CI https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44289966904 remained queued at last check.
 - No merge, publish, release variable, production DB, Firebase Rules, or protected file modifications.
