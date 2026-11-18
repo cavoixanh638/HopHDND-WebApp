@@ -11,7 +11,7 @@ const hook=vi.hoisted(()=>({
 }));
 vi.mock('react',()=>({useState:(value:any)=>hook.useState(value),useRef:(value:any)=>({current:value}),useEffect:vi.fn()}));
 import {ItemColumnPanel} from '../src/features/items/ItemColumnPanel';
-import {G05ChoiceEditor} from '../src/features/items/G05ChoiceEditor';
+import {G05ChoiceEditor} from '../src/features/items/inline-g05-choice-editor';
 import {catalogFromItems} from '../src/data/catalogs';
 import {createDemoItems} from '../src/data/demo-items';
 import {DeferredWidthInput,parseCommittedWidth} from '../src/features/items/DeferredWidthInput';
