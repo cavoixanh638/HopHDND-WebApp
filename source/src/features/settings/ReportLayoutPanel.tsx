@@ -1,8 +1,10 @@
 import type { GroupField, Item } from '../../../shared/types';
 import type {ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
-import {configuredReports,reportPageWidth,withReportPageWidth,type ReportLayout} from '../../data/report-preferences';
+import {configuredReports,reportPageWidth,withReportPageWidth,TABLE_FONT_OPTIONS,REPORT_VARIANTS,
+  MIN_TABLE_FONT_SIZE,MAX_TABLE_FONT_SIZE,DEFAULT_TABLE_FONT_SIZE,
+  type ReportLayout,type TableFont} from '../../data/report-preferences';
 import {ReportInlineVisualToolbar} from './inline-g03-ReportInlineVisualToolbar';
-import {inlineG03ApplyVisualChange,inlineG03VisualEqual,inlineG03VisualValue} from './inline-g03-report-visual-adapter';
+import {inlineG03ApplyVisualChange,inlineG03VisualEqual,inlineG03VisualValue,type ReportInlineVisualChange} from './inline-g03-report-visual-adapter';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
 
@@ -47,6 +49,10 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
 
   const previews = configuredReports(draft, true);
   const pageWidth=reportPageWidth(draft);
+  const sharedVisual=inlineG03VisualValue(draft,draft[0]?.id??'party');
+  // One update path for legacy advanced settings AND the new inline toolbar.
+  const updateVisual=(change:ReportInlineVisualChange)=>
+    onChange(inlineG03ApplyVisualChange(draft,draft[0].id,change));
 
   return (
     <section className="card" aria-labelledby="report-layout-heading">
@@ -69,7 +75,48 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
           Tự động sử dụng toàn bộ chiều rộng màn hình
         </label>
       </div>
-      <p className="report-font-hint">Kiểu bảng, phông chữ và màu được chỉnh ngay trên phần xem trước từng bảng bên dưới; phông/cỡ chữ và phong cách là cấu hình dùng chung cho cả 5 bảng.</p>
+      <p className="report-font-hint">Có thể chỉnh ngay trên từng bảng xem trước bên dưới; phông/cỡ chữ và phong cách áp dụng chung cho cả 5 bảng.</p>
+      <details className="inline-g03-advanced-visuals">
+        <summary>Kiểu bảng, phông chữ · thiết lập nâng cao</summary>
+        <div className="report-visual-config" aria-label="Thiết lập chung kiểu bảng và phông chữ">
+          <p className="report-font-hint">Các điều khiển truyền thống vẫn được giữ để tương thích. Chúng dùng chung bản nháp với thanh Aa/bảng màu; chỉ lưu khi bấm Lưu Bảng báo cáo.</p>
+          <div className="report-visual-options" role="radiogroup" aria-label="Phong cách tô màu báo cáo">
+            {REPORT_VARIANTS.map(option=><label
+              className={'report-visual-option report-style-'+option.value} key={option.value}>
+              <span><input type="radio" name="report-visual-variant"
+                checked={sharedVisual.reportVariant===option.value}
+                onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
+              <small>{option.description}</small>
+              <span className="report-visual-example" aria-hidden="true">
+                {([['source','Sở',19],['office','VP',4],['next','Tiếp',2],['completed','Xong',1]] as const)
+                  .map(([stage,label,count])=><span key={stage}
+                    className={'report-example-cell report-example-'+stage}>
+                    <b>{label}</b><i>{count}</i>
+                  </span>)}
+              </span>
+            </label>)}
+          </div>
+          <div className="report-font-control">
+            <label htmlFor="report-font-family"><strong>Font chữ chung cho mọi bảng</strong></label>
+            <select id="report-font-family" aria-label="Font chữ chung cho mọi bảng"
+              value={sharedVisual.tableFont}
+              onChange={event=>updateVisual({tableFont:event.currentTarget.value as TableFont})}>
+              {TABLE_FONT_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+          <div className="report-font-size-control">
+            <label htmlFor="report-font-size"><strong>Cỡ chữ tất cả các bảng</strong></label>
+            <input id="report-font-size" aria-label="Cỡ chữ tất cả các bảng"
+              type="range" min={MIN_TABLE_FONT_SIZE} max={MAX_TABLE_FONT_SIZE} step={1}
+              value={sharedVisual.tableFontSize}
+              onChange={event=>updateVisual({tableFontSize:Number(event.currentTarget.value)})}/>
+            <output htmlFor="report-font-size">{sharedVisual.tableFontSize} px</output>
+            <button type="button" className="button ghost"
+              disabled={sharedVisual.tableFontSize===DEFAULT_TABLE_FONT_SIZE}
+              onClick={()=>updateVisual({tableFontSize:DEFAULT_TABLE_FONT_SIZE})}>Cỡ mặc định</button>
+          </div>
+        </div>
+      </details>
       </details>
       <h4 className="report-per-table-heading">Thiết lập từng bảng ({draft.length} bảng)</h4>
       <div className="settings-grid">
