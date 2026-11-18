@@ -23,14 +23,17 @@ type Props={
   onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;
   onDirtyChange?:(dirty:boolean)=>void;
   validationMessage?:string;
+  /** G00 can open a specific column via header without editing ItemList in this branch. */
+  focusColumnKey?:string|null;
 };
 
 /** Compact column manager inspired by database-table field panels:
  * one row per field, advanced properties only for the selected field.
  * Width changes are made exclusively by dragging the column border in-table.
  */
-export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage,savedGroupLabels={}}:Props){
-  const [selected,setSelected]=useState<string|null>(null);
+export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage,savedGroupLabels={},focusColumnKey}:Props){
+  const [selected,setSelected]=useState<string|null>(focusColumnKey??null);
+  useEffect(()=>{if(focusColumnKey)setSelected(focusColumnKey);},[focusColumnKey]);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
   const [selectedSpecialist,setSelectedSpecialist]=useState('');
   const copyCatalog=(value:CatalogConfig):CatalogConfig=>({
