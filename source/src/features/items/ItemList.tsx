@@ -1072,6 +1072,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               else openL03WidthEditor();
             }}>L03 · Chỉnh 5 độ rộng cột nhỏ</button>
           <span className="admin-l03-width-summary">Chỉ xem: {partyTrackModeWidth(l03Widths,'readonly')}px · Được sửa: {partyTrackModeWidth(l03Widths,'editable')}px</span>
+          {inlineReady&&<p className="muted">Kéo ranh giới ngay trong ô “Tiến độ 3 khâu” ở hàng đầu tiên hoặc dùng năm ô nhập chính xác bên dưới. Chỉ lưu cấu hình khi thả kéo hoặc bấm Enter.</p>}
           {l03WidthEditorOpen&&<form noValidate id="admin-l03-width-editor" className="admin-l03-width-editor"
             onSubmit={event=>{event.preventDefault();void saveL03Widths();}}>
             {(['readonly','editable'] as const).map(mode=><fieldset className="admin-l03-mode" key={mode}>
@@ -1324,7 +1325,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               field={field=>compactField(item,field)} editable={field=>editableField(item,field)}
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
               highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,activeLayout.cellHighlights)}
-              cvRoomInline={compactDisplay.cvRoomInline}/>
+              cvRoomInline={compactDisplay.cvRoomInline}
+              l03InlineEditor={pair.variant==='partyTogether'&&inlineReady&&
+                item.recordId===rows[0]?.recordId?{
+                  verifiedAdmin:canEditListSettings,
+                  layoutEditing:true,dataEditing:false,disabled:viewSaving,
+                  widths:l03Widths,
+                  onWidthsCommit:next=>applyViewerLayout(base=>({...base,partyTrackWidths:next}))
+                }:undefined}/>
           </td>;
         }
         if(column.origin==='custom'){

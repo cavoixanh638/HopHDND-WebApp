@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>G08 · L03 inline rail fixture</title>
+<style>
+body{margin:0;background:#f5f9f7;color:#123d32;font:14px/1.45 system-ui,sans-serif}
+.inline-g08-fixture{padding:16px;max-width:1920px;margin:auto}
+.inline-g08-fixture.narrow{max-width:900px}
+.inline-g08-fixture-tools{display:flex;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid #d4e9df}
+.inline-g08-scroll{overflow-x:auto;max-width:100%;background:#fff;padding:8px}
+.item-data-table{table-layout:fixed;border-collapse:collapse;width:max-content}
+.item-data-table td,.item-data-table th{box-sizing:border-box;border:1px solid #dfe9e2;vertical-align:top;padding:7px}
+.item-data-table .compact-stages{display:grid;min-width:0;gap:5px;overflow-x:auto}
+.item-data-table .compact-stage-row{grid-column:1/-1;display:grid;grid-template-columns:subgrid;gap:8px}
+.item-data-table .compact-stage-label,.compact-stage-level,.compact-stage-state{min-width:0;overflow-wrap:anywhere}
+.item-data-table .compact-stage-state .cell-picker-trigger{width:100%;font-size:11px;white-space:normal}
+@media print{.inline-g08-fixture-tools{display:none}}
+</style>
+</head><body><div id="root"></div><script type="module" src="/tests/inline-admin-g08-fixture.tsx"></script></body></html>
