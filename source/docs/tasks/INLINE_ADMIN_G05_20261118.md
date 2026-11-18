@@ -4,12 +4,12 @@
 - Branch: `g05/20261118-column-catalog`
 - PR: https://github.com/cavoixanh638/HopHDND-WebApp/pull/209 (Draft, chưa merge)
 - BASE: `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`
-- **Code SHA trước checkpoint:** `18790fe8fdcd2d4ad98586978ec32c44f9b967fe`
+- **Code SHA trước checkpoint:** `ffb75b53f5af01011208bc8d28e37fdbdca7ed30`
 - **Tested SHA (GitHub Actions đã chạy vòng đầu):** `fa3786776ee70942930ff2e4f991784983b471f8`; các commit tiếp theo cần CI xác nhận lại; không suy diễn PASS cho SHA chưa chạy.
 - Các tệp đổi: `ItemColumnPanel.tsx`, `CatalogPanel.tsx`, hai tệp `inline-g05-*.css`, `inline-g05-choice-editor.tsx`, `inline-g05-catalog-logic.ts`, `tests/inline-admin-g05-catalog.test.ts` và checkpoint này. Không sửa tệp G01/G02/G04, main, Firebase Rules, workflow hay package.
 
 ## Phần đã lập trình
-1. Mini-editor nằm ngay cấu hình cột: tìm không dấu, thêm, đổi tên lựa chọn chưa dùng, xóa chưa dùng, lên/xuống, đếm số lần nguồn dùng, cuộn riêng, giữ tìm kiếm ở trên, Enter/Escape, thao tác trên draft và hoàn tác thao tác gần nhất.
+1. Mini-editor nằm ngay cấu hình cột: tìm không dấu, thêm, đổi tên lựa chọn chưa dùng, xóa chưa dùng, kéo/thả hoặc lên/xuống, đếm số lần nguồn dùng, cuộn riêng, giữ tìm kiếm ở trên, Enter/Escape, thao tác trên draft và hoàn tác thao tác gần nhất.
 2. Các danh mục `partyLevel`, `progressParty`, `progressBuild`, `progressCouncil` bị khóa chỉnh sửa; cảnh báo/khóa thao tác cả trong panel nâng cao.
 3. Kiểm tra tên trống, giới hạn độ dài, trùng sau bỏ dấu/chuẩn hóa Unicode/NFC, khoảng trắng, phân biệt đang dùng và chưa dùng; cấm xóa phòng/chuyên viên còn liên kết.
 4. Đổi tên danh mục chuyên viên/phòng chưa dùng vẫn bảo toàn quan hệ; nhóm báo cáo tiếp tục dùng `renameReportGroupIdentity`, giữ ID và alias; cấu hình catalog được sao chép cả `groupIdentities`.
