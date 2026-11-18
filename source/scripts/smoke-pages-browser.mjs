@@ -1735,6 +1735,73 @@ try{
   if(!firebaseReport.group||firebaseReport.counts.length===0)
     throw Error('Firebase V2 seeded counts are absent from real Report: '+JSON.stringify(firebaseReport));
   console.log('FIREBASE_ONLY_REPORT_REAL_BROWSER_PASS',JSON.stringify(firebaseReport));
+  // G00 combined G02+G03: exercise the REAL admin report toolbar, not just
+  // a static component fixture. Preview must not write a shared config or
+  // alter count cells; Cancel restores the rendered variant in all 5 tables.
+  const beforeInlineStyle=await evaluate(`(()=>{
+    const tables=[...document.querySelectorAll('.report-surface')];
+    const base=tables[0];
+    return {count:tables.length,
+      style:[...base?.classList??[]].find(x=>x.startsWith('report-style-'))??null,
+      counts:tables.flatMap(t=>[...t.querySelectorAll('tbody button.count-drill')]
+        .map(b=>Number(b.textContent?.trim())).filter(n=>Number.isFinite(n)&&n>0))};
+  })()`);
+  if(beforeInlineStyle.count!==5||
+     !await evaluate("!!document.querySelector('.inline-g02-mode')"))
+    throw Error('G00 real Admin report editor not mounted before visual QA');
+  await evaluate("document.querySelector('.inline-g02-mode').click()");
+  await eventually("document.querySelectorAll('[data-g03-visual-toolbar]').length===5",
+    'G00 live G03 toolbar missing in G02 edit mode');
+  const visualToolbar=await evaluate(`(()=>{
+    const el=document.querySelector('[data-g03-visual-toolbar]');
+    el?.querySelector('button[aria-label="Phông chữ và cỡ chữ"]')?.click();
+    return {count:document.querySelectorAll('[data-g03-visual-toolbar]').length};
+  })()`);
+  await eventually("document.querySelectorAll('[data-g03-visual-toolbar] select option').length===10",
+    'G00 10-font menu not rendered on live report');
+  const fontAudit=await evaluate(`(()=>{
+    const bar=document.querySelector('[data-g03-visual-toolbar]');
+    const font=bar?.querySelector('select');
+    const size=bar?.querySelector('input[type=range]');
+    return {fonts:font?.options.length,min:size?.min,max:size?.max};
+  })()`);
+  if(fontAudit.fonts!==10||fontAudit.min!=='11'||fontAudit.max!=='20')
+    throw Error('G00 real font/size mismatch: '+JSON.stringify(fontAudit));
+  await evaluate(`document.querySelector('[data-g03-visual-toolbar] button[aria-label="Phong cách và tô màu báo cáo"]')?.click()`);
+  await eventually("document.querySelectorAll('[data-g03-visual-toolbar] input[type=radio]').length===5",
+    'G00 palette styles not mounted on real report');
+  const nextStyle=await evaluate(`(()=>{
+    const styles=[...document.querySelectorAll('[data-g03-visual-toolbar] input[type=radio]')];
+    const other=styles.find(x=>!x.checked);
+    other?.click();return other?.value??null;
+  })()`);
+  if(!nextStyle||beforeInlineStyle.style==='report-style-'+nextStyle)
+    throw Error('G00 failed to choose alternate visual style: '+JSON.stringify({beforeInlineStyle,nextStyle}));
+  await eventually("document.querySelectorAll('.report-surface.report-style-"+nextStyle+"').length===5",
+    'G00 visual preview was not applied to all five real report cards');
+  const visualDraft=await evaluate(`(()=>{
+    const el=document.querySelector('[data-g03-visual-toolbar]');
+    const save=[...el.querySelectorAll('button')].find(x=>x.textContent?.includes('Lưu kiểu bảng'));
+    return {dirty:!!save&&!save.disabled,
+      reported:[...document.querySelectorAll('.report-surface')]
+        .flatMap(t=>[...t.querySelectorAll('tbody button.count-drill')]
+        .map(b=>Number(b.textContent?.trim())).filter(n=>Number.isFinite(n)&&n>0))};
+  })()`);
+  if(!visualDraft.dirty||JSON.stringify(visualDraft.reported)!==JSON.stringify(beforeInlineStyle.counts))
+    throw Error('G00 live style preview altered counts or cannot be canceled '+JSON.stringify(visualDraft));
+  await evaluate(`[...document.querySelector('[data-g03-visual-toolbar]').querySelectorAll('button')]
+    .find(b=>b.textContent?.includes('Hủy kiểu bảng'))?.click()`);
+  await eventually("document.querySelectorAll('.report-surface."+beforeInlineStyle.style+"').length===5",
+    'G00 Cancel did not restore prior report style across all five tables');
+  await evaluate("document.querySelector('.inline-g02-mode').click()");
+  await eventually("document.querySelectorAll('[data-g03-visual-toolbar]').length===0",
+    'G00 visual controls remained after exiting Admin layout mode');
+  console.log('G00_REAL_ADMIN_REPORT_VISUAL_PREVIEW_CANCEL_PASS',JSON.stringify({
+    fonts:fontAudit.fonts,range:[fontAudit.min,fontAudit.max],
+    before:beforeInlineStyle.style,preview:nextStyle,
+    countsUnchanged:true,toolbarCount:visualToolbar.count,
+  }));
+
   await evaluate("document.querySelectorAll('nav.primary-section-switcher button.primary-section-card')[1]?.click()");
   await eventually("document.querySelector('.item-data-table tbody')?.textContent?.includes('NQ01')===true",
     'List did not restore Firebase V2 rows after Report navigation');

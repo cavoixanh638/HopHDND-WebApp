@@ -1,8 +1,10 @@
 import type { GroupField, Item } from '../../../shared/types';
 import type {ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
-import {configuredReports,getReportFont,getReportFontSize,getReportVariant,withReportVisuals,
-  TABLE_FONT_OPTIONS,REPORT_VARIANTS,MIN_TABLE_FONT_SIZE,MAX_TABLE_FONT_SIZE,reportPageWidth,withReportPageWidth,
-  type ReportLayout,type TableFont,type ReportVariant} from '../../data/report-preferences';
+import {configuredReports,reportPageWidth,withReportPageWidth,TABLE_FONT_OPTIONS,REPORT_VARIANTS,
+  MIN_TABLE_FONT_SIZE,MAX_TABLE_FONT_SIZE,DEFAULT_TABLE_FONT_SIZE,
+  type ReportLayout,type TableFont} from '../../data/report-preferences';
+import {ReportInlineVisualToolbar} from './inline-g03-ReportInlineVisualToolbar';
+import {inlineG03ApplyVisualChange,inlineG03VisualEqual,inlineG03VisualValue,type ReportInlineVisualChange} from './inline-g03-report-visual-adapter';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
 
@@ -14,9 +16,16 @@ type ReportLayoutPanelProps = {
   sourceLabel: string;
   groupOrder:string[];
   groupIdentities?:ReportGroupIdentityRegistry;
+  /** Existing admin writer; this button MUST NOT directly access Firebase. */
+  onSaveVisual?: () => void | Promise<void>;
+  /** Restores only visual fields from the last confirmed save. */
+  onCancelVisual?: (reportId:string) => void;
+  savedVisualBaseline?: readonly ReportLayout[];
+  visualDisabled?: boolean;
 };
 
-export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, groupOrder, groupIdentities }: ReportLayoutPanelProps) {
+export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, groupOrder, groupIdentities,
+  onSaveVisual, onCancelVisual, savedVisualBaseline, visualDisabled=false }: ReportLayoutPanelProps) {
   const update = (index: number, change: Partial<ReportLayout>) => {
     onChange(draft.map((report, current) => current === index ? { ...report, ...change } : report));
   };
@@ -40,9 +49,10 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
 
   const previews = configuredReports(draft, true);
   const pageWidth=reportPageWidth(draft);
-  const font=getReportFont(draft),fontSize=getReportFontSize(draft),variant=getReportVariant(draft);
-  const updateVisual=(next:{tableFont?:TableFont;tableFontSize?:number;reportVariant?:ReportVariant})=>
-    onChange(withReportVisuals(draft,next));
+  const sharedVisual=inlineG03VisualValue(draft,draft[0]?.id??'party');
+  // One update path for legacy advanced settings AND the new inline toolbar.
+  const updateVisual=(change:ReportInlineVisualChange)=>
+    onChange(inlineG03ApplyVisualChange(draft,draft[0].id,change));
 
   return (
     <section className="card" aria-labelledby="report-layout-heading">
@@ -65,43 +75,48 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
           Tự động sử dụng toàn bộ chiều rộng màn hình
         </label>
       </div>
-      <div className="report-visual-config" aria-label="Kiểu bảng và phông chữ thống kê">
-        <h4>5 phong cách tô màu báo cáo</h4>
-        <p className="report-font-hint">Mỗi phong cách có cách thể hiện khác nhau, không chỉ đổi độ đậm. Dữ liệu, cách tính và ý nghĩa trạng thái vẫn giữ nguyên. Gợi ý: Nhãn màu nổi để xem hằng ngày; Thanh dữ liệu để so sánh khối lượng.</p>
-        <div className="report-visual-options" role="radiogroup" aria-label="Phong cách tô màu báo cáo">
-          {REPORT_VARIANTS.map(option=><label className={'report-visual-option report-style-'+option.value} key={option.value}>
-            <span><input type="radio" name="report-visual-variant"
-              checked={variant===option.value}
-              onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
-            <small>{option.description}</small>
-            <span className="report-visual-example" aria-hidden="true">
-              {([["source","Sở",19],["office","VP",4],["next","Tiếp",2],["completed","Xong",1]] as const).map(([stage,label,count])=><span key={stage} className={"report-example-cell report-example-"+stage}>
-                <b>{label}</b><i>{count}</i>
-              </span>)}
-            </span>
-          </label>)}
+      <p className="report-font-hint">Có thể chỉnh ngay trên từng bảng xem trước bên dưới; phông/cỡ chữ và phong cách áp dụng chung cho cả 5 bảng.</p>
+      <details className="inline-g03-advanced-visuals">
+        <summary>Kiểu bảng, phông chữ · thiết lập nâng cao</summary>
+        <div className="report-visual-config" aria-label="Thiết lập chung kiểu bảng và phông chữ">
+          <p className="report-font-hint">Các điều khiển truyền thống vẫn được giữ để tương thích. Chúng dùng chung bản nháp với thanh Aa/bảng màu; chỉ lưu khi bấm Lưu Bảng báo cáo.</p>
+          <div className="report-visual-options" role="radiogroup" aria-label="Phong cách tô màu báo cáo">
+            {REPORT_VARIANTS.map(option=><label
+              className={'report-visual-option report-style-'+option.value} key={option.value}>
+              <span><input type="radio" name="report-visual-variant"
+                checked={sharedVisual.reportVariant===option.value}
+                onChange={()=>updateVisual({reportVariant:option.value})}/>{option.label}</span>
+              <small>{option.description}</small>
+              <span className="report-visual-example" aria-hidden="true">
+                {([['source','Sở',19],['office','VP',4],['next','Tiếp',2],['completed','Xong',1]] as const)
+                  .map(([stage,label,count])=><span key={stage}
+                    className={'report-example-cell report-example-'+stage}>
+                    <b>{label}</b><i>{count}</i>
+                  </span>)}
+              </span>
+            </label>)}
+          </div>
+          <div className="report-font-control">
+            <label htmlFor="report-font-family"><strong>Font chữ chung cho mọi bảng</strong></label>
+            <select id="report-font-family" aria-label="Font chữ chung cho mọi bảng"
+              value={sharedVisual.tableFont}
+              onChange={event=>updateVisual({tableFont:event.currentTarget.value as TableFont})}>
+              {TABLE_FONT_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+          <div className="report-font-size-control">
+            <label htmlFor="report-font-size"><strong>Cỡ chữ tất cả các bảng</strong></label>
+            <input id="report-font-size" aria-label="Cỡ chữ tất cả các bảng"
+              type="range" min={MIN_TABLE_FONT_SIZE} max={MAX_TABLE_FONT_SIZE} step={1}
+              value={sharedVisual.tableFontSize}
+              onChange={event=>updateVisual({tableFontSize:Number(event.currentTarget.value)})}/>
+            <output htmlFor="report-font-size">{sharedVisual.tableFontSize} px</output>
+            <button type="button" className="button ghost"
+              disabled={sharedVisual.tableFontSize===DEFAULT_TABLE_FONT_SIZE}
+              onClick={()=>updateVisual({tableFontSize:DEFAULT_TABLE_FONT_SIZE})}>Cỡ mặc định</button>
+          </div>
         </div>
-        <div className="report-font-control">
-          <label htmlFor="report-font-family"><strong>Font chữ chung cho mọi bảng</strong></label>
-          <select id="report-font-family" aria-label="Font chữ chung cho mọi bảng"
-            value={font} onChange={event=>updateVisual({tableFont:event.currentTarget.value as TableFont})}>
-            {TABLE_FONT_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </div>
-        <div className="report-font-size-control">
-          <label htmlFor="report-font-size"><strong>Cỡ chữ tất cả các bảng</strong></label>
-          <input id="report-font-size" aria-label="Cỡ chữ tất cả các bảng" type="range"
-            min={MIN_TABLE_FONT_SIZE} max={MAX_TABLE_FONT_SIZE} step={1}
-            value={fontSize} onChange={event=>updateVisual({tableFontSize:Number(event.currentTarget.value)})}/>
-          <output htmlFor="report-font-size">{fontSize} px</output>
-          <button type="button" className="button ghost" disabled={fontSize===13}
-            onClick={()=>updateVisual({tableFontSize:13})}>Cỡ mặc định</button>
-        </div>
-        <p className="report-font-hint">{TABLE_FONT_OPTIONS.find(option=>option.value===font)?.description}.
-          6 font mở (Inter, Roboto, Open Sans, Lato, Noto Sans, IBM Plex Sans) được tải qua Google Fonts khi có Internet.
-          Font Apple/Microsoft/Helvetica/Arial phụ thuộc font có sẵn trên máy; khi không tải được font web, trình duyệt dùng font dự phòng.
-          Xem trước ngay, chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>
-      </div>
+      </details>
       </details>
       <h4 className="report-per-table-heading">Thiết lập từng bảng ({draft.length} bảng)</h4>
       <div className="settings-grid">
@@ -118,22 +133,6 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                   onChange={event => update(index, { title: event.target.value })}
                 />
               </label>
-              <div className="report-title-accent-config">
-                <label className="field">Từ/cụm từ trong tên bảng cần tô màu
-                  <input type="text" maxLength={80} placeholder="Ví dụ: Nghị quyết"
-                    aria-label={`Từ tô màu tên bảng ${index+1}`}
-                    value={report.titleAccentText??''}
-                    onChange={event=>update(index,{titleAccentText:event.currentTarget.value})}/>
-                </label>
-                <label className="field">Màu chữ
-                  <input type="color" aria-label={`Màu chữ tên bảng ${index+1}`}
-                    value={report.titleAccentColor??'#b42318'}
-                    onChange={event=>update(index,{titleAccentColor:event.currentTarget.value})}/>
-                </label>
-                <button className="button ghost" type="button"
-                  onClick={()=>update(index,{titleAccentText:''})}
-                  disabled={!report.titleAccentText}>Bỏ tô màu</button>
-              </div>
               <label className="field layout-visibility">
                 <input
                   type="checkbox"
@@ -143,7 +142,6 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                 Hiển thị bảng {index + 1}
               </label>
               {!report.visible && <span className="status-pill">Đang ẩn</span>}
-              <label className="field layout-visibility"><input type="checkbox" checked={report.emphasizeProgress!==false} onChange={event=>update(index,{emphasizeProgress:event.currentTarget.checked})}/>Tô màu các cột trạng thái trong bảng này</label>
               {['party','build'].includes(report.id)&&<label className="field build-count-setting" htmlFor={`${report.id}-count-mode`}>
                 Cách tính số liệu — nội dung “Không phải trình”
                 <select id={`${report.id}-count-mode`} aria-label={`Cách tính nội dung Không phải trình - ${report.title}`}
@@ -187,6 +185,16 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
               </fieldset></details>
             </div>
             <div className="report-layout-preview">
+              <ReportInlineVisualToolbar
+                reportId={report.id} reportTitle={report.title} canEdit
+                disabled={visualDisabled}
+                value={inlineG03VisualValue(draft,report.id)}
+                dirty={!!savedVisualBaseline&&!inlineG03VisualEqual(
+                  inlineG03VisualValue(draft,report.id),
+                  inlineG03VisualValue(savedVisualBaseline,report.id))}
+                onChange={change=>onChange(inlineG03ApplyVisualChange(draft,report.id,change))}
+                onSave={onSaveVisual}
+                onCancel={onCancelVisual?()=>onCancelVisual(report.id):undefined}/>
               <details className="report-preview-disclosure">
                 <summary>Xem trước bảng {index+1}: {report.title}{report.visible?'':' (đang ẩn)'}</summary>
                 <p className="muted">Kéo đường phân cách ở tiêu đề để điều chỉnh độ rộng cột. Chỉ áp dụng chung sau khi bấm Lưu Bảng báo cáo.</p>

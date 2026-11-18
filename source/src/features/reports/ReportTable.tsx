@@ -1,4 +1,5 @@
-import { memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type KeyboardEvent } from 'react';
+import type { InlineReportAction } from './inline-g02-report-actions';
 import { ColumnResizeHandle } from '../../components/ColumnResizeHandle';
 import {mountSharedReportTooltip} from '../../components/SharedReportTooltip';
 import type { GroupField, Item, ReportConfig } from '../../../shared/types';
@@ -38,7 +39,26 @@ const quietPartyMilestones=new Set([
 const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ');
 const excludedMilestone=normalizeSearch('Không phải trình');
 
-export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void }) {
+export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize, inlineEditing = false, onInlineAction, onReportDragStart, onReportDrop, onReportStep, inlineBusy = false }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void; inlineEditing?:boolean; onInlineAction?:(action:InlineReportAction)=>void; onReportDragStart?:(id:string)=>void; onReportDrop?:(id:string)=>void; onReportStep?:(id:string,direction:-1|1)=>void; inlineBusy?:boolean }) {
+  const editable = inlineEditing && !preview && !!onInlineAction && !inlineBusy;
+  const [renaming,setRenaming]=useState(false);
+  const [draftTitle,setDraftTitle]=useState(config.title);
+  const [columnsMenu,setColumnsMenu]=useState(false);
+  const draggingColumn=useRef<string|null>(null);
+  const update=(action:InlineReportAction)=>{if(editable)onInlineAction?.(action);};
+  const commitTitle=()=>{const title=draftTitle.trim();if(!title||title.length>160)return;
+    if(title!==config.title)update({type:'rename',reportId:config.id,title});setRenaming(false);};
+  const onTitleKey=(event:KeyboardEvent<HTMLInputElement>)=>{
+    if(event.key==='Enter'){event.preventDefault();commitTitle();}
+    if(event.key==='Escape'){event.preventDefault();setDraftTitle(config.title);setRenaming(false);}
+  };
+  const dropColumn=(target:string,event:DragEvent<HTMLElement>)=>{
+    if(!editable||!draggingColumn.current)return;
+    event.preventDefault();event.stopPropagation();
+    update({type:'status-reorder',reportId:config.id,column:draggingColumn.current,target});
+    draggingColumn.current=null;
+  };
+
   const heading=()=>{
     const target=config.titleAccentText?.trim();
     if(!target)return config.title;
@@ -97,9 +117,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   const allColumnWidths=[columnWidth('__group',230),columnWidth('__total',146),
     ...report.columns.map(column=>columnWidth(column,150)),columnWidth('__percent',150)];
   const gridWidth=allColumnWidths.reduce((sum,width)=>sum+width,0);
-  const grip=(key:string,index:number,label:string)=>(onColumnResize
+  const grip=(key:string,index:number,label:string)=>(onColumnResize||editable
     ?<ColumnResizeHandle columnIndex={index} width={allColumnWidths[index]} label={label}
-      onCommit={width=>onColumnResize(key,width)}/>:null);
+      onCommit={width=>editable?update({type:'column-width',reportId:config.id,column:key,width}):onColumnResize?.(key,width)}/>:null);
   // Keep a real button for keyboard/screen readers. CSS expands it over the
   // entire containing td; the invisible spacer preserves the row's dimensions.
   const clickable=(entries:Item[])=>!preview&&entries.length>0?' report-clickable-cell':'';
@@ -121,6 +141,15 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
     element.className = ref.current.className;
     element.style.cssText = ref.current.style.cssText;
     element.innerHTML = ref.current.innerHTML;
+    // A title input does not belong on paper; always print the saved title.
+    if(element.querySelector('.inline-g02-rename')){
+      const heading=document.createElement('h3');
+      heading.textContent=`${config.title} (${report.total} nội dung)`;
+      element.querySelector('.inline-g02-rename')?.replaceWith(heading);
+    }
+    // Remove edit-only controls BEFORE replacing remaining drilldown buttons;
+    // otherwise their labels would leak into A4/printed PDF as plain text.
+    element.querySelectorAll('.inline-g02-table-actions,.inline-g02-column-toolbar,.inline-g02-hide,.inline-g02-grip,.inline-g02-rename').forEach(node=>node.remove());
     element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(
       button.classList.contains('count-drill') ? (button.querySelector('span')?.textContent ?? '') : (button.textContent ?? '')
     )));
@@ -133,9 +162,38 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
   };
   return <section data-ui-reference-report={config.id}
     className={'card report-surface report-style-'+visualStyle} ref={ref}
+    onDragOver={editable?event=>{if(event.target===event.currentTarget)event.preventDefault();}:undefined}
+    onDrop={editable?event=>{if(draggingColumn.current)return;event.preventDefault();onReportDrop?.(config.id);}:undefined}
     style={{'--table-font-family':tableFontStack(config.tableFont??'segoe'),
       '--table-font-size':`${config.tableFontSize??13}px`} as CSSProperties}>
-    <div className="card-header"><div><h3>{heading()} <span className="report-heading-count">({report.total} nội dung)</span></h3></div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div>
+    <div className="card-header"><div>
+      {renaming&&editable?<div className="inline-g02-rename"><input autoFocus
+        aria-label={`Đổi tên bảng ${config.title}`} maxLength={160} value={draftTitle}
+        onChange={event=>setDraftTitle(event.target.value)} onKeyDown={onTitleKey}/>
+        <button type="button" onClick={commitTitle} disabled={!draftTitle.trim()}>Lưu tên</button>
+        <button type="button" onClick={()=>{setDraftTitle(config.title);setRenaming(false);}}>Hủy</button></div>
+        :<h3>{heading()} <span className="report-heading-count">({report.total} nội dung)</span></h3>}
+      {editable&&<div className="inline-g02-table-actions" aria-label="Sắp xếp và đổi tên bảng">
+        <button type="button" onClick={()=>{setDraftTitle(config.title);setRenaming(true);}}>✎ Đổi tên</button>
+        <button type="button" onClick={()=>onReportStep?.(config.id,-1)}>↑ Lên</button>
+        <button type="button" onClick={()=>onReportStep?.(config.id,1)}>↓ Xuống</button>
+        <span draggable tabIndex={0} role="button" aria-label={`Kéo bảng ${config.title} để đổi vị trí`}
+          className="inline-g02-grip" onDragStart={event=>{event.dataTransfer.effectAllowed='move';onReportDragStart?.(config.id);}}
+          onKeyDown={event=>{if(event.altKey&&['ArrowUp','ArrowDown'].includes(event.key)){event.preventDefault();onReportStep?.(config.id,event.key==='ArrowUp'?-1:1);}}}>⠿ Kéo bảng (Alt+↑/↓)</span>
+      </div>}
+      </div><div>{!preview && <button className="button ghost" onClick={print}>In / PDF</button>}</div></div>
+    {editable&&<div className="inline-g02-column-toolbar">
+      <button type="button" aria-expanded={columnsMenu} onClick={()=>setColumnsMenu(previous=>!previous)}>
+        {columnsMenu?'Ẩn danh sách cột':'Quản lý cột ẩn/hiện'}
+      </button>
+      {columnsMenu&&<div role="group" aria-label="Hiển thị cột báo cáo">
+        {config.columns.map(column=><label key={column} className="inline-g02-column-option">
+          <input type="checkbox" checked={!config.hiddenColumns.includes(column)}
+            onChange={event=>update({type:'status-visible',reportId:config.id,column,visible:event.target.checked})}/>
+          {column}</label>)}
+      </div>}
+    </div>}
+
     {report.unknown.length > 0 && <p className="unknown-note">Trạng thái nguồn chưa chuẩn hóa: {report.unknown.join(', ')}. {'Các nội dung được gom tại cột Chưa chuẩn hóa, vẫn tính vào tổng nhưng không tự tính hoàn thành.'}</p>}
     {report.hiddenCount > 0 && <p className="unknown-note">Có {report.hiddenCount} nội dung thuộc cột ẩn; tổng và tỷ lệ vẫn tính đầy đủ.</p>}
     <div className="report-flow-tools">
@@ -167,12 +225,26 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         <col className="report-percent-width" style={{width:`${allColumnWidths[allColumnWidths.length-1]}px`}}/>
       </colgroup>
       <thead><tr data-ui-reference-report-row={RR.header}>
-        <th scope="col" data-ui-reference-report-column={RC.group} className="report-group-heading report-resizable-heading">{onColumnResize?<>{groupLabel}{grip('__group',0,groupLabel)}</>:groupLabel}</th>
-        <th scope="col" data-ui-reference-report-column={RC.total} className="report-number-header report-total-col report-resizable-heading">{onColumnResize?<>Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</>:'Tổng số nội dung'}</th>
+        <th scope="col" data-ui-reference-report-column={RC.group} className="report-group-heading report-resizable-heading">{onColumnResize||editable?<>{groupLabel}{grip('__group',0,groupLabel)}</>:groupLabel}</th>
+        <th scope="col" data-ui-reference-report-column={RC.total} className="report-number-header report-total-col report-resizable-heading">{onColumnResize||editable?<>Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</>:'Tổng số nội dung'}</th>
         {report.columns.map((column,index)=><th key={column} scope="col"
           data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
-          className={'report-number-header report-resizable-heading'+emphasis(column)}>{onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:<span className="report-heading-label">{column}</span>}</th>)}
-        <th scope="col" data-ui-reference-report-column={RC.percent} className="report-number-header report-percent-col report-resizable-heading">{onColumnResize?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
+          onDragOver={editable&&config.columns.includes(column)?event=>event.preventDefault():undefined}
+          onDrop={event=>dropColumn(column,event)}
+          className={'report-number-header report-resizable-heading'+emphasis(column)}>
+          {editable&&config.columns.includes(column)?<div className="inline-g02-column-heading">
+            <span draggable role="button" tabIndex={0} className="inline-g02-grip"
+              aria-label={`Kéo cột ${column} để đổi thứ tự; Alt và mũi tên để di chuyển`}
+              onDragStart={event=>{draggingColumn.current=column;event.dataTransfer.effectAllowed='move';}}
+              onDragEnd={()=>{draggingColumn.current=null;}}
+              onKeyDown={event=>{if(event.altKey&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){
+                event.preventDefault();update({type:'status-step',reportId:config.id,column,direction:event.key==='ArrowLeft'?-1:1});}}}>⠿</span>
+            <span className="report-heading-label">{column}</span>
+            <button type="button" className="inline-g02-hide" title={`Ẩn cột ${column}`}
+              aria-label={`Ẩn cột ${column}`} onClick={()=>update({type:'status-visible',reportId:config.id,column,visible:false})}>×</button>
+            {grip(column,index+2,column)}</div>:
+            onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:<span className="report-heading-label">{column}</span>}</th>)}
+        <th scope="col" data-ui-reference-report-column={RC.percent} className="report-number-header report-percent-col report-resizable-heading">{onColumnResize||editable?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
       </tr></thead>
       <tbody>
         {shownRows.map(([label,cells])=>{

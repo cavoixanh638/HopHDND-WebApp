@@ -6,6 +6,7 @@ import { useRecoverableDraft } from '../../state/use-recoverable-draft';
 import { ReportLayoutPanel } from './ReportLayoutPanel';
 import { Modal } from '../../components/Modal';
 import { validateReportDraft } from '../../data/report-draft';
+import { inlineG03RestoreVisual } from './inline-g03-report-visual-adapter';
 
 export function ReportSettings({ initial, onSave, onClose, items, group, sourceLabel, sourceKey, groupOrder, groupIdentities, storageLabel = 'Google Sheets',onDirtyChange,onPreviewWidthChange,exitRequest=0 }: {
   initial: ReportLayout[]; onSave: (layout: ReportLayout[]) => Promise<void>; onClose: () => void;
@@ -17,6 +18,7 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
 }) {
   const { draft, setDraft, dirty, markSaved, recoveryMessage, checkpointMessage, clearCheckpoint, unmatchedCheckpoint, restoreOldDraft, discardOldDraft } = useRecoverableDraft<ReportLayout[]>(`report:${sourceKey}`, initial, validateReportDraft);
   const [error, setError] = useState('');
+  const [savedVisualBaseline,setSavedVisualBaseline] = useState<ReportLayout[]>(() => structuredClone(initial));
   const [saving,setSaving]=useState(false);
   const [confirm, setConfirm] = useState<'close' | 'reset' | null>(null);
   useEffect(()=>{onDirtyChange?.(dirty);},[dirty,onDirtyChange]);
@@ -49,6 +51,7 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
       const valid = validateReportLayout(draft);
       await onSave(valid);
       markSaved(valid);
+      setSavedVisualBaseline(structuredClone(valid));
       onDirtyChange?.(false);
       setError('');
       setConfirm(null);
@@ -65,7 +68,9 @@ export function ReportSettings({ initial, onSave, onClose, items, group, sourceL
     {checkpointMessage && <p className="error-text" role="alert">{checkpointMessage}</p>}
     {error && <p className="error-text" role="alert">{error}</p>}
     {saving&&<p role="status">Đang lưu bố trí báo cáo lên {storageLabel}…</p>}
-    <ReportLayoutPanel draft={draft} onChange={change} items={items} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel} />
+    <ReportLayoutPanel draft={draft} onChange={change} items={items} group={group} groupOrder={groupOrder} groupIdentities={groupIdentities} sourceLabel={sourceLabel}
+      savedVisualBaseline={savedVisualBaseline} visualDisabled={saving||!!unmatchedCheckpoint}
+      onSaveVisual={()=>save()} onCancelVisual={reportId=>change(inlineG03RestoreVisual(draft,savedVisualBaseline,reportId))} />
     {confirm && <Modal title={confirm === 'close' ? `Lưu bố trí lên ${storageLabel} trước khi thoát?` : 'Khôi phục bố trí mặc định?'} onClose={() => setConfirm(null)}><div className="modal-body"><p>{confirm === 'close' ? `Có phần đang sửa trên máy, chưa lưu. Bố trí chỉ được lưu lên ${storageLabel} khi bạn bấm Lưu; ${dataLabel} không đổi.` : `${draft.length} bảng trở về tên, thứ tự và các cột hiển thị mặc định trong phần đang sửa trên máy. Bấm Lưu bố trí để lưu riêng lên ${storageLabel}; ${dataLabel} không đổi.`}</p></div>{confirm === 'close' ? <div className="modal-footer"><button className="button ghost" onClick={() => save(true)}>Lưu bố trí và thoát</button><button className="button danger" onClick={() => { clearCheckpoint(); setConfirm(null); onClose(); }}>Bỏ phần đang sửa trên máy và về xem</button><button className="button primary" onClick={() => setConfirm(null)}>Tiếp tục sửa</button></div> : <div className="modal-footer"><button className="button ghost" onClick={() => setConfirm(null)}>Tiếp tục tùy chỉnh</button><button className="button danger" onClick={() => { change(defaultReportLayout()); setConfirm(null); }}>Khôi phục trong phần đang sửa</button></div>}</Modal>}
   </fieldset>
   {unmatchedCheckpoint&&<Modal title="Có phần sửa cũ trên máy" onClose={onClose}><div className="modal-body"><p>Phần đang sửa trên máy chưa được lưu và chưa ghi lên {storageLabel}. Bạn có thể nạp phần sửa để đối chiếu trước khi quyết định lưu bố trí; {dataLabel} không đổi.</p><p className="muted">Lưu trên máy: {new Date(unmatchedCheckpoint.savedAt).toLocaleString('vi-VN')}</p></div><div className="modal-footer"><button className="button ghost" onClick={onClose}>Giữ phần sửa trên máy và về xem</button><button className="button danger" onClick={discardOldDraft}>Bỏ phần sửa cũ</button><button className="button primary" onClick={restoreOldDraft}>Nạp phần sửa để đối chiếu</button></div></Modal>}

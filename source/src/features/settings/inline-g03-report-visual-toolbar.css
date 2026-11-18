@@ -1,0 +1,39 @@
+/* G03-only inline report controls. No global report CSS is overridden. */
+.inline-g03-visual-toolbar{min-width:0;margin:8px 0 12px;border:1px solid #cadfd1;border-radius:9px;background:#f8fcf9;color:#234d38}
+.inline-g03-toolbar-row{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:7px}
+.inline-g03-toolbar-caption{font-size:12px;font-weight:750;margin-right:3px}
+.inline-g03-tool{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:5px 10px;border:1px solid #bcd4c4;border-radius:7px;background:#fff;color:#234d38;cursor:pointer;font:inherit;font-size:12px}
+.inline-g03-tool[aria-expanded="true"]{border-color:#34785b;background:#e5f3eb;box-shadow:inset 0 0 0 1px #34785b}
+.inline-g03-tool strong{font-size:17px;letter-spacing:-1px}
+.inline-g03-tool:disabled,.inline-g03-action:disabled{cursor:not-allowed;opacity:.5}
+.inline-g03-unsaved{font-size:11px;color:#815500;font-weight:650}
+.inline-g03-action{min-height:34px;margin-left:0}
+.inline-g03-panel{padding:12px;border-top:1px solid #d3e3d8;background:#fff;border-radius:0 0 9px 9px;display:flex;flex-wrap:wrap;align-items:end;gap:10px 14px;min-width:0}
+.inline-g03-field{display:flex;flex-direction:column;gap:5px;min-width:min(100%,225px);font-size:12px;font-weight:650}
+.inline-g03-field input:not([type="color"]),.inline-g03-field select{font:inherit;font-size:13px;min-height:34px;max-width:100%;border:1px solid #bdcec3;border-radius:6px;background:white;padding:5px 8px}
+.inline-g03-range{min-width:min(100%,260px)}
+.inline-g03-range-line{display:flex;align-items:center;gap:8px}
+.inline-g03-range-line input{width:min(190px,100%);accent-color:#28704f}
+.inline-g03-range-line output{font-size:13px;font-weight:700;min-width:42px;font-variant-numeric:tabular-nums}
+.inline-g03-hint{width:100%;font-size:11px;color:#526d5e;margin:0;line-height:1.5}
+.inline-g03-style-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:8px;border:0;margin:0;padding:0;min-width:0;width:100%}
+.inline-g03-style-list legend{font-size:12px;font-weight:750;margin-bottom:8px}
+.inline-g03-style-option{padding:8px;gap:4px}
+.inline-g03-style-option .report-visual-example{margin-top:0}
+.inline-g03-emphasis{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650}
+.inline-g03-highlight-row{display:flex;align-items:end;flex-wrap:wrap;gap:8px;width:100%}
+.inline-g03-highlight-row .inline-g03-field{flex:1 1 220px;max-width:410px}
+.inline-g03-highlight-row .inline-g03-color-field{min-width:62px;max-width:76px;flex:0 0 76px}
+.inline-g03-color-field input[type="color"]{width:52px;height:34px;padding:2px;border:1px solid #bdcec3;border-radius:6px;background:#fff;cursor:pointer}
+.inline-g03-remove-accent{min-height:34px}
+.inline-g03-visual-toolbar :is(button,input,select):focus-visible{outline:2px solid #176240;outline-offset:2px}
+@media(max-width:650px){
+  .inline-g03-toolbar-caption{flex-basis:100%}
+  .inline-g03-toolbar-row{gap:6px}
+  .inline-g03-style-list{grid-template-columns:repeat(auto-fit,minmax(145px,1fr))}
+  .inline-g03-panel{padding:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .inline-g03-visual-toolbar *{transition:none!important;animation:none!important}
+}
+@media print{.inline-g03-visual-toolbar{display:none!important}}

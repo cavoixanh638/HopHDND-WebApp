@@ -1,0 +1,46 @@
+/* G06 personal palette controls: top-layer popover stays above report dialogs and clips. */
+.inline-g06-popover[popover] {
+  position:fixed;inset:auto;margin:0;box-sizing:border-box;z-index:2000;
+  padding:12px;border:1px solid #aecfc1;border-radius:12px;
+  box-shadow:0 14px 38px rgba(16,52,43,.25);background:#fff;color:#223c33;
+  overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;
+}
+.inline-g06-popover:not(:popover-open) {display:none;}
+.inline-g06-popover:focus-visible {outline:2px solid #2e7a60;outline-offset:2px;}
+.inline-g06-popover-head {display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.inline-g06-popover-head strong {font-size:15px;color:#25493d;}
+.inline-g06-popover-head .button {min-width:30px;min-height:30px;padding:2px 8px;font-size:20px;}
+.inline-g06-help {margin:6px 0 10px;color:#52685f;font-size:12px;line-height:1.45;}
+.inline-g06-groups {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+.inline-g06-group {display:flex;align-items:center;gap:7px;min-width:0;padding:8px;
+  line-height:1.35;font-size:12px;font-family:inherit;font-weight:600;text-align:left;background:#f7faf8;color:#274439;
+  border:1px solid #d1e0d7;border-radius:8px;cursor:pointer;}
+.inline-g06-group[aria-pressed="true"] {background:#e8f3ed;border-color:#43876c;box-shadow:inset 0 0 0 1px #43876c;}
+.inline-g06-dot {flex:none;width:13px;height:13px;border:2px solid;border-radius:4px;}
+.inline-g06-editor {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:11px;}
+.inline-g06-popover .inline-g06-color-field {font-size:12px;}
+.inline-g06-popover .status-palette-color-controls input[type=color] {width:34px;min-width:34px;height:34px;}
+.inline-g06-popover .status-palette-color-controls input[type=text] {height:34px;}
+.inline-g06-invalid {display:block;font-size:11px;color:#9a2323;}
+.inline-g06-color-field input[aria-invalid="true"] {border-color:#b83333;}
+.inline-g06-preview {grid-column:1/-1;font-size:13px;}
+.inline-g06-other-toggle {grid-column:1/-1;}
+.inline-g06-actions {display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:11px;}
+.inline-g06-actions .button {font-size:12px;min-height:32px;padding:6px 8px;white-space:normal;}
+.inline-g06-preset-choice {display:grid;gap:5px;margin-top:10px;font-weight:600;font-size:12px;}
+.inline-g06-preset-choice select {width:100%;min-width:0;min-height:34px;padding:5px;border:1px solid #bbd3c8;border-radius:7px;background:#fff;color:#213f35;}
+.inline-g06-feedback {font-size:12px;margin:9px 0 0;color:#435e52;overflow-wrap:anywhere;}
+.inline-g06-row-reset {grid-column:1/-1;justify-self:end;font-size:12px;}
+.inline-g06-trigger:focus-visible,.inline-g06-popover button:focus-visible,
+.inline-g06-popover input:focus-visible,.inline-g06-popover select:focus-visible {
+  outline:2px solid #276f54;outline-offset:2px;
+}
+@media(max-width:380px){
+  .inline-g06-popover[popover] {padding:9px;}
+  .inline-g06-groups {gap:4px;}
+  .inline-g06-group {padding:6px;font-size:11px;}
+  .inline-g06-editor {grid-template-columns:1fr;}
+  .inline-g06-actions {justify-content:stretch;}
+  .inline-g06-actions .button {flex:1 1 auto;}
+}
+@media(prefers-reduced-motion:reduce){.inline-g06-popover[popover],.inline-g06-popover * {scroll-behavior:auto;}}
