@@ -4,9 +4,9 @@
 - Branch: `g01/20261118-inline-list`
 - Verified immutable baseline: `2ace3304a299d23ca6414c6ba6dc30f16266e9c2`
 - Pull request: https://github.com/cavoixanh638/HopHDND-WebApp/pull/212 (draft, not merged)
-- Last feature commit: `102551f51f2d4dec7bdcf565532d52f3a2a378d4`
-- Code SHA: see latest commit on branch after this checkpoint (checkpoint itself advances HEAD)
-- Tested SHA: NOT_RUN locally; CI run targeting feature SHA `102551f51f2d4dec7bdcf565532d52f3a2a378d4` pending
+- Last feature commit before checkpoint revision: `e43a58c3d6ee4d1ab55f64461cbda845ef29dc27`
+- Code SHA (feature code, exact GitHub SHA): `e43a58c3d6ee4d1ab55f64461cbda845ef29dc27`. Checkpoint-only commits may subsequently advance the branch HEAD.
+- Tested SHA: NOT_RUN / no all-green verification yet. Initial candidate `102551f51f2d4dec7bdcf565532d52f3a2a378d4` FAILED TypeScript parsing; defects fixed on later commits. GitHub Verify Source run #44290328668 for feature SHA `e43a58c3d6ee4d1ab55f64461cbda845ef29dc27` is queued.
 - No merge, release, Firebase production write, Rules changes, package changes or secrets.
 
 ## Changes
@@ -21,12 +21,12 @@
 | Check | Result | Evidence or limitation |
 | --- | --- | --- |
 | Baseline/head and ownership | PASS | GitHub API branch at baseline; only G01-owned TSX + new `inline-g01-*` and test/docs paths |
-| Code committed and pushed | PASS | GitHub branch commits up to `102551f51f2d4dec7bdcf565532d52f3a2a378d4` |
+| Code committed and pushed | PASS | GitHub branch commits up to `e43a58c3d6ee4d1ab55f64461cbda845ef29dc27` |
 | Pull request opened against main | PASS | PR #212, draft |
 | Pure transforms, role SSR cases | NOT_RUN | Test source created; CI queued, not yet completed |
-| `npm run typecheck` | NOT_RUN | Container has no repository clone/npm dependencies and cannot resolve github.com |
-| `npm test` | NOT_RUN | Same environment limitation; GitHub Actions Verify Source started |
-| `npm run build:compact:qa` | NOT_RUN | Await GitHub Actions runner results |
+| `npm run typecheck` | FAIL (initial candidate), NOT_RUN (current SHA) | GitHub Verify Source run #44289932069 failed TS1005 at ItemList.tsx:979 and the test lines 57/59. Both syntax defects committed as fixes; current run #44290328668 queued. Local container has no repository clone/npm dependencies and cannot resolve github.com. |
+| `npm test` | NOT_RUN | Initial CI stopped at typecheck; current GitHub Actions Verify Source queued |
+| `npm run build:compact:qa` | NOT_RUN | Current GitHub Actions runner queued; no browser fixture evidence yet |
 | Emulator `npm run test:spark` | NOT_RUN | No local emulators; no production credentials used |
 | Chrome actual 1920x1080 / 900px / narrow, keyboard / drag | NOT_RUN | No browser workspace; CI real-list Chromium jobs queued |
 | Two-admin CAS and rejection rollback on actual Firebase | NOT_RUN | Production expressly prohibited; use mock/staging and G00 integration |
@@ -39,3 +39,8 @@
 - Test hidden grouped columns with G08's compact presentation, and header/pointer interactions with G07's resize controls after integration.
 - Re-check narrow viewport menus and 1920x1080 layout using actual browser screenshots.
 - Keep PR unmerged and release gate untouched until CI and G00 acceptance.
+
+## CI correction log
+- 18/11/2026: initial PR Actions Typecheck **FAIL** (TS1005 in new JSX and test). Fixed in commits `ea32a754bffebc7cbed62367f76454a34ac35f5e` and `0ca9936e35ac72a2b43595e45f3f529c374da705`; subsequent focus and visibility fixes are included through `e43a58c3d6ee4d1ab55f64461cbda845ef29dc27`.
+- Verification link: https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44290328668 . Queued is **NOT_RUN**, not PASS.
+- PR remains draft; **G01 NOT DONE** pending reproducible typecheck, unit, emulator/browser results and G00 QA.
