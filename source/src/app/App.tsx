@@ -11,6 +11,9 @@ import { getKpis } from '../domain/reporting';
 import {canonicalStatus} from '../domain/status-contract';
 import {partyProgressEditIssue} from '../domain/party-progress-edit';
 import { MemoReportTable } from '../features/reports/ReportTable';
+import { applyInlineReportAction, type InlineReportAction } from '../features/reports/inline-g02-report-actions';
+import { validateReportLayout } from '../data/report-preferences';
+import '../features/reports/inline-g02-report.css';
 import { ReportDetailGrid } from '../features/reports/ReportDetailGrid';
 import {loadStatusPaletteStore,saveStatusPaletteStore,statusPaletteCssVariables,
   type StatusPaletteStore} from '../data/status-palettes';
@@ -475,7 +478,20 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     setLayoutMessage('Đã lưu cách hiển thị trên máy này; chưa đồng bộ cách hiển thị lên kho chung.');
     return next;
   };
-  const reports = useMemo(() => configuredReports(layout), [layout]);
+  // Inline editor is strictly an admin UI mode, never a business-data edit.
+  // A single interaction commits a complete, validated shared report profile
+  // through the EXISTING revision-aware writer (not a direct RTDB mutation).
+  const [inlineEditing,setInlineEditing]=useState(false);
+  const [inlinePending,setInlinePending]=useState(false);
+  const [inlineDraft,setInlineDraft]=useState<ReportLayout[]|null>(null);
+  const inlineSaving=useRef(false);
+  const reportDrag=useRef<string|null>(null);
+  const [inlineError,setInlineError]=useState('');
+  const inlineAllowed=adminTools&&page==='overview'&&
+    (!isFirebase||(firebase?.connected&&common.status==='ready'&&firebase?.datasetEpochReady));
+  useEffect(()=>{if(!inlineAllowed){setInlineEditing(false);setInlineDraft(null);setInlineError('');}},[inlineAllowed]);
+  const currentReportLayout=inlineDraft??layout;
+  const reports = useMemo(() => configuredReports(currentReportLayout), [currentReportLayout]);
   const tableFont=getReportFont(layout);
   useEffect(()=>{loadSelectedWebFont(tableFont);},[tableFont]);
   const showReportDetails=useCallback((title:string,items:Item[])=>setSelection({title,items}),[]);
@@ -484,6 +500,30 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     if(isFirebase){if(!canCustomize)throw new Error('Chỉ quản trị được lưu cấu hình chung.');const confirmed=await firebase!.common.save('reports',next,firebaseEditRevision.current);firebaseEditRevision.current=confirmed.revision;setLayoutMessage('');return;}
     if(!isDemo&&!privateTest){await common.save('reports',next);setLayoutMessage('');}
     else{if(!saveReportLayout(sourceKey,next))throw new Error('Không lưu được cách hiển thị trên máy. Nháp được giữ.');setLayoutState({source:sourceKey,layout:next});setLayoutMessage('');}
+  };
+  const commitInlineReportAction=async(action:InlineReportAction)=>{
+    if(!inlineAllowed||!inlineEditing||inlineSaving.current)return;
+    const before=layout;
+    let next:ReportLayout[];
+    try{next=validateReportLayout(applyInlineReportAction(before,action));}
+    catch(cause){setInlineError(cause instanceof Error?cause.message:'Thao tác báo cáo không hợp lệ.');return;}
+    if(JSON.stringify(next)===JSON.stringify(before))return;
+    inlineSaving.current=true;setInlinePending(true);setInlineDraft(next);setInlineError('');
+    try{await saveLayout(next);setInlineDraft(null);}
+    catch(cause){
+      // Failed transaction / conflict: no unsanctioned local shared layout.
+      setInlineDraft(null);
+      setInlineError((cause instanceof Error?cause.message:'Không lưu được bố cục.')+
+        ' Đã hoàn nguyên thay đổi chưa được xác nhận; tải lại cấu hình nếu có xung đột.');
+      if(common.refresh)void common.refresh().catch(()=>{});
+    }finally{inlineSaving.current=false;setInlinePending(false);}
+  };
+  const inlineAction=(action:InlineReportAction)=>{void commitInlineReportAction(action);};
+  const inlineReportStep=(id:string,direction:-1|1)=>
+    inlineAction({type:'report-step',reportId:id,direction});
+  const inlineReportDrop=(targetId:string)=>{
+    const source=reportDrag.current;reportDrag.current=null;
+    if(source&&source!==targetId)inlineAction({type:'report-reorder',reportId:source,targetId});
   };
   const openOptions = (next: Page, event: { currentTarget: HTMLElement }) => {
     settingsMenu.current?.removeAttribute('open');
@@ -741,9 +781,45 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {page === 'overview' && <>
         <div className="kpi-grid">{[['Đang trình', kpis.total, `${kpis.nq} nghị quyết · ${kpis.bc} báo cáo`], ['Sở chưa trình', kpis.pending, 'Chờ hồ sơ từ đơn vị'], ['VP đang xử lý', kpis.doing, 'Đang xử lý và hoàn thiện'], ['Đã hoàn thành', kpis.completed, 'Trạng thái hoàn thành đã xác nhận']].map(([label, value, note]) => <article className="kpi-card" key={String(label)}><span>{label}</span><strong className="kpi-value">{value}</strong><span className="kpi-note">{note}</span></article>)}</div>
         
-        <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span></div>
-        {reports.map(config => <MemoReportTable key={config.id} items={workspace.items} config={config} group={group} groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities} sourceLabel={sourceLabel} onSelect={showReportDetails} />)}
-        {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.</p>}
+        <div className="toolbar"><label className="field">Phân nhóm theo<select value={group} onChange={e => setGroup(e.target.value as GroupField)}>{GROUP_OPTIONS.map(option => <option value={option.key} key={option.key}>{option.label}</option>)}</select></label><span className="muted">Bấm vào số lượng để xem nội dung. Rút/lưu trữ được loại khỏi báo cáo.</span>
+        {inlineAllowed&&<button type="button" className="button ghost inline-g02-mode"
+          aria-pressed={inlineEditing} disabled={inlinePending}
+          onClick={()=>{if(!inlineEditing&&isFirebase)firebaseEditRevision.current=firebase?.profile?.revision??0;
+            setInlineEditing(value=>!value);setInlineError('');}}>
+          {inlineEditing?'✓ Xong chỉnh giao diện':'✎ Chỉnh giao diện báo cáo'}
+        </button>}</div>
+        {inlineEditing&&inlineAllowed&&<div className="inline-g02-mode-panel" role="group" aria-label="Chỉnh giao diện báo cáo">
+          <strong>Chỉnh bố cục báo cáo</strong>
+          <span>Chỉ quản trị; lưu dùng chung sau khi thả kéo hoặc xác nhận. Không sửa số liệu, không thay đổi cách đếm “Không phải trình”.</span>
+          {inlinePending&&<span role="status">Đang lưu bố cục…</span>}
+          {inlineError&&<span role="alert">{inlineError}</span>}
+          {currentReportLayout.some(row=>!row.visible)&&<div className="inline-g02-restore" aria-label="Các bảng đang ẩn">
+            <span>Bảng đang ẩn:</span>{currentReportLayout.filter(row=>!row.visible).map(row=>
+              <button type="button" key={row.id} disabled={inlinePending}
+                onClick={()=>inlineAction({type:'report-visible',reportId:row.id,visible:true})}>
+                + Hiện {row.title}</button>)}
+          </div>}
+        </div>}
+        {reports.map(config=>{
+          const table=<MemoReportTable key={config.id} items={workspace.items} config={config} group={group}
+            groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities}
+            sourceLabel={sourceLabel} onSelect={showReportDetails}
+            inlineEditing={inlineEditing&&inlineAllowed} inlineBusy={inlinePending}
+            onInlineAction={inlineAction}
+            onReportDragStart={id=>{reportDrag.current=id;}}
+            onReportDrop={inlineReportDrop} onReportStep={inlineReportStep}/>;
+          // Normal/guest rendering keeps the original direct card DOM hierarchy.
+          if(!inlineEditing||!inlineAllowed)return table;
+          return <div key={config.id} className="inline-g02-report-slot inline-g02-report-slot-editing"
+            onDragOver={event=>event.preventDefault()}
+            onDrop={event=>{event.preventDefault();inlineReportDrop(config.id);}}>
+            <button type="button" className="inline-g02-hide-report"
+              disabled={inlinePending} onClick={()=>inlineAction({type:'report-visible',reportId:config.id,visible:false})}>
+              Ẩn bảng này (có thể hiện lại)</button>
+            {table}
+          </div>;
+        })}
+        {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. {inlineAllowed?'Bấm Chỉnh giao diện báo cáo để bật lại bảng.':'Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.'}</p>}
       </>}
       {adminTools&&page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
       {adminTools&&page === 'catalogs'&&<CatalogSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={`${sourceKey}:${catalogField??'default'}`} initialField={catalogField} columnLabels={Object.fromEntries(itemLayout.columns.map(column=>[column.key,column.label]))} sourceKey={sourceKey} items={workspace.items} config={catalog} onSave={saveCatalogConfig} onDirtyChange={setEditorUnsaved} exitRequest={editorExitRequest} onClose={()=>{setEditorUnsaved(false);setPage('overview');}}/>}
