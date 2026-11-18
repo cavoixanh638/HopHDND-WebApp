@@ -799,20 +799,25 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
                 + Hiện {row.title}</button>)}
           </div>}
         </div>}
-        {reports.map(config => <div key={config.id} className={inlineEditing&&inlineAllowed?"inline-g02-report-slot inline-g02-report-slot-editing":"inline-g02-report-slot"}
-          onDragOver={inlineEditing&&inlineAllowed?event=>event.preventDefault():undefined}
-          onDrop={inlineEditing&&inlineAllowed?event=>{event.preventDefault();inlineReportDrop(config.id);}:undefined}>
-          {inlineEditing&&inlineAllowed&&<button type="button" className="inline-g02-hide-report"
-            disabled={inlinePending} onClick={()=>inlineAction({type:'report-visible',reportId:config.id,visible:false})}>
-            Ẩn bảng này (có thể hiện lại)</button>}
-          <MemoReportTable items={workspace.items} config={config} group={group}
+        {reports.map(config=>{
+          const table=<MemoReportTable key={config.id} items={workspace.items} config={config} group={group}
             groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities}
             sourceLabel={sourceLabel} onSelect={showReportDetails}
             inlineEditing={inlineEditing&&inlineAllowed} inlineBusy={inlinePending}
             onInlineAction={inlineAction}
             onReportDragStart={id=>{reportDrag.current=id;}}
-            onReportDrop={inlineReportDrop} onReportStep={inlineReportStep}/>
-        </div>)}
+            onReportDrop={inlineReportDrop} onReportStep={inlineReportStep}/>;
+          // Normal/guest rendering keeps the original direct card DOM hierarchy.
+          if(!inlineEditing||!inlineAllowed)return table;
+          return <div key={config.id} className="inline-g02-report-slot inline-g02-report-slot-editing"
+            onDragOver={event=>event.preventDefault()}
+            onDrop={event=>{event.preventDefault();inlineReportDrop(config.id);}}>
+            <button type="button" className="inline-g02-hide-report"
+              disabled={inlinePending} onClick={()=>inlineAction({type:'report-visible',reportId:config.id,visible:false})}>
+              Ẩn bảng này (có thể hiện lại)</button>
+            {table}
+          </div>;
+        })}
         {!reports.length && <p className="empty">Các bảng báo cáo đang được ẩn. {inlineAllowed?'Bấm Chỉnh giao diện báo cáo để bật lại bảng.':'Mở ⚙ Cài đặt → Chỉnh sửa → Bảng thống kê để hiển thị lại.'}</p>}
       </>}
       {adminTools&&page === 'customize' && <ReportSettings storageLabel={isFirebase?'Firebase':'Google Sheets'} key={sourceKey} sourceKey={sourceKey} initial={layout} items={workspace.items} group={group} groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities} sourceLabel={sourceLabel} onSave={saveLayout} onDirtyChange={setEditorUnsaved} onPreviewWidthChange={setReportWidthPreview} exitRequest={editorExitRequest} onClose={() => {setEditorUnsaved(false);setReportWidthPreview(null);setPage('overview');}} />}
