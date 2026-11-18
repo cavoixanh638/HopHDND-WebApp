@@ -35,6 +35,8 @@ import {itemColor,validateColorRules,type ColorRule} from '../../data/list-views
 import '../items/l03-track-widths.css';
 import '../items/inline-note-hit-area.css';
 import {loadDetailPresets,saveDetailPresets,loadDetailColors,saveDetailColors,type ReportDetailPreset} from '../../data/report-detail-presets';
+import {InlineG04PopupHandles} from './inline-g04-popup-handles';
+import './inline-g04-popup.css';
 
 type Props={
   title:string; selectedIds:string[];items:Item[];sourceKey:string;
@@ -44,6 +46,7 @@ type Props={
   allowDraft:boolean;
   readOnlyViewer?:boolean;
   guestViewer?:boolean;
+  canCustomizePopup?:boolean;
   canEditCell:(id:string,field:TextField)=>boolean;
   onUpdate:(id:string,changes:Changes)=>void;
   leaseManager?:CellEditSessionManager;
@@ -60,13 +63,18 @@ type Props={
 };
 
 export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,listLayout,viewerCompactScope,allowDraft,readOnlyViewer=false,guestViewer=false,canEditCell,
-  onUpdate,leaseManager,directStatusCasActive=false,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange}:Props){
+  onUpdate,leaseManager,directStatusCasActive=false,onKeepDraft,onCellHistory,onOpenFullList,dirtyIds,errors,onClose,statusPaletteStore,onStatusPaletteChange,canCustomizePopup}:Props){
   useEffect(()=>mountSharedEditTooltip(),[]);
   // One dialog per click; settings persist separately from both list/report layouts.
   const [applied,setApplied]=useState<DetailGridPreferences>(()=>loadDetailGridPreferences(sourceKey));
   const [pending,setPending]=useState<DetailGridPreferences>(applied);
   const [settings,setSettings]=useState(false);
   const [notice,setNotice]=useState('');
+  const mayCustomize=!readOnlyViewer&&!guestViewer&&(canCustomizePopup??true);
+  const [previewWidth,setPreviewWidth]=useState<number|null>(null);
+  const [renameKey,setRenameKey]=useState<string|null>(null);
+  const [renameValue,setRenameValue]=useState('');
+  const [hiddenOpen,setHiddenOpen]=useState(false);
   const [editing,setEditing]=useState(false);
   const [filters,setFilters]=useState<Record<string,string>>({});
   const [sort,setSort]=useState<ColumnSort>(null);
@@ -109,7 +117,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   </span>;
   const statusFilterItems=useMemo(()=>projectedStatusFilterRows(subset),[subset]);
   // Preview pending column changes while the settings panel is open.
-  const displayedLayout=settings&&!guestViewer?pending:applied;
+  const displayedLayout=settings&&mayCustomize?pending:applied;
   const shownColumns=useMemo(()=>displayedLayout.columns.filter(c=>(c.visible||showAll&&!guestViewer)&&
     (c.key!=='stt'||showAll&&!guestViewer||settings&&!guestViewer)),
     [displayedLayout,showAll,settings,guestViewer]);
@@ -148,7 +156,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const minDialogWidth=Math.min(640,availableWidth);
   const changeDialogWidth=(width:number)=>{
     // Window sizing is a viewing preference, not permission to edit data.
-    if(guestViewer||readOnlyViewer||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
+    if(!mayCustomize||!Number.isInteger(width)||width<minDialogWidth||width>availableWidth)return;
     if(settings){setPending(old=>({...old,dialogWidth:width}));return;}
     const next={...applied,dialogWidth:width};
     if(!saveDetailGridPreferences(sourceKey,next)){setNotice('Không lưu được độ rộng popup.');return;}
@@ -164,11 +172,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     });
   };
   const patch=(key:DetailColumnKey,changes:Partial<{visible:boolean;width:number}>)=>{
-    if(guestViewer||readOnlyViewer)return;
+    if(!mayCustomize)return;
     setPending(previous=>({...previous,columns:previous.columns.map(c=>c.key===key?{...c,...changes}:c)}));
   };
   const commitWidth=(key:DetailColumnKey,width:number)=>{
-    if(readOnlyViewer||guestViewer)return;
+    if(!mayCustomize)return;
     if(settings){patch(key,{width});return;}
     const next={...applied,columns:applied.columns.map(c=>c.key===key?{...c,width}:c)};
     if(!saveDetailGridPreferences(sourceKey,next)){
@@ -178,7 +186,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setNotice('Đã giữ độ rộng cột của bảng popup trên trình duyệt.');
   };
   const moveHeader=(from:string,to:string)=>{
-    if(guestViewer||readOnlyViewer||!settings)return;
+    if(!mayCustomize||!settings)return;
     setPending(old=>({...old,columns:reorderByKey(old.columns,c=>c.key,from,to)}));
   };
   const closeSettings=()=>{
@@ -186,7 +194,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setSettings(false);
   };
   const toggleSettings=()=>{
-    if(readOnlyViewer||guestViewer)return;
+    if(!mayCustomize)return;
     if(settings){closeSettings();return;}
     setPending(applied);setSettings(true);setNotice('');
   };
@@ -231,7 +239,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setPresets(list);setSelectedPreset('');setNotice('Đã xóa mẫu. Cấu hình popup đang hiển thị không đổi.');
   };
   const saveSettings=()=>{
-    if(readOnlyViewer||guestViewer)return;
+    if(!mayCustomize)return;
     if(!pending.columns.some(c=>c.visible)){setNotice('Cần giữ ít nhất một cột được hiển thị.');return;}
     // R07: storage *and* live state must use the SAME validated snapshot.
     // Empty/whitespace-only overrides are deleted by the validator, allowing
@@ -243,6 +251,26 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     setApplied(valid);setPending(valid);setSettings(false);
     setNotice('Đã lưu cấu hình cột riêng của bảng chi tiết trên trình duyệt này. Không thay đổi Danh sách nội dung hoặc dữ liệu nguồn.');
   };
+  const applyPopupVisual=(next:DetailGridPreferences,description:string)=>{
+    if(!mayCustomize)return false;
+    let validated:DetailGridPreferences;
+    try{validated=validateDetailGridPreferences(next);}
+    catch(error){setNotice(error instanceof Error?error.message:'Cấu hình popup không hợp lệ.');return false;}
+    if(settings){setPending(validated);return true;}
+    if(!saveDetailGridPreferences(sourceKey,validated)){setNotice('Không lưu được thiết lập popup.');return false;}
+    setApplied(validated);setPending(validated);setNotice(description);return true;
+  };
+  const togglePopupColumns=(keys:readonly string[],visible:boolean)=>{
+    const old=settings?pending:applied, matching=new Set(keys);
+    const next={...old,columns:old.columns.map(col=>matching.has(col.key)?{...col,visible}:col)};
+    if(applyPopupVisual(next,visible?'Đã khôi phục cột popup.':'Đã ẩn cột popup.'))setHiddenOpen(visible);
+  };
+  const saveInlineGroupName=(key:string,name:string)=>{
+    const old=settings?pending:applied;
+    if(applyPopupVisual({...old,groupLabels:{...old.groupLabels,[key]:name}},
+      'Đã lưu tên nhóm riêng của popup.'))setRenameKey(null);
+  };
+  const hiddenPopupColumns=displayedLayout.columns.filter(col=>!col.visible);
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
     const shown=statusReadOnlyValue(key as TextField,effectiveItemField(item,key));
@@ -295,8 +323,11 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
     if(settingsDirty){setConfirmSettingsExit(true);return;}
     onClose();
   };
-  return <Modal title={title} onClose={canClose} className="report-detail-modal report-grid-modal"
-    style={{'--report-grid-window-width':`${displayedLayout.dialogWidth}px`} as CSSProperties}>
+  return <Modal title={title} onClose={canClose} className="report-detail-modal report-grid-modal inline-g04-popup"
+    style={{'--report-grid-window-width':`${previewWidth??displayedLayout.dialogWidth}px`} as CSSProperties}>
+    {mayCustomize&&<InlineG04PopupHandles width={displayedLayout.dialogWidth}
+       onPreview={setPreviewWidth} onCommit={changeDialogWidth}/>}
+
     <div className="report-grid-toolbar">
       <div className="report-grid-summary">
         <strong>{selectedIds.length} nội dung trong ô báo cáo</strong>
@@ -306,9 +337,18 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
       {!readOnlyViewer&&<div className="report-grid-actions">
         {!guestViewer&&<button type="button" className="button ghost" aria-pressed={showAll}
           onClick={()=>setShowAll(v=>!v)}>{showAll?'Theo cột đã chọn':'Hiện đủ cột Excel'}</button>}
+        {mayCustomize&&<details className="inline-g04-hidden-columns" open={hiddenOpen}
+          onToggle={event=>setHiddenOpen(event.currentTarget.open)}>
+          <summary>Cột ẩn ({hiddenPopupColumns.length})</summary>
+          <div className="inline-g04-hidden-list">
+            {hiddenPopupColumns.length===0?<p>Không có cột ẩn.</p>:
+            hiddenPopupColumns.map(col=><button type="button" key={col.key}
+              onClick={()=>togglePopupColumns([col.key],true)}>+ {labelByKey.get(col.key)??col.key}</button>)}
+          </div>
+        </details>}
         {!guestViewer&&<button type="button" className="button ghost" onClick={clearFilters}
           disabled={Object.keys(filters).length===0&&!sort}>Xóa bộ lọc</button>}
-        {!guestViewer&&<details className="report-grid-display-options">
+        {mayCustomize&&<details className="report-grid-display-options">
           <summary>Hiển thị nâng cao</summary>
           <div className="report-grid-display-options-content">
             <label className="report-grid-quick-width">Rộng popup
@@ -322,7 +362,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
           </div>
         </details>}
-        {!guestViewer&&<button type="button" className="button ghost" aria-expanded={settings}
+        {mayCustomize&&<button type="button" className="button ghost" aria-expanded={settings}
           onClick={toggleSettings}>Cấu hình popup / cột</button>}
         {!readOnlyViewer&&editable&&<button type="button" className="button ghost" aria-pressed={editing}
           onClick={()=>{if(editing)setSort(null);setEditing(!editing);}}>{editing?'Về chế độ xem':'Chỉnh sửa nháp'}</button>}
@@ -343,7 +383,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         onClick={updatePreset}>Cập nhật mẫu</button>
         <button type="button" className="button ghost" onClick={removePreset}>Xóa mẫu</button></>}
     </div></details>}
-    {!readOnlyViewer&&!guestViewer&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
+    {mayCustomize&&settings&&<section className="report-grid-settings" aria-label="Tùy chỉnh cột bảng chi tiết">
       <div className="report-grid-settings-intro">
         <strong>Cột của bảng chi tiết (độc lập)</strong>
         <p>Chọn hiện/ẩn, kéo mép phải của tiêu đề cột để chỉnh độ rộng trực tiếp (hoặc nhập px bên dưới), giữ/kéo tiêu đề để chuyển cột, dùng Alt+←/→. Thay đổi đang xem trước và chỉ lưu khi chọn Lưu cấu hình cột. Thiết lập riêng của popup.</p>
@@ -411,7 +451,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
         <p className="muted">Màu của popup được tự lưu riêng trên trình duyệt khi thêm/xóa; cũng được lưu trong mẫu cá nhân. Không ảnh hưởng màu của Danh sách hoặc báo cáo.</p>
       </details>
     </section>}
-    {!readOnlyViewer&&!guestViewer&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
+    {mayCustomize&&confirmSettingsExit&&<div className="report-grid-settings-confirm" role="alertdialog" aria-label="Có thay đổi cột chưa lưu">
       <strong>Cột của popup có thay đổi chưa lưu.</strong>
       <button type="button" className="button ghost" onClick={()=>setConfirmSettingsExit(false)}>Tiếp tục tùy chỉnh</button>
       <button type="button" className="button ghost" onClick={()=>{
@@ -437,7 +477,34 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
               sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
               nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
-              {c.label}
+              <span className="inline-g04-heading">
+                {renameKey===popupPairs.find(pair=>pair.anchor===c.key)?.variant
+                  ?<span className="inline-g04-group-editor" onPointerDown={e=>e.stopPropagation()}
+                      onClick={e=>e.stopPropagation()}>
+                      <input autoFocus maxLength={100} type="text" value={renameValue}
+                        aria-label={'Tên nhóm '+renameKey}
+                        onChange={e=>setRenameValue(e.currentTarget.value)}
+                        onKeyDown={e=>{e.stopPropagation();
+                          if(e.key==='Enter'){e.preventDefault();saveInlineGroupName(renameKey!,renameValue);}
+                          if(e.key==='Escape'){e.preventDefault();setRenameKey(null);}}}
+                        onBlur={()=>{if(renameKey)saveInlineGroupName(renameKey,renameValue);}}/>
+                    </span>
+                  :<span className="inline-g04-heading-title">{c.label}</span>}
+                {mayCustomize&&popupPairs.some(pair=>pair.anchor===c.key)&&
+                  <button type="button" className="inline-g04-heading-action"
+                    aria-label={'Đổi tên nhóm '+c.label} title="Đổi tên nhóm"
+                    onPointerDown={e=>e.stopPropagation()}
+                    onClick={e=>{e.stopPropagation();
+                      const group=popupPairs.find(pair=>pair.anchor===c.key)!.variant;
+                      setRenameValue(displayedLayout.groupLabels?.[group as keyof typeof displayedLayout.groupLabels]??'');
+                      setRenameKey(group);}}>✎</button>}
+                {mayCustomize&&<button type="button" className="inline-g04-heading-action"
+                  aria-label={'Ẩn cột '+c.label} title="Ẩn cột/nhóm này"
+                  onPointerDown={e=>e.stopPropagation()}
+                  onClick={e=>{e.stopPropagation();
+                    const group=popupPairs.find(pair=>pair.anchor===c.key);
+                    togglePopupColumns(group?.memberFields??[c.key],false);}}>×</button>}
+              </span>
               {!readOnlyViewer&&!guestViewer&&<ColumnResizeHandle columnIndex={index} label={labelByKey.get(c.key)??c.key}
                 width={c.width} min={70+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)}
                 max={800+(popupPairs.find(p=>p.anchor===c.key)?.extraWidth??0)} windowDragFallback
