@@ -44,7 +44,7 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
       {!locked&&<div className="inline-g05-add">
         <input value={addValue} maxLength={200} aria-label={'Thêm lựa chọn '+label}
           placeholder="Tên lựa chọn mới" onChange={e=>setAddValue(e.currentTarget.value)}
-          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();apply({type:'add',value:addValue});}}}/>
+          onKeyDown={e=>{if(e.key==='Enter'&&!e.nativeEvent?.isComposing&&e.keyCode!==229){e.preventDefault();apply({type:'add',value:addValue});}}}/>
         <button type="button" className="button ghost" onClick={()=>apply({type:'add',value:addValue})}>+ Thêm</button>
       </div>}
     </div>
@@ -62,7 +62,7 @@ export function G05ChoiceEditor({label,options,usedValues=[],locked=false,onAppl
           {isEditing?<div className="inline-g05-rename">
             <input autoFocus aria-label={'Tên mới cho '+value} maxLength={200} value={renameValue}
               onChange={e=>setRenameValue(e.currentTarget.value)}
-              onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();apply({type:'rename',previous:value,value:renameValue});}else if(e.key==='Escape'){setEditing(null);setError('');}}}/>
+              onKeyDown={e=>{if(e.nativeEvent?.isComposing||e.keyCode===229)return;if(e.key==='Enter'){e.preventDefault();apply({type:'rename',previous:value,value:renameValue});}else if(e.key==='Escape'){e.preventDefault?.();e.stopPropagation?.();setEditing(null);setError('');}}}/>
             <button type="button" className="button primary" onClick={()=>apply({type:'rename',previous:value,value:renameValue})}>Lưu tên</button>
             <button type="button" className="button ghost" onClick={()=>setEditing(null)}>Hủy</button>
           </div>:<>
