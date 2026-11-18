@@ -199,7 +199,7 @@ describe('G07: keyboard and accessibility',()=>{
     a.element.onKeyUp(key('ArrowLeft'));
     expect(a.commit).not.toHaveBeenCalled();
     a.element.onKeyDown({...key('ArrowRight'),currentTarget:a.handle});
-    a.element.onBlur();
+    a.element.onBlur({});
     expect(a.commit).toHaveBeenCalledWith(210);
   });
   it('ignores Alt+arrow so parent header reorder remains independent',()=>{
