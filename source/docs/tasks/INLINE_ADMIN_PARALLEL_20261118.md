@@ -84,6 +84,14 @@ Mỗi luồng tự thêm file component/CSS theo prefix `inline-gXX-` riêng, t�
 
 **Chốt an toàn:** PR #218 vẫn Draft, `main`/Pages chưa thay đổi, production Firebase Rules/dữ liệu không được chạm tới. Không tuyên bố DONE khi CI G04/G05/G08 hoặc browser A01–A11 chưa đạt trên exact staging HEAD.
 
+## G00 – kết quả nguồn cuối & chốt bảo vệ Pages, 18/11/2026
+
+- PR tích hợp [#218](https://github.com/cavoixanh638/HopHDND-WebApp/pull/218) **MERGED SQUASH** vào main `a69a99900969d3053a8cac18e2ce693318ee19af`.
+- **Tested staging SHA** `9cc27dea0822d1bcfee246e43d93c3ab722bc705`; **10/10 GitHub Actions SUCCESS** ([Verify #44300506927](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44300506927)): 1.127 unit PASS, 170 skipped, TypeScript, Auth/RTDB Emulator, Chrome thật, Excel, A4, CAS. `main` và staging cùng **tree SHA** `1a73af094d300ebbfdd430ebd1618584decd0552` (nội dung commit merge khớp đúng mã đã test).
+- **CẢNH BÁO PHÁT HÀNH:** [Build and publish #44301388098](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44301388098) có `release-gate=SUCCESS` nhưng **`publish=SKIPPED`**, policy `mode=hold` do nhiều tệp core/permissions-adjacent nằm ngoài auto UI allowlist. Hiện **website vẫn bản cũ**, `version.json.source_sha=2b4f252aa34d0662524f6933c652921528ce7b39`; tuyệt đối không gọi đã xuất bản.
+- Cần **một lần phê duyệt SHA tổng hợp**: owner đặt `HOPHDND_PAGES_APPROVED_MAIN_SHA=a69a99900969d3053a8cac18e2ce693318ee19af` trong Repository Variables; G00 chạy lại job `134791708136`, chờ `publish=SUCCESS`, đúng `version.json` và native Pages deployment. Nếu rerun không nhận variable mới, tạo **workflow_dispatch mới**, không bắt sửa biến nhiều lần.
+- Không deploy Firebase Rules/dữ liệu production. Touch thiết bị vật lý, human click-through Pages mới, một số acceptance G09 thực trên production còn **NOT_RUN**; không gộp kết quả này vào CI PASS.
+
 ## G00 – tích hợp đầy đủ 9/9 luồng, checkpoint 18/11/2026
 
 **PR staging [#218](https://github.com/cavoixanh638/HopHDND-WebApp/pull/218) vẫn DRAFT, không merge/publish.** `main` và GitHub Pages vẫn ở nguồn phát hành trước chiến dịch. Không thao tác Firebase sản xuất.
