@@ -6,7 +6,7 @@ import {useEffect,useRef,useState} from 'react';
  */
 export function parseInlineG07Width(raw:string,min:number,max:number):number|null{
   const text=raw.trim();
-  if(!/^\\d+$/.test(text))return null;
+  if(!/^\d+$/.test(text))return null;
   const number=Number(text);
   return Number.isSafeInteger(number)&&number>=min&&number<=max?number:null;
 }
