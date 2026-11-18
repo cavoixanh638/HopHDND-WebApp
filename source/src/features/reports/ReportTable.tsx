@@ -141,6 +141,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dá»
     element.className = ref.current.className;
     element.style.cssText = ref.current.style.cssText;
     element.innerHTML = ref.current.innerHTML;
+    // Remove edit-only controls BEFORE replacing remaining drilldown buttons;
+    // otherwise their labels would leak into A4/printed PDF as plain text.
+    element.querySelectorAll('.inline-g02-table-actions,.inline-g02-column-toolbar,.inline-g02-hide,.inline-g02-grip,.inline-g02-rename').forEach(node=>node.remove());
     element.querySelectorAll('button').forEach(button => button.replaceWith(document.createTextNode(
       button.classList.contains('count-drill') ? (button.querySelector('span')?.textContent ?? '') : (button.textContent ?? '')
     )));
