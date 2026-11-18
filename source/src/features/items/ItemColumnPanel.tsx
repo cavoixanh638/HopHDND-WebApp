@@ -5,7 +5,8 @@ import {EXCEL_SOURCE_COLUMNS,COMPACT_GROUP_LABEL_KEYS,type CompactGroupLabels} f
 import {COMPACT_GROUP_DEFAULT_LABELS} from './compact-columns';
 import {samePermissions} from '../../data/firebase-repository';
 import {validateCatalog,catalogFromItems} from '../../data/catalogs';
-import {ColumnChoiceEditor} from './ColumnChoiceEditor';
+import {G05ChoiceEditor} from './inline-g05-choice-editor';
+import {g05ApplyCatalogAction,g05ApplyCustomChoices,g05LockedCatalog} from './inline-g05-catalog-logic';
 import type {ItemColumn,ItemLayout} from '../../data/item-preferences';
 import {EXCEL_COLUMN_KEYS} from '../../data/item-preferences';
 import {TEXT_FIELDS} from '../../../shared/field-definitions';
@@ -34,7 +35,8 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   const [selectedSpecialist,setSelectedSpecialist]=useState('');
   const copyCatalog=(value:CatalogConfig):CatalogConfig=>({
     options:Object.fromEntries(Object.entries(value.options).map(([key,options])=>[key,[...options]])) as CatalogConfig['options'],
-    specialistRooms:Object.fromEntries(Object.entries(value.specialistRooms).map(([key,rooms])=>[key,[...rooms]]))
+    specialistRooms:Object.fromEntries(Object.entries(value.specialistRooms).map(([key,rooms])=>[key,[...rooms]])),
+    groupIdentities:value.groupIdentities?structuredClone(value.groupIdentities):undefined
   });
   const savedCatalog=useRef<CatalogConfig>(copyCatalog(catalog??catalogFromItems(items)));
   const [choiceDraft,setChoiceDraft]=useState<CatalogConfig>(()=>copyCatalog(savedCatalog.current));
@@ -135,22 +137,14 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         ' Phần chưa lưu vẫn được giữ để thử lại.');
     }finally{setSaving(false);}
   };
-  const updateChoices=(key:CatalogKey,next:string[])=>{
-    setChoiceDraft(current=>{
-      const specialistRooms={...current.specialistRooms};
-      if(key==='specialist')for(const person of Object.keys(specialistRooms))
-        if(!next.includes(person))delete specialistRooms[person];
-      if(key==='room')for(const person of Object.keys(specialistRooms))
-        specialistRooms[person]=specialistRooms[person].filter(room=>next.includes(room));
-      return {...current,options:{...current.options,[key]:next},specialistRooms};
-    });
-  };
   const [highlightWord,setHighlightWord]=useState('');
   const [highlightField,setHighlightField]=useState('*');
   const [highlightTextColor,setHighlightTextColor]=useState('#8a241c');
   const [highlightBgColor,setHighlightBgColor]=useState('#fff1d6');
   const active=layout.columns.filter(c=>!c.removed);
   const customCount=layout.columns.filter(c=>c.origin==='custom').length;
+  // Optional callback for G00's header menu: select a source field without changing ItemList ownership.
+
   const update=(key:string,change:Partial<ItemColumn>)=>onChange({
     ...layout,columns:layout.columns.map(c=>c.key===key?{...c,...change}:c),
   });
@@ -288,19 +282,21 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
                 <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
               </select>
             </label>
-            {(column.origin==='custom'?column.kind==='select':CATALOG_KEYS.includes(column.key as CatalogKey))&&
+            {(column.origin==='custom'?column.kind==='select':CATALOG_KEYS.includes(column.key as CatalogKey)&&column.kind!=='text')&&
               <div className="column-manager-options">
-                <ColumnChoiceEditor key={column.key} label={column.label}
+                <G05ChoiceEditor key={column.key} label={column.label}
+                  locked={column.origin!=='custom'&&g05LockedCatalog(column.key as CatalogKey)}
                   options={column.origin==='custom'?column.options??[]:choiceDraft.options[column.key as CatalogKey]??[]}
                   usedValues={column.origin==='custom'
                     ?Object.values(column.values??{})
                     :items.map(item=>String(item[column.key as CatalogKey]??'')).filter(Boolean)}
-                  onChange={(next,previous,replacement)=>{
+                  onApply={action=>{
                     if(column.origin==='custom'){
-                      const values=column.values??{};
-                      const newValues=previous&&replacement?Object.fromEntries(Object.entries(values).map(([id,value])=>[id,value===previous?replacement:value])):values;
-                      update(column.key,{kind:'select',options:next,values:newValues});
-                    }else updateChoices(column.key as CatalogKey,next);
+                      const options=g05ApplyCustomChoices(column.options??[],Object.values(column.values??{}),action);
+                      update(column.key,{kind:'select',options});
+                    }else{
+                      setChoiceDraft(current=>g05ApplyCatalogAction(current,items,column.key as CatalogKey,action));
+                    }
                   }}/>
                 {column.origin!=='custom'&&<p className="muted">Danh sách chọn của cột này dùng chung cho bảng. Nếu đang để kiểu nhập tự do, chọn “Danh sách chọn” phía trên để áp dụng các lựa chọn.</p>}
               </div>}
