@@ -67,6 +67,23 @@ Mỗi luồng tự thêm file component/CSS theo prefix `inline-gXX-` riêng, t�
 - Rerun **chỉ Verify G06** trên đúng SHA cũ để phân biệt lỗi chập chờn với hồi quy thực. Không động Rules/Firebase production, `main` hoặc biến phát hành.
 - Thứ tự tích hợp: G09 QA, G07 primitive, G01+G05+G08 (List/cột/L03), G02+G03+G04 (Report/popup), G06 color localStorage. Giữ checkpoint 20261118 và một PR tổng hợp vào `main` sau nghiệm thu.
 
+## G00 thực thi tích hợp — cập nhật trong ngày 18/11/2026
+
+**Staging PR:** [#218](https://github.com/cavoixanh638/HopHDND-WebApp/pull/218) (**DRAFT**, không merge / deploy).
+
+| SHA staging | Nội dung | Kết quả kiểm chứng |
+| --- | --- | --- |
+| `c96b3aa7aeae2bc1f53aea2857d244463e86fa47` | G01+G02+G03+G07+G09, 31 files, không chồng file | **10/10 workflows PASS** |
+| `8f4b43cfd1b90e906e4b1423a67402725b6a66ed` | Thêm G06 palette (4 files), nối G03 toolbar thật vào G02 App, preview local/Save CAS/Cancel & rollback, test G00 | **10/10 PASS sau rerun Chrome**. Lần đầu Chrome lỗi ở xác thực tài khoản thử nghiệm 2 tab; rerun đúng SHA đã PASS. Không xem sự chập chờn là bằng chứng tự động của quyền sản xuất |
+| `58d76eadbabd534cdf40a48ec58238bbf031c357` | Chrome smoke thực với G03 toolbar: 10 font, 5 style, đổi/xem trước/hủy, tổng đếm bất biến | **10/10 workflows PASS**; [Verify #44298420814](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/44298420814) |
+| `400533975c87068e0b773d85491b95bff97c6ae1` | Nhập G04 (6 files), sửa icon popup bằng CSS pseudo tránh làm bẩn `textContent` tiêu đề R07, App truyền `canCustomizePopup={adminTools}` | CI tự chạy trên SHA này, **chưa có kết luận nghiệm thu ở thời điểm ghi** |
+
+**Đã giao song song**: G05 tự cập nhật 3 legacy tests trong `item-viewport-width.test.tsx` mà không mở khóa official status; G08 sửa render-prop gây 3 status regressions; G04 sửa header label ngay trên nhánh PR riêng; G01/G02/G07/G09 làm read-only review staging, G06 ghi nhận rerun Chrome và kiểm cá nhân localStorage. Các giao việc nằm trong PR comments.
+
+**G00 còn cần nối:** G05 catalog từ `ItemColumnPanel.focusColumnKey` với danh sách cột, G08 L03 5 rail với `applyViewerLayout` CAS (chỉ Admin, commit một lần), kiểm tra G04 popup width; xác thực chặn guest/staff và không ghi dữ liệu hồ sơ khi chỉ sửa bố cục.
+
+**Chốt an toàn:** PR #218 vẫn Draft, `main`/Pages chưa thay đổi, production Firebase Rules/dữ liệu không được chạm tới. Không tuyên bố DONE khi CI G04/G05/G08 hoặc browser A01–A11 chưa đạt trên exact staging HEAD.
+
 ## Kế hoạch tích hợp và thứ tự xử lý
 
 1. **P0 unblock ngay:** G07 sửa TS syntax literal backslash-n và chạy Typecheck; G03 chữa 3 unit FAIL (soát title trim, optional accent, legacy 10-font UI test); G05 giữ status chuẩn immutable, G00 cập nhật legacy test dựa trên contract mới. Không nới logic an toàn để qua test.
