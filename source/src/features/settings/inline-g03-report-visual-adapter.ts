@@ -1,5 +1,5 @@
 import {
-  getReportFont, getReportFontSize, getReportVariant,
+  defaultReportLayout, getReportFont, getReportFontSize, getReportVariant,
   withReportVisuals, TABLE_FONT_OPTIONS, REPORT_VARIANTS,
   MIN_TABLE_FONT_SIZE, MAX_TABLE_FONT_SIZE,
   type ReportLayout, type ReportVariant, type TableFont,
@@ -74,10 +74,35 @@ export function inlineG03ApplyVisualChange(
   return next.map(row => row.id === reportId ? { ...row, ...perReport } : row);
 }
 
-/** Cancel only visual edits; titles, widths, status counts and other drafts stay untouched. */
+/**
+ * Cancel only visual edits, restoring the *exact presence* of optional fields.
+ * Legacy layouts omit titleAccentText / titleAccentColor and even some shared
+ * defaults. Restoring those as empty strings would leave the recoverable draft
+ * dirty despite an unchanged visual preview.
+ */
 export function inlineG03RestoreVisual(
   draft: ReportLayout[], saved: readonly ReportLayout[], reportId: string,
 ): ReportLayout[] {
   if (!saved.some(row => row.id === reportId)) return draft;
-  return inlineG03ApplyVisualChange(draft, reportId, inlineG03VisualValue(saved, reportId));
+  const ownerId = defaultReportLayout()[0].id;
+  const savedById = new Map(saved.map(row => [row.id, row]));
+  const sharedKeys = ['tableFont', 'tableFontSize', 'reportVariant'];
+  const perReportKeys = ['emphasizeProgress', 'titleAccentText', 'titleAccentColor'];
+  return draft.map(row => {
+    const baseline = savedById.get(row.id);
+    if (!baseline) return row;
+    const keys = [
+      ...(row.id === ownerId ? sharedKeys : []),
+      ...(row.id === reportId ? perReportKeys : []),
+    ];
+    if (!keys.length) return row;
+    const restored: Record<string, unknown> = { ...row };
+    const original: Record<string, unknown> = { ...baseline };
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(original, key))
+        restored[key] = original[key];
+      else delete restored[key];
+    }
+    return restored as unknown as ReportLayout;
+  });
 }
