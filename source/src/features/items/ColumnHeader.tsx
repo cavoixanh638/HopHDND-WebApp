@@ -50,7 +50,7 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
   return <th scope="col" aria-sort={onSort?(sortDirection?(sortDirection==='asc'?'ascending':'descending'):'none'):undefined} data-column-key={columnKey} tabIndex={onSort||!disabled?0:undefined}
     className={disabled?undefined:`column-movable ${dragging?'column-dragging':''}`}
     onContextMenu={visibilityEnabled&&!saving?event=>{
-      if(event.target instanceof Element&&event.target.closest('.column-resizer'))return;
+      if(typeof Element!=='undefined'&&event.target instanceof Element&&event.target.closest('.column-resizer'))return;
       event.preventDefault();event.stopPropagation();setRenaming(false);setMenuOpen(true);
     }:undefined}
     title={onSort
