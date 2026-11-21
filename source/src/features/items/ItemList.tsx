@@ -709,10 +709,20 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
   };
+  // Excel-style hide/show works in the normal Admin table, not just advanced edit mode.
+  // This is a shared presentation-only CAS write, never a business-cell edit.
   const changeInlineColumnVisibility=(key:string,visible:boolean)=>{
-    if(!inlineReady)return;
+    if(!canEditListSettings||showAllSourceColumns||key==='stt')return;
+    if(!visible&&(displayedColumns.length<=1||!canHideInlineColumn(activeLayout,key)))return;
     void applyViewerLayout(base=>setInlineColumnVisibility(base,key,visible));
   };
+  const showAllInlineColumns=()=>{
+    if(!canEditListSettings||showAllSourceColumns)return;
+    void applyViewerLayout(base=>({...base,columns:base.columns.map(column=>
+      column.removed||column.key==='stt'?column:{...column,visible:true})}));
+  };
+  const hiddenQuickColumns=activeLayout.columns.filter(column=>
+    !column.removed&&!column.visible&&column.key!=='stt');
   const changeInlineColumnName=(key:string,label:string):Promise<boolean>=>{
     if(!inlineReady)return Promise.resolve(false);
     return applyViewerLayout(base=>renameInlineColumn(base,key,label));
@@ -1248,11 +1258,21 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
+    }} disabled={locked}/>:<>{canEditListSettings&&!showAllSourceColumns&&<div className="inline-excel-hidden-bar" role="group" aria-label="Ẩn hiện cột trực tiếp trên bảng">
+       <span>Admin: nhấp chuột phải hoặc bấm ⋯ ở tiêu đề cột để ẩn/hiện</span>
+       {hiddenQuickColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenQuickColumns.length})</summary>
+         <div>{hiddenQuickColumns.map(column=><button key={column.key} type="button" disabled={viewSaving}
+           onClick={()=>changeInlineColumnVisibility(column.key,true)}>+ Hiện {column.label}</button>)}
+           {hiddenQuickColumns.length>1&&<button type="button" disabled={viewSaving} onClick={showAllInlineColumns}>Hiện tất cả</button>}
+         </div></details>}
+     </div>}<div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
-   inlineEditing={inlineReady} saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)}
+   inlineEditing={inlineReady} quickVisibility={canEditListSettings&&!showAllSourceColumns}
+   saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1}
+   hiddenColumns={hiddenQuickColumns.map(({key,label})=>({key,label}))}
+   onShow={key=>changeInlineColumnVisibility(key,true)} onShowAll={showAllInlineColumns}
    onRename={changeInlineColumnName} onHide={key=>changeInlineColumnVisibility(key,false)}
    onOpenColumnSettings={inlineReady?onOpenCatalog:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
