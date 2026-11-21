@@ -1,3 +1,13 @@
+## CHỈ THỊ 21/11/2026 — KHÔNG BẮT CHỦ DỰ ÁN CẬP NHẬT SHA VARIABLE LIÊN TỤC
+
+- **Các chỉnh sửa thuần UI trong allowlist** phải tự phát hành sau CI qua `policy_mode=auto` (không cần chủ dự án thao tác).
+- **Các chỉnh sửa lõi/quyền/dữ liệu hoặc vượt allowlist** vẫn giữ HOLD nếu chỉ push; chủ repository **bấm Actions → Build and publish HopHDND Pages → Run workflow, chọn main** để phê duyệt đúng SHA của lần chạy. Không yêu cầu chủ dự án vào Settings sửa `HOPHDND_PAGES_APPROVED_MAIN_SHA`.
+- Xác minh actor là **repository owner**, event `workflow_dispatch`, ref `main` và SHA bất biến; sau build vẫn kiểm tra không có commit main mới. Không tự phê duyệt quyền/Firebase hay bỏ các bước Emulator/Chrome.
+- Workflow có thể PASS tại `release-gate` nhưng `publish=SKIPPED`; **không được báo đã xuất bản**, không ép bypass.
+- Tài liệu: `docs/operations/UI_AUTO_RELEASE_2026-11-17.md` phần bổ sung 21/11. Mọi luồng UI ưu tiên sửa presentation leaf thay vì chạm `App.tsx` không cần thiết.
+
+---
+
 ## CHỈ THỊ MỚI 17/11/2026 — PHÁT HÀNH GIAO DIỆN TỰ ĐỘNG CÓ KIỂM SOÁT
 
 **Tài liệu hiện hành:** [UI_AUTO_RELEASE_2026-11-17.md](docs/operations/UI_AUTO_RELEASE_2026-11-17.md).

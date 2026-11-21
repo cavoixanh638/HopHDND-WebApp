@@ -11,6 +11,25 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
       {cwd,encoding:'utf8',timeout:12000});
     expect(output).toMatch(/fail\s+0/);
   });
+  it('verifies run-scoped owner dispatch and rejects any non-owner approval',()=>{
+    const cwd=fileURLToPath(new URL('../',import.meta.url));
+    const output=execFileSync(process.execPath,
+      ['--test','scripts/pages-release-approval.check.mjs'],
+      {cwd,encoding:'utf8',timeout:12000});
+    expect(output).toMatch(/fail\s+0/);
+  });
+  it('keeps guarded releases manual-only for owner without editing a repository variable',()=>{
+    const workflow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');
+    const helper=readFileSync(new URL('../scripts/pages-release-approval.mjs',import.meta.url),'utf8');
+    expect(workflow).toContain('node source/scripts/pages-release-approval.mjs');
+    expect(workflow).toContain('needs.release-gate.outputs.approved_main_sha');
+    expect(workflow).toContain('node --test source/scripts/pages-release-approval.check.mjs');
+    expect(helper).toContain("eventName==='workflow_dispatch'");
+    expect(helper).toContain("actor.toLowerCase()!==repositoryOwner.toLowerCase()");
+    expect(helper).toContain('approvedSha:head');
+    expect(helper).toContain('approvedSha:legacyApprovedSha');
+    expect(workflow).toContain('if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]');
+  });
   it('keeps a separate Spark cutover gate and exact SHA approval for sensitive changes',()=>{
     const flow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');
     expect(flow).toContain("vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'");

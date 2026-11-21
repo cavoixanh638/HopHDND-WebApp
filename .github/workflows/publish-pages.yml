@@ -25,9 +25,10 @@ concurrency:
 
 jobs:
   release-gate:
-    # Cutover remains independently confirmed. UI-only source changes may
-    # publish after validation; unknown/security/data changes still need
-    # approval for EXACTLY this main SHA. Never deploy Rules or database here.
+    # UI-only source changes auto-publish after validation. Guarded changes
+    # require an explicit Run workflow click by the repository owner, scoped
+    # ONLY to the selected main SHA. The legacy variable is optional.
+    # Never deploy Firebase Rules or touch database data here.
     if: ${{ github.ref == 'refs/heads/main' && vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true' }}
     runs-on: ubuntu-latest
     permissions:
@@ -36,6 +37,7 @@ jobs:
       release_allowed: ${{ steps.policy.outputs.release_allowed }}
       policy_mode: ${{ steps.policy.outputs.policy_mode }}
       baseline_sha: ${{ steps.policy.outputs.baseline_sha }}
+      approved_main_sha: ${{ steps.approval.outputs.approved_main_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,12 +46,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Verify UI-only release guard (NO DEPLOY)
-        run: node --test source/scripts/pages-release-policy.check.mjs
+      - name: Verify UI-only and owner-dispatch release guards (NO DEPLOY)
+        run: |
+          node --test source/scripts/pages-release-policy.check.mjs
+          node --test source/scripts/pages-release-approval.check.mjs
+      - name: Resolve owner-only manual approval for this run (no variable edits)
+        id: approval
+        env:
+          LEGACY_APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
+        run: node source/scripts/pages-release-approval.mjs
       - name: Classify every unpublished commit (fail closed)
         id: policy
         env:
-          APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
+          APPROVED_MAIN_SHA: ${{ steps.approval.outputs.approved_main_sha }}
         run: |
           node source/scripts/pages-release-policy.mjs --head "$GITHUB_SHA" --approved "$APPROVED_MAIN_SHA"
   publish:
@@ -154,7 +163,7 @@ jobs:
         working-directory: .
         shell: bash
         env:
-          APPROVED_MAIN_SHA: ${{ vars.HOPHDND_PAGES_APPROVED_MAIN_SHA }}
+          APPROVED_MAIN_SHA: ${{ needs.release-gate.outputs.approved_main_sha }}
           SPARK_PRODUCTION_CONFIRMED: ${{ vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED }}
           RELEASE_MODE: ${{ needs.release-gate.outputs.policy_mode }}
           RELEASE_BASELINE: ${{ needs.release-gate.outputs.baseline_sha }}
@@ -170,7 +179,7 @@ jobs:
           fi
           if [ "$RELEASE_MODE" != "auto" ] && 
              { [ "$RELEASE_MODE" != "approved" ] || [ "$APPROVED_MAIN_SHA" != "$GITHUB_SHA" ]; }; then
-            echo "::error::PAGES_RELEASE_HOLD: security/data changes require exact main SHA approval"
+            echo "::error::PAGES_RELEASE_HOLD: security/data changes require an owner Run workflow approval for this exact main SHA"
             exit 1
           fi
           # Re-evaluate against the original published baseline: version.json
@@ -184,7 +193,7 @@ jobs:
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $push_auth" fetch origin main
           if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ] ||
              [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
-            echo "::error::PAGES_RELEASE_HOLD: main advanced; new SHA requires new approval"
+            echo "::error::PAGES_RELEASE_HOLD: main advanced; run approval again for the new SHA"
             exit 1
           fi
           git add -A -- index.html assets version.json
@@ -199,7 +208,7 @@ jobs:
           # If main advances after this fetch, non-force push will fail closed.
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $push_auth" fetch origin main
           if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
-            echo "::error::PAGES_RELEASE_HOLD: main advanced before push; re-approve new SHA"
+            echo "::error::PAGES_RELEASE_HOLD: main advanced before push; rerun owner approval for new SHA"
             exit 1
           fi
           if ! git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $push_auth" push origin HEAD:main; then
