@@ -1258,8 +1258,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         exitAfterPermissions.current=false;
         if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
       }
-    }} disabled={locked}/>:<>{canEditListSettings&&!showAllSourceColumns&&<div className="inline-excel-hidden-bar" role="group" aria-label="Ẩn hiện cột trực tiếp trên bảng">
-       <span>Admin: nhấp chuột phải hoặc bấm ⋯ ở tiêu đề cột để ẩn/hiện</span>
+    }} disabled={locked}/>:<>{canEditListSettings&&!showAllSourceColumns&&hiddenQuickColumns.length>0&&<div className="inline-excel-hidden-bar" role="group" aria-label="Hiện lại cột đã ẩn">
        {hiddenQuickColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenQuickColumns.length})</summary>
          <div>{hiddenQuickColumns.map(column=><button key={column.key} type="button" disabled={viewSaving}
            onClick={()=>changeInlineColumnVisibility(column.key,true)}>+ Hiện {column.label}</button>)}
