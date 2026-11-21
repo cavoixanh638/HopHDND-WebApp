@@ -21,3 +21,18 @@
 @media(max-width:900px){.inline-g02-hide-report{position:static;margin:5px}.inline-g02-report-slot .card-header{gap:8px;flex-wrap:wrap}.inline-g02-column-toolbar [role=group]{max-height:160px;overflow:auto}}
 @media print{.inline-g02-mode-panel,.inline-g02-mode,.inline-g02-hide-report,.inline-g02-table-actions,.inline-g02-column-toolbar,.inline-g02-hide,.inline-g02-grip,.inline-g02-rename{display:none!important}}
 @media(prefers-reduced-motion:reduce){.inline-g02-report-slot *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Normal-view Admin column visibility: right click a status heading or tap its ellipsis. */
+.inline-excel-report-bar{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px;color:#365b74;font-size:12px;margin:5px 2px}
+.inline-excel-report-bar details{position:relative}
+.inline-excel-report-bar summary{padding:5px 9px;cursor:pointer;border:1px solid #a2bfd0;border-radius:6px;background:#f5faff;font-weight:600}
+.inline-excel-report-bar details>div{display:flex;flex-direction:column;gap:3px;position:absolute;top:100%;right:0;z-index:30;background:#fff;border:1px solid #a2bfd0;border-radius:7px;box-shadow:0 8px 20px #0002;padding:5px;min-width:200px;max-height:290px;overflow:auto}
+.inline-excel-report-bar button,.inline-excel-status-menu button{font:inherit;font-size:12px;text-align:left;border:0;border-radius:5px;background:#f4f9fe;color:#234f6d;padding:7px 8px;cursor:pointer}
+.inline-excel-report-bar button:hover,.inline-excel-status-menu button:hover{background:#e8f2fc}
+.inline-excel-report-tools{display:inline-flex;position:relative;margin-left:4px;vertical-align:middle}
+.inline-excel-report-trigger{border:1px solid #adc7d5;border-radius:5px;background:#f5faff;color:#245675;cursor:pointer;font:inherit;font-size:12px;min-height:25px;padding:1px 6px}
+.inline-excel-status-menu{position:absolute;top:calc(100% + 2px);right:0;z-index:32;display:flex;flex-direction:column;gap:3px;padding:6px;width:min(230px,75vw);max-height:min(330px,65vh);overflow:auto;background:#fff;color:#253e52;border:1px solid #adc7d5;border-radius:8px;box-shadow:0 8px 20px #0002;white-space:normal}
+.inline-excel-status-menu>strong{padding:5px 4px;border-top:1px solid #e1e7ed;font-size:12px}
+.inline-excel-status-menu>span{font-size:12px;padding:4px}
+.inline-excel-report-trigger:focus-visible,.inline-excel-status-menu button:focus-visible,.inline-excel-report-bar summary:focus-visible{outline:2px solid #116eb0;outline-offset:2px}
+@media print{.inline-excel-report-bar,.inline-excel-report-tools{display:none!important}}
