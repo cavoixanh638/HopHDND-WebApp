@@ -37,6 +37,13 @@
   border:0;background:transparent;box-shadow:none;
   cursor:col-resize;
 }
+/* Sticky table headings form individual stacking contexts. Raise only the
+   active boundary so the tiny two-arrow glyph is not clipped by the next th. */
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th:has(.column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)){
+  z-index:12;
+}
+
 /* Only while the separator itself is hovered, focused or dragged:
    an understated guide line plus a small horizontal two-arrow indicator. */
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
