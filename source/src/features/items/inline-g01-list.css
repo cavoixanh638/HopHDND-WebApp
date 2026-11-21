@@ -139,3 +139,29 @@
     padding-right:11px;
   }
 }
+
+/* PR223: The canonical heading-content is position:relative in item-frame.css.
+   That accidentally makes the eye and the nested resize separator relative to
+   the centered *text line*. The table cell, not the text, must own both edges.
+   No DOM or persistence changes: the nearest positioned ancestor is now <th>. */
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools)>.column-heading-content,
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th:has(.inline-g01-column-tools)>.column-heading-content{
+  position:static;
+}
+/* Sort is independent of both the top-right eye and the column-divider hit
+   zone. Reveal an unsorted arrow when hovering the *label*, not the whole th;
+   an active sort direction and keyboard focus remain apparent. */
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools) .column-sort-button,
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th:has(.inline-g01-column-tools) .column-sort-button{
+  position:absolute;right:0;top:auto;bottom:1px;transform:none;
+}
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools) .column-sort-button:not(.active),
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th:has(.inline-g01-column-tools) .column-sort-button:not(.active){
+  opacity:0;
+}
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools) .column-heading-label:hover + .column-sort-button,
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools) .column-sort-button:is(:hover,:focus-visible),
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th:has(.inline-g01-column-tools) .column-heading-label:hover + .column-sort-button,
+.report-grid-modal .report-detail-grid thead .report-grid-heading-row th:has(.inline-g01-column-tools) .column-sort-button:is(:hover,:focus-visible){
+  opacity:1;
+}

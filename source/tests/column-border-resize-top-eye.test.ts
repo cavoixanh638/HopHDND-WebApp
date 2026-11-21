@@ -12,12 +12,12 @@ const detail=source('../src/features/reports/ReportDetailGrid.tsx');
 
 describe('Excel/Word-like column separator resizing',()=>{
   it('uses a transparent hit area centered at the column border, never a persistent grip',()=>{
-    expect(resizeCss).toContain('right:-4px;width:14px;min-width:14px');
+    expect(resizeCss).toContain('right:-7px;width:14px;min-width:14px');
     expect(resizeCss).toContain('border:0;background:transparent;box-shadow:none');
     expect(resizeCss).toContain('cursor:col-resize');
-    expect(resizeCss).toContain("content:'↔'");
+    expect(resizeCss).not.toContain("content:'↔'");
+    expect(resizeCss).toContain('content:none;display:none!important;');
     expect(resizeCss).toContain('opacity:0;');
-    expect(resizeCss).toContain(':is(:hover,:focus-visible,:active)::after');
     expect(resizeCss).toContain(':is(:hover,:focus-visible,:active)::before');
     expect(resizeCss).toContain('opacity:1;');
   });
@@ -40,6 +40,22 @@ describe('Excel/Word-like column separator resizing',()=>{
   });
 });
 describe('Eye belongs in the top-right corner, NOT in centered heading content',()=>{
+  it('anchors the eye and resize hit-zone to the actual table th, not the relatively positioned label',()=>{
+    const legacyFrame=source('../src/features/items/item-frame.css');
+    expect(legacyFrame).toContain('justify-content:center;text-align:center;position:relative;box-sizing:border-box;');
+    expect(listCss).toContain('th:has(.inline-g01-column-tools)>.column-heading-content');
+    expect(listCss).toContain('position:static;');
+    expect(listCss).toContain('.report-grid-heading-row th:has(.inline-g01-column-tools)>.column-heading-content');
+    expect(listCss).toContain('position:absolute;top:1px;right:0');
+    expect(resizeCss).toContain('left:calc(50% - 1px)');
+  });
+  it('separates the sort affordance from the eye and the Excel border pointer',()=>{
+    expect(listCss).toContain('position:absolute;right:0;top:auto;bottom:1px;transform:none;');
+    expect(listCss).toContain('.column-sort-button:not(.active)');
+    expect(listCss).toContain('.column-heading-label:hover + .column-sort-button');
+    expect(listCss).toContain('.column-sort-button:is(:hover,:focus-visible)');
+    expect(resizeCss).toContain('cursor:col-resize;');
+  });
   it('pins the eye button independently from its full-height menu anchor',()=>{
     expect(listCss).toContain('top:0;right:10px;bottom:0;z-index:8');
     expect(listCss).toContain('position:absolute;top:1px;right:0');
