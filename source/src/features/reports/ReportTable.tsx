@@ -7,7 +7,7 @@ import {GROUP_OPTIONS} from '../../../shared/field-definitions';
 import { aggregateReport, normalizeReportStatus } from '../../domain/reporting';
 import { compareCatalogValues } from '../../domain/catalog-order';
 import { reportStage,reportStageLabels,type ReportStage } from '../../domain/report-workflow';
-import {reportHiddenColumns,tableFontStack} from '../../data/report-preferences';
+import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {canonicalStatus} from '../../domain/status-contract';
 import {reportReferenceGroupRows,reportReferenceStatusColumn,
@@ -47,7 +47,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dá»
   const [draftTitle,setDraftTitle]=useState(config.title);
   const [columnsMenu,setColumnsMenu]=useState(false);
   const [quickMenu,setQuickMenu]=useState<string|null>(null);
-  const hiddenStatusColumns=config.columns.filter(column=>reportHiddenColumns(config).includes(column));
+  const hiddenStatusColumns=config.columns.filter(column=>config.hiddenColumns.includes(column));
   useEffect(()=>{if(!quickEditable)setQuickMenu(null);},[quickEditable]);
   useEffect(()=>{
     if(!quickMenu)return;
