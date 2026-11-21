@@ -6,6 +6,9 @@ type ColumnHeaderProps = {
   sortDirection?: 'asc'|'desc'|null;sortLabel?:string; children: ReactNode;
   /** Provided only for an authorized administrator in visual-edit mode. */
   inlineEditing?:boolean; canHide?:boolean; saving?:boolean;
+  /** Admin-only quick hide/show outside the advanced layout edit mode. */
+  quickVisibility?:boolean; hiddenColumns?:ReadonlyArray<{key:string;label:string}>;
+  onShow?:(key:string)=>void; onShowAll?:()=>void;
   onRename?:(key:string,label:string)=>Promise<boolean>|boolean;
   onHide?:(key:string)=>void;
   onOpenColumnSettings?:(key:string)=>void;
@@ -13,7 +16,8 @@ type ColumnHeaderProps = {
 
 /** Pointer capture supports embedded browsers and touch without native HTML drag/drop. */
 export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey, onMove,onSort,sortDirection,sortLabel, children,
-  inlineEditing=false,canHide=false,saving=false,onRename,onHide,onOpenColumnSettings }: ColumnHeaderProps) {
+  inlineEditing=false,canHide=false,saving=false,onRename,onHide,onOpenColumnSettings,
+  quickVisibility=false,hiddenColumns=[],onShow,onShowAll }: ColumnHeaderProps) {
   const start=useRef<{x:number;y:number;pointer:number}|null>(null);
   const [dragging,setDragging]=useState(false);
   const justDragged=useRef(false);
@@ -23,9 +27,19 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
   const [renameError,setRenameError]=useState('');
   const renameRef=useRef<HTMLInputElement>(null);
   const menuRef=useRef<HTMLButtonElement>(null);
+  const toolsRef=useRef<HTMLSpanElement>(null);
+  const visibilityEnabled=inlineEditing||quickVisibility;
   const editingAllowed=inlineEditing&&!saving&&!!onRename;
   useEffect(()=>{if(renaming)renameRef.current?.focus();},[renaming]);
-  useEffect(()=>{if(!inlineEditing){setMenuOpen(false);setRenaming(false);}},[inlineEditing]);
+  useEffect(()=>{if(!visibilityEnabled){setMenuOpen(false);setRenaming(false);}},[visibilityEnabled]);
+  useEffect(()=>{
+    if(!menuOpen)return;
+    const outside=(event:PointerEvent)=>{
+      if(event.target instanceof Node&&!toolsRef.current?.contains(event.target))setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown',outside);
+    return()=>document.removeEventListener('pointerdown',outside);
+  },[menuOpen]);
   const cleanup=()=>{start.current=null;setDragging(false);};
   const beginRename=()=>{
     if(!editingAllowed)return;
@@ -35,6 +49,10 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
   const closeRename=()=>{if(saving)return;setRenaming(false);setRenameError('');menuRef.current?.focus();};
   return <th scope="col" aria-sort={onSort?(sortDirection?(sortDirection==='asc'?'ascending':'descending'):'none'):undefined} data-column-key={columnKey} tabIndex={onSort||!disabled?0:undefined}
     className={disabled?undefined:`column-movable ${dragging?'column-dragging':''}`}
+    onContextMenu={visibilityEnabled&&!saving?event=>{
+      if(typeof Element!=='undefined'&&event.target instanceof Element&&event.target.closest('.column-resizer'))return;
+      event.preventDefault();event.stopPropagation();setRenaming(false);setMenuOpen(true);
+    }:undefined}
     title={onSort
       ?(disabled?'Bấm tiêu đề để sắp xếp':'Bấm để sắp xếp; giữ và kéo để chuyển cột; Alt+← hoặc Alt+→ để chuyển cột.')
       :disabled?undefined:'Giữ và kéo để chuyển cột; Alt+← hoặc Alt+→ để chuyển cột.'}
@@ -63,6 +81,12 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
     onPointerCancel={cleanup} onLostPointerCapture={cleanup}
     onKeyDown={event=>{
       if(event.target!==event.currentTarget)return;
+      if(visibilityEnabled&&!saving&&(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10')){
+
+        event.preventDefault();setRenaming(false);setMenuOpen(true);menuRef.current?.focus();return;
+
+      }
+
       if(!event.altKey&&(event.key==='Enter'||event.key===' ')){
         if(onSort){event.preventDefault();onSort(columnKey);}return;
       }
@@ -76,7 +100,7 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
         onPointerDown={event=>event.stopPropagation()} onClick={event=>{event.stopPropagation();onSort(columnKey);}}>
           {sortDirection==='asc'?'↑':sortDirection==='desc'?'↓':'↕'}
         </button>}
-      {inlineEditing&&<span className="inline-g01-column-tools" onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}
+      {visibilityEnabled&&<span ref={toolsRef} className="inline-g01-column-tools" onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}
         onKeyDown={e=>{
           e.stopPropagation();
           if(e.key==='Escape'&&!renaming){e.preventDefault();setMenuOpen(false);menuRef.current?.focus();}
@@ -85,12 +109,20 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
           aria-label={'Tùy chọn cột '+(sortLabel??columnKey)}
           aria-expanded={menuOpen} aria-haspopup="true"
           disabled={saving} onClick={()=>{setMenuOpen(open=>!open);setRenaming(false);}}>
-          ⋯
         </button>
         {menuOpen&&<span className="inline-g01-column-menu" role="group" aria-label={'Thao tác cột '+(sortLabel??columnKey)}>
-          <button type="button" onClick={beginRename}>Đổi tên cột</button>
-          <button type="button" disabled={!canHide} onClick={()=>{setMenuOpen(false);onHide?.(columnKey);}}>Ẩn cột (không xóa)</button>
-          {onOpenColumnSettings&&<button type="button" onClick={()=>{
+          {inlineEditing&&<button type="button" onClick={beginRename}>Đổi tên cột</button>}
+          {onHide&&<button type="button" aria-label={'Ẩn cột '+(sortLabel??columnKey)} disabled={!canHide||saving}
+            onClick={()=>{setMenuOpen(false);onHide(columnKey);}}>Ẩn cột (không xóa)</button>}
+          {onShow&&<span className="inline-g01-hidden-section" role="group" aria-label="Hiện lại cột đã ẩn">
+            <strong>Cột đã ẩn ({hiddenColumns.length})</strong>
+            {hiddenColumns.length===0?<span>Không có cột ẩn</span>:hiddenColumns.map(column=><button type="button" key={column.key}
+              disabled={saving} aria-label={'Hiện cột '+column.label}
+              onClick={()=>{setMenuOpen(false);onShow(column.key);}}>+ Hiện {column.label}</button>)}
+            {hiddenColumns.length>1&&onShowAll&&<button type="button" disabled={saving}
+              onClick={()=>{setMenuOpen(false);onShowAll();}}>Hiện tất cả cột</button>}
+          </span>}
+          {inlineEditing&&onOpenColumnSettings&&<button type="button" onClick={()=>{
             setMenuOpen(false);onOpenColumnSettings(columnKey);
           }}>Thiết lập cột và danh sách chọn…</button>}
           <button type="button" onClick={()=>{setMenuOpen(false);menuRef.current?.focus();}}>Đóng</button>

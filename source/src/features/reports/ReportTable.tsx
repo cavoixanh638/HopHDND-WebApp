@@ -39,13 +39,32 @@ const quietPartyMilestones=new Set([
 const quietBuildMilestone=normalizeSearch('Đã trình, chờ QĐ');
 const excludedMilestone=normalizeSearch('Không phải trình');
 
-export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize, inlineEditing = false, onInlineAction, onReportDragStart, onReportDrop, onReportStep, inlineBusy = false }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void; inlineEditing?:boolean; onInlineAction?:(action:InlineReportAction)=>void; onReportDragStart?:(id:string)=>void; onReportDrop?:(id:string)=>void; onReportStep?:(id:string,direction:-1|1)=>void; inlineBusy?:boolean }) {
+export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize, inlineEditing = false, quickVisibility = false, onInlineAction, onReportDragStart, onReportDrop, onReportStep, inlineBusy = false }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void; inlineEditing?:boolean; quickVisibility?:boolean; onInlineAction?:(action:InlineReportAction)=>void; onReportDragStart?:(id:string)=>void; onReportDrop?:(id:string)=>void; onReportStep?:(id:string,direction:-1|1)=>void; inlineBusy?:boolean }) {
   const editable = inlineEditing && !preview && !!onInlineAction && !inlineBusy;
+  const quickAllowed = quickVisibility && !inlineEditing && !preview && !!onInlineAction;
+  const quickEditable = quickAllowed && !inlineBusy;
   const [renaming,setRenaming]=useState(false);
   const [draftTitle,setDraftTitle]=useState(config.title);
   const [columnsMenu,setColumnsMenu]=useState(false);
+  const [quickMenu,setQuickMenu]=useState<string|null>(null);
+  const hiddenStatusColumns=config.columns.filter(column=>config.hiddenColumns.includes(column));
+  useEffect(()=>{if(!quickEditable)setQuickMenu(null);},[quickEditable]);
+  useEffect(()=>{
+    if(!quickMenu)return;
+    const close=(event:PointerEvent)=>{
+      if(event.target instanceof Element&&!event.target.closest('[data-quick-report-menu]'))setQuickMenu(null);
+    };
+    document.addEventListener('pointerdown',close);
+    return()=>document.removeEventListener('pointerdown',close);
+  },[quickMenu]);
   const draggingColumn=useRef<string|null>(null);
-  const update=(action:InlineReportAction)=>{if(editable)onInlineAction?.(action);};
+  const update=(action:InlineReportAction)=>{
+    if(editable||(quickEditable&&action.type==='status-visible'))onInlineAction?.(action);
+  };
+  const toggleStatus=(column:string,visible:boolean)=>{
+    if(!quickEditable||!config.columns.includes(column))return;
+    setQuickMenu(null);update({type:'status-visible',reportId:config.id,column,visible});
+  };
   const commitTitle=()=>{const title=draftTitle.trim();if(!title||title.length>160)return;
     if(title!==config.title)update({type:'rename',reportId:config.id,title});setRenaming(false);};
   const onTitleKey=(event:KeyboardEvent<HTMLInputElement>)=>{
@@ -216,6 +235,13 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </div>
 
     </div>
+    {quickAllowed&&(hiddenStatusColumns.length>0||inlineBusy)&&<div className="inline-excel-report-bar" role="group" aria-label="Hiện lại cột báo cáo đã ẩn">
+      {inlineBusy&&<span role="status">Đang lưu cách hiển thị cột…</span>}
+      {hiddenStatusColumns.length>0&&<details><summary>+ Hiện cột ẩn ({hiddenStatusColumns.length})</summary>
+        <div>{hiddenStatusColumns.map(column=><button key={column} type="button"
+          disabled={inlineBusy} onClick={()=>toggleStatus(column,true)}>+ Hiện {column}</button>)}</div>
+      </details>}
+    </div>}
     <div className="table-wrap"><table className="data-table report-table"
       style={{minWidth:`${gridWidth}px`,width:`${gridWidth}px`}}>
       <colgroup>
@@ -229,6 +255,18 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         <th scope="col" data-ui-reference-report-column={RC.total} className="report-number-header report-total-col report-resizable-heading">{onColumnResize||editable?<>Tổng số nội dung{grip('__total',1,'Tổng số nội dung')}</>:'Tổng số nội dung'}</th>
         {report.columns.map((column,index)=><th key={column} scope="col"
           data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
+          data-quick-report-menu={quickEditable&&config.columns.includes(column)?column:undefined}
+          tabIndex={quickEditable&&config.columns.includes(column)?0:undefined}
+          onContextMenu={quickEditable&&config.columns.includes(column)?event=>{
+            if(event.target instanceof Element&&event.target.closest('.column-resizer'))return;
+            event.preventDefault();setQuickMenu(column);
+          }:undefined}
+          onKeyDown={quickEditable&&config.columns.includes(column)?event=>{
+            if(event.key==='Escape'){setQuickMenu(null);return;}
+            if(event.key==='ContextMenu'||event.shiftKey&&event.key==='F10'){
+              event.preventDefault();setQuickMenu(column);
+            }
+          }:undefined}
           onDragOver={editable&&config.columns.includes(column)?event=>event.preventDefault():undefined}
           onDrop={event=>dropColumn(column,event)}
           className={'report-number-header report-resizable-heading'+emphasis(column)}>
@@ -243,7 +281,23 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
             <button type="button" className="inline-g02-hide" title={`Ẩn cột ${column}`}
               aria-label={`Ẩn cột ${column}`} onClick={()=>update({type:'status-visible',reportId:config.id,column,visible:false})}>×</button>
             {grip(column,index+2,column)}</div>:
-            onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:<span className="report-heading-label">{column}</span>}</th>)}
+            quickEditable&&config.columns.includes(column)?<><span className="report-heading-label">{column}</span>
+              <span className="inline-excel-report-tools">
+                <button type="button" className="inline-excel-report-trigger" aria-label={`Tùy chọn ẩn hiện cột ${column}`}
+                  title="Nhấp để ẩn/hiện cột, hoặc nhấp chuột phải lên tiêu đề"
+                  aria-expanded={quickMenu===column} onClick={()=>setQuickMenu(current=>current===column?null:column)}></button>
+                {quickMenu===column&&<span className="inline-excel-status-menu" role="group" aria-label={`Ẩn hiện cột ${column}`}>
+                  <button type="button" onClick={()=>toggleStatus(column,false)}>Ẩn cột {column} (không xóa)</button>
+                  <strong>Cột đã ẩn ({hiddenStatusColumns.length})</strong>
+                  {hiddenStatusColumns.length===0?<span>Không có cột ẩn</span>:
+                    hiddenStatusColumns.map(hidden=><button key={hidden} type="button"
+                      onClick={()=>toggleStatus(hidden,true)}>+ Hiện {hidden}</button>)}
+                  <button type="button" onClick={()=>setQuickMenu(null)}>Đóng</button>
+                </span>}
+              </span>
+              {onColumnResize&&grip(column,index+2,column)}</>:
+            onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:
+            <span className="report-heading-label">{column}</span>}</th>)}
         <th scope="col" data-ui-reference-report-column={RC.percent} className="report-number-header report-percent-col report-resizable-heading">{onColumnResize||editable?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
       </tr></thead>
       <tbody>

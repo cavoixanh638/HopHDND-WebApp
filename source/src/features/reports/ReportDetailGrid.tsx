@@ -477,7 +477,16 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
             <ColumnHeader key={c.key} columnKey={c.key} sortLabel={c.label}
               sortDirection={sort?.key===c.key?sort.direction:null} onSort={cycleSort}
               disabled={!settings} previousKey={renderedColumns[index-1]?.key}
-              nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}>
+              nextKey={renderedColumns[index+1]?.key} onMove={moveHeader}
+              quickVisibility={mayCustomize&&!showAll}
+              canHide={renderedColumns.length>1}
+              hiddenColumns={hiddenPopupColumns.map(column=>({key:column.key,label:labelByKey.get(column.key)??column.key}))}
+              onHide={key=>{
+                const group=popupPairs.find(pair=>pair.anchor===key);
+                if(renderedColumns.length>1)togglePopupColumns(group?.memberFields??[key],false);
+              }}
+              onShow={key=>togglePopupColumns([key],true)}
+              onShowAll={()=>togglePopupColumns(hiddenPopupColumns.map(column=>column.key),true)}>
               <span className="inline-g04-heading">
                 {renameKey===popupPairs.find(pair=>pair.anchor===c.key)?.variant
                   ?<span className="inline-g04-group-editor" onPointerDown={e=>e.stopPropagation()}

@@ -540,7 +540,10 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
     }finally{inlineSaving.current=false;setInlinePending(false);}
   };
   const commitInlineReportAction=async(action:InlineReportAction)=>{
-    if(!inlineAllowed||!inlineEditing||inlineSaving.current)return;
+    // Admin may hide/restore status columns right on the live table. Other
+    // layout actions still require the explicit advanced editing mode.
+    if(!inlineAllowed||(!inlineEditing&&action.type!=='status-visible')||inlineSaving.current||inlinePending)return;
+    if(isFirebase&&!inlineEditing)firebaseEditRevision.current=firebase?.profile?.revision??0;
     if(inlineVisualDraft){setInlineError('Hãy lưu hoặc hủy thay đổi kiểu bảng trước khi sắp xếp báo cáo.');return;}
     const before=layout;
     let next:ReportLayout[];
@@ -833,6 +836,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           }}>
           {inlineEditing?'✓ Xong chỉnh giao diện':'✎ Chỉnh giao diện báo cáo'}
         </button>}</div>
+        {inlineAllowed&&!inlineEditing&&inlineError&&<p className="notice error-text" role="alert">{inlineError}</p>}
         {inlineEditing&&inlineAllowed&&<div className="inline-g02-mode-panel" role="group" aria-label="Chỉnh giao diện báo cáo">
           <strong>Chỉnh bố cục báo cáo</strong>
           <span>Chỉ quản trị; lưu dùng chung sau khi thả kéo hoặc xác nhận. Không sửa số liệu, không thay đổi cách đếm “Không phải trình”.</span>
@@ -849,7 +853,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
           const table=<MemoReportTable key={config.id} items={workspace.items} config={config} group={group}
             groupOrder={catalog.options[group]} groupIdentities={catalog.groupIdentities}
             sourceLabel={sourceLabel} onSelect={showReportDetails}
-            inlineEditing={inlineEditing&&inlineAllowed} inlineBusy={inlinePending}
+            inlineEditing={inlineEditing&&inlineAllowed} quickVisibility={inlineAllowed} inlineBusy={inlinePending}
             onInlineAction={inlineAction}
             onReportDragStart={id=>{reportDrag.current=id;}}
             onReportDrop={inlineReportDrop} onReportStep={inlineReportStep}/>;
