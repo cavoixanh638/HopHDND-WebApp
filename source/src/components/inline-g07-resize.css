@@ -20,6 +20,13 @@
   .column-resizer.inline-g07-resizer { transition: none; }
 }
 
+/* A hairline grid separator remains visible without a separate drag button.
+   Inset shadow does not consume width or alter Excel-derived column geometry. */
+.item-data-table thead .item-heading-row th:has(.column-resizer.inline-g07-resizer),
+.report-table thead th:has(.column-resizer.inline-g07-resizer){
+  box-shadow:inset -1px 0 rgba(49,94,76,.18);
+}
+
 /* Excel/Word-style resize: the 14px hit area straddles the column boundary
    but has NO visible handle or thick divider at rest. Pointer/keyboard
    interactions continue to use ColumnResizeHandle's existing preview, limits,
