@@ -285,7 +285,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
               <span className="inline-excel-report-tools">
                 <button type="button" className="inline-excel-report-trigger" aria-label={`Tùy chọn ẩn hiện cột ${column}`}
                   title="Nhấp để ẩn/hiện cột, hoặc nhấp chuột phải lên tiêu đề"
-                  aria-expanded={quickMenu===column} onClick={()=>setQuickMenu(current=>current===column?null:column)}>⋯</button>
+                  aria-expanded={quickMenu===column} onClick={()=>setQuickMenu(current=>current===column?null:column)}></button>
                 {quickMenu===column&&<span className="inline-excel-status-menu" role="group" aria-label={`Ẩn hiện cột ${column}`}>
                   <button type="button" onClick={()=>toggleStatus(column,false)}>Ẩn cột {column} (không xóa)</button>
                   <strong>Cột đã ẩn ({hiddenStatusColumns.length})</strong>
