@@ -235,9 +235,9 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </div>
 
     </div>
-    {quickAllowed&&<div className="inline-excel-report-bar" role="group" aria-label="Ẩn hiện cột báo cáo trực tiếp">
-      <span>{inlineBusy?"Đang lưu cách hiển thị cột…":"Admin: nhấp chuột phải hoặc bấm ⋯ trên tiêu đề trạng thái để ẩn/hiện cột"}</span>
-      {hiddenStatusColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenStatusColumns.length})</summary>
+    {quickAllowed&&(hiddenStatusColumns.length>0||inlineBusy)&&<div className="inline-excel-report-bar" role="group" aria-label="Hiện lại cột báo cáo đã ẩn">
+      {inlineBusy&&<span role="status">Đang lưu cách hiển thị cột…</span>}
+      {hiddenStatusColumns.length>0&&<details><summary>+ Hiện cột ẩn ({hiddenStatusColumns.length})</summary>
         <div>{hiddenStatusColumns.map(column=><button key={column} type="button"
           disabled={inlineBusy} onClick={()=>toggleStatus(column,true)}>+ Hiện {column}</button>)}</div>
       </details>}
@@ -284,6 +284,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
             quickEditable&&config.columns.includes(column)?<><span className="report-heading-label">{column}</span>
               <span className="inline-excel-report-tools">
                 <button type="button" className="inline-excel-report-trigger" aria-label={`Tùy chọn ẩn hiện cột ${column}`}
+                  title="Nhấp để ẩn/hiện cột, hoặc nhấp chuột phải lên tiêu đề"
                   aria-expanded={quickMenu===column} onClick={()=>setQuickMenu(current=>current===column?null:column)}>⋯</button>
                 {quickMenu===column&&<span className="inline-excel-status-menu" role="group" aria-label={`Ẩn hiện cột ${column}`}>
                   <button type="button" onClick={()=>toggleStatus(column,false)}>Ẩn cột {column} (không xóa)</button>
