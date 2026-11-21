@@ -95,3 +95,10 @@
    sorting and R07 real Chrome smoke; icons are CSS, not fake title characters. */
 .report-grid-modal .inline-g04-heading-action.inline-g04-rename::before { content:'✎'; }
 .report-grid-modal .inline-g04-heading-action.inline-g04-hide::before { content:'×'; }
+
+/* The shared ColumnHeader eye now provides Hide / Restore in this popup.
+   Suppress the older, redundant X button so only one hover eye appears in
+   the upper-right corner of each heading. The "Cột ẩn" restore list remains. */
+.report-grid-modal .report-detail-grid thead .inline-g04-heading-action.inline-g04-hide{
+  display:none;
+}

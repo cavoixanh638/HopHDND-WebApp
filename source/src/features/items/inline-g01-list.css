@@ -76,5 +76,64 @@
 .inline-excel-hidden-bar summary:focus-visible,.inline-excel-hidden-bar button:focus-visible{outline:2px solid #245f94;outline-offset:2px}
 @media print{.inline-g01-column-tools,.inline-excel-hidden-bar{display:none!important}}
 
-/* Keep literal heading text unchanged; render the admin menu icon as CSS. */
-.inline-g01-column-menu-trigger::before{content:'⋯';}
+/* Subtle inline Admin visibility control — one small eye, anchored to the top-right
+   of exactly the hovered heading. It occupies no flex width and never changes the
+   heading's textContent (report/Excel matching depends on the original label). */
+.item-data-table .item-heading-row th:has(.inline-g01-column-tools),
+.report-grid-modal .report-detail-grid thead th:has(.inline-g01-column-tools){
+  padding-right:30px;
+}
+.item-data-table .item-heading-row th .inline-g01-column-tools,
+.report-grid-modal .report-detail-grid thead th .inline-g01-column-tools{
+  position:absolute;
+  top:3px;right:13px;bottom:0;z-index:8;
+  display:inline-flex;align-items:flex-start;justify-content:center;
+  width:20px;height:auto;margin:0;flex:none;
+}
+.item-data-table .inline-g01-column-menu-trigger,
+.report-grid-modal .report-detail-grid .inline-g01-column-menu-trigger{
+  display:inline-grid;place-items:center;
+  box-sizing:border-box;
+  width:20px;min-width:20px;height:20px;min-height:20px;
+  padding:0;border:1px solid transparent;border-radius:5px;
+  background:rgba(255,255,255,.9);color:#416b58;
+  box-shadow:0 1px 2px rgba(23,59,41,.08);font-size:0;
+}
+.inline-g01-column-menu-trigger::before{
+  content:'';display:block;width:13px;height:13px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.item-data-table .inline-g01-column-menu-trigger:hover,
+.report-grid-modal .report-detail-grid .inline-g01-column-menu-trigger:hover,
+.inline-g01-column-menu-trigger[aria-expanded="true"]{
+  color:#155d43;background:#e5f1e9;border-color:#a6c7b4;
+}
+.item-data-table .item-heading-row th:has(.inline-g01-column-menu),
+.report-grid-modal .report-detail-grid thead th:has(.inline-g01-column-menu){z-index:26;}
+/* Menus remain visible while open, even after the pointer leaves the heading. */
+@media (hover:hover) and (pointer:fine){
+  .item-data-table .item-heading-row th .inline-g01-column-tools,
+  .report-grid-modal .report-detail-grid thead th .inline-g01-column-tools{
+    opacity:0;pointer-events:none;
+  }
+  .item-data-table .item-heading-row th:is(:hover,:focus-within) .inline-g01-column-tools,
+  .report-grid-modal .report-detail-grid thead th:is(:hover,:focus-within) .inline-g01-column-tools,
+  .item-data-table .inline-g01-column-tools:has(.inline-g01-column-menu),
+  .report-grid-modal .report-detail-grid .inline-g01-column-tools:has(.inline-g01-column-menu){
+    opacity:1;pointer-events:auto;
+  }
+}
+/* There is no hover on touch devices: keep the eye reachable, but quiet. */
+@media (hover:none){
+  .item-data-table .item-heading-row th .inline-g01-column-tools,
+  .report-grid-modal .report-detail-grid thead th .inline-g01-column-tools{
+    opacity:1;pointer-events:auto;
+  }
+}
+@media print{
+  .item-data-table .item-heading-row th:has(.inline-g01-column-tools),
+  .report-grid-modal .report-detail-grid thead th:has(.inline-g01-column-tools){
+    padding-right:11px;
+  }
+}
