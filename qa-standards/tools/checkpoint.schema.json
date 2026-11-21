@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/ci-standards/checkpoint.schema.json",
+  "title": "Offline QA checkpoint v1.0 (not a CI attestation)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "repository", "branch", "commit_sha", "suite", "suite_version", "status", "command", "safety_class", "deterministic", "external_dependencies", "coverage_approved", "environment", "files", "started_at", "finished_at", "evidence", "input_fingerprint", "input_hashes", "duration_seconds", "record_digest"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "repository": {"type": "string", "minLength": 1},
+    "branch": {"type": "string", "minLength": 1},
+    "commit_sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "suite": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$"},
+    "suite_version": {"type": "string", "minLength": 1},
+    "status": {"enum": ["PASS", "FAIL", "SKIPPED", "NOT_RUN"]},
+    "command": {"type": "string", "minLength": 1},
+    "safety_class": {"enum": ["normal", "security", "release", "external", "data_integrity", "race", "realtime", "integration"]},
+    "deterministic": {"type": "boolean"},
+    "external_dependencies": {"type": "boolean"},
+    "coverage_approved": {"type": "boolean"},
+    "environment": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "minLength": 1}},
+    "files": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source", "tests", "dependencies", "toolchain", "config", "fixtures", "security"],
+      "properties": {
+        "source": {"$ref": "#/$defs/fileListNonempty"},
+        "tests": {"$ref": "#/$defs/fileListNonempty"},
+        "dependencies": {"$ref": "#/$defs/fileList"},
+        "toolchain": {"$ref": "#/$defs/fileList"},
+        "config": {"$ref": "#/$defs/fileList"},
+        "fixtures": {"$ref": "#/$defs/fileList"},
+        "security": {"$ref": "#/$defs/fileList"}
+      }
+    },
+    "started_at": {"type": "string", "pattern": "Z$"},
+    "finished_at": {"type": "string", "pattern": "Z$"},
+    "evidence": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "acceptance": {"type": "string"},
+    "note": {"type": "string"},
+    "input_fingerprint": {"$ref": "#/$defs/sha256"},
+    "input_hashes": {
+      "type": "object", "required": ["files", "environment"], "additionalProperties": false,
+      "properties": {
+        "environment": {"type": "object", "additionalProperties": {"type": "string"}},
+        "files": {"type": "object", "required": ["source", "tests", "dependencies", "toolchain", "config", "fixtures", "security"], "additionalProperties": false,
+          "properties": {
+            "source": {"$ref": "#/$defs/fileHashes"}, "tests": {"$ref": "#/$defs/fileHashes"},
+            "dependencies": {"$ref": "#/$defs/fileHashes"}, "toolchain": {"$ref": "#/$defs/fileHashes"},
+            "config": {"$ref": "#/$defs/fileHashes"}, "fixtures": {"$ref": "#/$defs/fileHashes"},
+            "security": {"$ref": "#/$defs/fileHashes"}
+          }
+        }
+      }
+    },
+    "duration_seconds": {"type": "number", "minimum": 0},
+    "record_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "fileList": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "fileListNonempty": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "fileHashes": {"type": "object", "additionalProperties": {"$ref": "#/$defs/sha256"}}
+  }
+}
