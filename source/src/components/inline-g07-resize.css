@@ -19,3 +19,66 @@
 @media (prefers-reduced-motion: reduce) {
   .column-resizer.inline-g07-resizer { transition: none; }
 }
+
+/* A hairline grid separator remains visible without a separate drag button.
+   Inset shadow does not consume width or alter Excel-derived column geometry. */
+.item-data-table thead .item-heading-row th:has(.column-resizer.inline-g07-resizer),
+.report-table thead th:has(.column-resizer.inline-g07-resizer){
+  box-shadow:inset -1px 0 rgba(49,94,76,.18);
+}
+
+/* Excel/Word-style resize: the 14px hit area straddles the column boundary
+   but has NO visible handle or thick divider at rest. Pointer/keyboard
+   interactions continue to use ColumnResizeHandle's existing preview, limits,
+   adjacent compensation and one-time commit logic. */
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th .column-resizer.inline-g07-resizer{
+  right:-4px;width:14px;min-width:14px;
+  border:0;background:transparent;box-shadow:none;
+  cursor:col-resize;
+}
+/* Sticky table headings form individual stacking contexts. Raise only the
+   active boundary so the tiny two-arrow glyph is not clipped by the next th. */
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th:has(.column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)){
+  z-index:12;
+}
+
+/* Only while the separator itself is hovered, focused or dragged:
+   an understated guide line plus a small horizontal two-arrow indicator. */
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th .column-resizer.inline-g07-resizer::before{
+  content:'';position:absolute;pointer-events:none;
+  top:0;bottom:0;left:calc(50% - 1px);width:2px;
+  border-radius:2px;background:#27785f;opacity:0;
+}
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th .column-resizer.inline-g07-resizer::after{
+  content:'↔';position:absolute;pointer-events:none;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  display:grid;place-items:center;box-sizing:border-box;
+  width:22px;height:20px;line-height:1;font-size:15px;font-weight:700;
+  background:#fff;color:#155d46;border:1px solid #8fbea6;border-radius:5px;
+  box-shadow:0 1px 5px #174f3326;opacity:0;
+}
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active){
+  background:transparent;border:0;
+}
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)::before,
+:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+  thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)::after{
+  opacity:1;
+}
+/* Touch keeps the larger, invisible target; only a drag/focus reveals cues. */
+@media (pointer:coarse){
+  :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+    thead th .column-resizer.inline-g07-resizer{
+    right:-6px;width:24px;min-width:24px;
+  }
+}
+@media print{
+  :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
+    thead th .column-resizer.inline-g07-resizer{display:none!important;}
+}
