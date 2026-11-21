@@ -281,8 +281,8 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
             <button type="button" className="inline-g02-hide" title={`Ẩn cột ${column}`}
               aria-label={`Ẩn cột ${column}`} onClick={()=>update({type:'status-visible',reportId:config.id,column,visible:false})}>×</button>
             {grip(column,index+2,column)}</div>:
-            <><span className="report-heading-label">{column}</span>
-              {quickEditable&&config.columns.includes(column)&&<span className="inline-excel-report-tools">
+            quickEditable&&config.columns.includes(column)?<><span className="report-heading-label">{column}</span>
+              <span className="inline-excel-report-tools">
                 <button type="button" className="inline-excel-report-trigger" aria-label={`Tùy chọn ẩn hiện cột ${column}`}
                   aria-expanded={quickMenu===column} onClick={()=>setQuickMenu(current=>current===column?null:column)}>⋯</button>
                 {quickMenu===column&&<span className="inline-excel-status-menu" role="group" aria-label={`Ẩn hiện cột ${column}`}>
@@ -293,8 +293,10 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
                       onClick={()=>toggleStatus(hidden,true)}>+ Hiện {hidden}</button>)}
                   <button type="button" onClick={()=>setQuickMenu(null)}>Đóng</button>
                 </span>}
-              </span>}
-              {onColumnResize&&grip(column,index+2,column)}</>}</th>)}
+              </span>
+              {onColumnResize&&grip(column,index+2,column)}</>:
+            onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:
+            <span className="report-heading-label">{column}</span>}</th>)}
         <th scope="col" data-ui-reference-report-column={RC.percent} className="report-number-header report-percent-col report-resizable-heading">{onColumnResize||editable?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
       </tr></thead>
       <tbody>
