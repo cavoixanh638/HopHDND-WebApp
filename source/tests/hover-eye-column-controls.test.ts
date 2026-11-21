@@ -28,12 +28,12 @@ describe('Admin hover-eye column controls (presentation only)',()=>{
 
   it('places the control in the upper-right corner, separately for every heading',()=>{
     expect(listCss).toContain('th .inline-g01-column-tools');
-    expect(listCss).toContain('top:3px;right:13px;bottom:0');
+    expect(listCss).toContain('top:0;right:10px;bottom:0');
     expect(reportCss).toContain('th[data-quick-report-menu] .inline-excel-report-tools');
-    expect(reportCss).toContain('top:3px;right:13px;bottom:0');
-    // The dropdown is measured from the full header height, not from its 20px eye.
-    expect(listCss).toContain('width:20px;height:auto;margin:0;flex:none');
-    expect(reportCss).toContain('width:20px;height:auto;margin:0');
+    expect(reportCss).toContain('top:0;right:10px;bottom:0');
+    // The dropdown is measured from the full header height, not from its 18px eye.
+    expect(listCss).toContain('width:18px;height:auto;margin:0;flex:none');
+    expect(reportCss).toContain('width:18px;height:auto;margin:0');
     expect(listCss).toContain('.report-grid-modal .report-detail-grid thead th');
     expect(popupCss).toContain('.inline-g04-heading-action.inline-g04-hide');
     expect(popupCss).toMatch(/\.inline-g04-heading-action\.inline-g04-hide\s*\{\s*display:none;/);
