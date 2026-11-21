@@ -109,7 +109,6 @@ export function ColumnHeader({ columnKey, disabled = false, previousKey, nextKey
           aria-label={'Tùy chọn cột '+(sortLabel??columnKey)}
           aria-expanded={menuOpen} aria-haspopup="true"
           disabled={saving} onClick={()=>{setMenuOpen(open=>!open);setRenaming(false);}}>
-          ⋯
         </button>
         {menuOpen&&<span className="inline-g01-column-menu" role="group" aria-label={'Thao tác cột '+(sortLabel??columnKey)}>
           {inlineEditing&&<button type="button" onClick={beginRename}>Đổi tên cột</button>}
