@@ -41,7 +41,8 @@ const excludedMilestone=normalizeSearch('Không phải trình');
 
 export function ReportTable({ items, config, group, onSelect, sourceLabel = 'Dữ liệu mẫu', preview = false, groupOrder = [], groupIdentities, onColumnResize, inlineEditing = false, quickVisibility = false, onInlineAction, onReportDragStart, onReportDrop, onReportStep, inlineBusy = false }: { items: Item[]; config: ReportConfig; group: GroupField; onSelect: (title: string, items: Item[]) => void; sourceLabel?: string; preview?: boolean; groupOrder?:string[]; groupIdentities?:ReportGroupIdentityRegistry; onColumnResize?:(column:string,width:number)=>void; inlineEditing?:boolean; quickVisibility?:boolean; onInlineAction?:(action:InlineReportAction)=>void; onReportDragStart?:(id:string)=>void; onReportDrop?:(id:string)=>void; onReportStep?:(id:string,direction:-1|1)=>void; inlineBusy?:boolean }) {
   const editable = inlineEditing && !preview && !!onInlineAction && !inlineBusy;
-  const quickEditable = quickVisibility && !inlineEditing && !preview && !!onInlineAction && !inlineBusy;
+  const quickAllowed = quickVisibility && !inlineEditing && !preview && !!onInlineAction;
+  const quickEditable = quickAllowed && !inlineBusy;
   const [renaming,setRenaming]=useState(false);
   const [draftTitle,setDraftTitle]=useState(config.title);
   const [columnsMenu,setColumnsMenu]=useState(false);
@@ -234,11 +235,11 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       </div>
 
     </div>
-    {quickEditable&&<div className="inline-excel-report-bar" role="group" aria-label="Ẩn hiện cột báo cáo trực tiếp">
-      <span>Admin: nhấp chuột phải hoặc bấm ⋯ trên tiêu đề trạng thái để ẩn/hiện cột</span>
+    {quickAllowed&&<div className="inline-excel-report-bar" role="group" aria-label="Ẩn hiện cột báo cáo trực tiếp">
+      <span>{inlineBusy?"Đang lưu cách hiển thị cột…":"Admin: nhấp chuột phải hoặc bấm ⋯ trên tiêu đề trạng thái để ẩn/hiện cột"}</span>
       {hiddenStatusColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenStatusColumns.length})</summary>
         <div>{hiddenStatusColumns.map(column=><button key={column} type="button"
-          onClick={()=>toggleStatus(column,true)}>+ Hiện {column}</button>)}</div>
+          disabled={inlineBusy} onClick={()=>toggleStatus(column,true)}>+ Hiện {column}</button>)}</div>
       </details>}
     </div>}
     <div className="table-wrap"><table className="data-table report-table"
