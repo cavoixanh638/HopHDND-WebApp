@@ -86,9 +86,9 @@
 .item-data-table .item-heading-row th .inline-g01-column-tools,
 .report-grid-modal .report-detail-grid thead th .inline-g01-column-tools{
   position:absolute;
-  top:3px;right:13px;z-index:8;
-  display:inline-flex;align-items:center;justify-content:center;
-  width:20px;height:20px;margin:0;flex:none;
+  top:3px;right:13px;bottom:0;z-index:8;
+  display:inline-flex;align-items:flex-start;justify-content:center;
+  width:20px;height:auto;margin:0;flex:none;
 }
 .item-data-table .inline-g01-column-menu-trigger,
 .report-grid-modal .report-detail-grid .inline-g01-column-menu-trigger{
