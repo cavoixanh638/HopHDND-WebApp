@@ -1,3 +1,21 @@
+# Bổ sung 21/11/2026 — Không bắt chủ dự án chỉnh biến SHA sau mỗi lần sửa
+
+**Nguyên nhân thực tế PR #219:** chính sách UI auto cho phép một số tệp đã tách, nhưng PR #219 chạm `src/app/App.tsx`, `ColumnHeader.tsx`, `ReportTable.tsx` và `ReportDetailGrid.tsx`. Các tệp này có đường gọi quyền/callback cập nhật và không được tùy tiện cho phép auto. Vì vậy bản kiểm thử PASS nhưng `release-gate=SUCCESS / publish=SKIPPED`. Hướng dẫn chủ dự án cập nhật liên tục `HOPHDND_PAGES_APPROVED_MAIN_SHA` là một quy trình vận hành kém thuận tiện và được thay thế bên dưới.
+
+## Hai làn phát hành (không sửa biến trong Settings)
+
+1. **Thay đổi thuần UI trong allowlist được kiểm soát:** trên `main`, workflow phân loại tất cả commit chưa phát hành từ `version.json.source_sha`. Nếu đúng scope và qua typecheck, unit, Chrome và Emulator thì `policy_mode=auto`, publish tự động, **không cần người dùng thao tác**.
+2. **Thay đổi vượt UI allowlist (core/quyền, dữ liệu, policy, workflow, Firebase, v.v.):** vẫn **HOLD** khi chỉ `push`. Khi chủ kho chủ động phê duyệt, chỉ cần vào **Actions → Build and publish HopHDND Pages → Run workflow**, chọn **main**. Lúc đó `pages-release-approval.mjs` xác thực `GITHUB_EVENT_NAME=workflow_dispatch`, `GITHUB_ACTOR=GITHUB_REPOSITORY_OWNER`, `GITHUB_REF=refs/heads/main` và `GITHUB_SHA` hợp lệ, cấp quyền **chỉ cho SHA của lần chạy đó**. Người khác/bot không thể dùng workflow_dispatch để phê duyệt.
+3. **Biến cũ** `HOPHDND_PAGES_APPROVED_MAIN_SHA` chỉ được giữ để tương thích; **không còn bắt buộc chỉnh**. Việc bấm Run workflow trong tình huống đặc biệt là **quyết định phê duyệt có chủ đích**, không phải bypass kiểm thử.
+4. Trong mọi trường hợp: giữ `HOPHDND_SPARK_PRODUCTION_CONFIRMED=true`, cổng hiện có và bảo vệ `origin/main === GITHUB_SHA` cả trước, sau build. Nếu `main` đổi giữa chừng, từ chối push, cần một lần Run workflow mới cho SHA mới. Chỉ công bố đã phát hành khi `publish=SUCCESS`, `version.json.source_sha` khớp và GitHub Pages deployment thành công. Không deploy Firebase Rules, không thay RTDB dữ liệu.
+
+## Yêu cầu đối với luồng phát triển UI tương lai
+
+- Ưu tiên sửa tệp UI được phép auto; không sửa `App.tsx` hoặc lõi ghi/đọc chỉ để chỉnh nhãn/màu/khoảng cách.
+- Không mở rộng allowlist cho **toàn bộ** `App.tsx`, `CellPicker.tsx`, `ReportDetailGrid.tsx` hoặc các module mang quyền và dữ liệu. Nếu cần chỉnh callback/điều kiện quyền thì kiểm thử, merge như code nhạy cảm và **chủ kho bấm Run workflow**; không yêu cầu đổi biến SHA.
+- Trường hợp owner-dispatch dù PR CI đã PASS, job `publish` vẫn tự kiểm tra TypeScript, unit, Chrome, Emulator, cấu hình public-only và push an toàn không force.
+
+---
 # Phát hành UI tự động có kiểm soát — Họp HĐND (17/11/2026)
 
 ## Mục tiêu
