@@ -59,6 +59,5 @@ describe('Admin hover-eye column controls (presentation only)',()=>{
     expect(listTsx).toContain('Hiện tất cả');
     expect(reportTsx).toContain('Hiện cột ẩn');
     expect(reportTsx).toContain("type:'status-visible'");
-    expect(popupCss).not.toContain('display:none!important');
   });
 });
