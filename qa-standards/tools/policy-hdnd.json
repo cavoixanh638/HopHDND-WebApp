@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "suites": ["policy_lint", "qa_tool_tests", "frontend_fast", "excel_contract", "firebase_security", "browser_qa", "pages_preflight", "full_acceptance"],
+  "rules": [
+    {"category": "qa-code", "patterns": ["qa-standards/tools/**", "qa-standards/tests/**", "qa-standards/templates/**"], "suites": ["qa_tool_tests"]},
+    {"category": "qa-docs", "patterns": ["qa-standards/docs/**", "docs/qa/**", "README.md", "AGENTS.md"], "suites": []},
+    {"category": "source-ui", "patterns": ["source/src/**", "source/pages.html", "source/index.html", "source/vite.config.ts"], "suites": ["frontend_fast", "browser_qa"]},
+    {"category": "business-excel", "patterns": ["source/src/**/excel*", "source/tests/*excel*", "source/scripts/*excel*"], "suites": ["excel_contract"]},
+    {"category": "firebase-security", "patterns": ["source/firebase/**", "source/src/data/**", "source/src/state/**", "source/shared/**", "source/scripts/firebase-*"], "suites": ["firebase_security", "full_acceptance"]},
+    {"category": "test-source", "patterns": ["source/tests/**", "source/scripts/**"], "suites": ["frontend_fast", "browser_qa"]},
+    {"category": "dependency-or-toolchain", "patterns": ["source/package.json", "source/package-lock.json", "source/tsconfig.json", "source/firebase.json"], "suites": ["full_acceptance"]},
+    {"category": "release-policy", "patterns": [".github/workflows/**", "index.html", "assets/**", ".nojekyll", "version.json"], "suites": ["pages_preflight", "full_acceptance"]}
+  ]
+}

@@ -1,0 +1,28 @@
+# TEMPLATE ONLY. Never silently install in .github/workflows.
+# Keep a lightweight, always-present required job on each PR so path filtering
+# cannot leave a required GitHub check forever pending or present as success.
+name: Reusable offline QA (template)
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python runtime for deterministic tooling
+        type: string
+        required: false
+        default: '3.13'
+permissions:
+  contents: read
+jobs:
+  qa-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python-version }}
+      - run: python -m unittest discover -s qa-standards/tests -v
+# Release, security, permissions, storage and migration checks remain in
+# project-specific mandatory acceptance workflows. Never cancel deployments.
