@@ -33,7 +33,7 @@
    adjacent compensation and one-time commit logic. */
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
   thead th .column-resizer.inline-g07-resizer{
-  right:-4px;width:14px;min-width:14px;
+  right:-6px;width:12px;min-width:12px;
   border:0;background:transparent;box-shadow:none;
   cursor:col-resize;
 }
@@ -45,30 +45,25 @@
 }
 
 /* Only while the separator itself is hovered, focused or dragged:
-   an understated guide line plus a small horizontal two-arrow indicator. */
+   an understated guide on the real border (native col-resize mouse cursor). */
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
   thead th .column-resizer.inline-g07-resizer::before{
   content:'';position:absolute;pointer-events:none;
   top:0;bottom:0;left:calc(50% - 1px);width:2px;
   border-radius:2px;background:#27785f;opacity:0;
 }
+/* The cursor itself is the familiar Excel resize symbol. Never render
+   a floating badge; also suppress the older ::after separator decoration. */
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
   thead th .column-resizer.inline-g07-resizer::after{
-  content:'↔';position:absolute;pointer-events:none;
-  left:50%;top:50%;transform:translate(-50%,-50%);
-  display:grid;place-items:center;box-sizing:border-box;
-  width:22px;height:20px;line-height:1;font-size:15px;font-weight:700;
-  background:#fff;color:#155d46;border:1px solid #8fbea6;border-radius:5px;
-  box-shadow:0 1px 5px #174f3326;opacity:0;
+  content:none;display:none!important;
 }
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
   thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active){
   background:transparent;border:0;
 }
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
-  thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)::before,
-:is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
-  thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)::after{
+  thead th .column-resizer.inline-g07-resizer:is(:hover,:focus-visible,:active)::before{
   opacity:1;
 }
 /* Touch keeps the larger, invisible target; only a drag/focus reveals cues. */
