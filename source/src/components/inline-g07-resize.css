@@ -33,7 +33,7 @@
    adjacent compensation and one-time commit logic. */
 :is(.item-data-table,.report-table,.report-grid-modal .report-detail-grid)
   thead th .column-resizer.inline-g07-resizer{
-  right:-6px;width:12px;min-width:12px;
+  right:-7px;width:14px;min-width:14px;
   border:0;background:transparent;box-shadow:none;
   cursor:col-resize;
 }

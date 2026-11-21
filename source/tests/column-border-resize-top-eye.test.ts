@@ -12,7 +12,7 @@ const detail=source('../src/features/reports/ReportDetailGrid.tsx');
 
 describe('Excel/Word-like column separator resizing',()=>{
   it('uses a transparent hit area centered at the column border, never a persistent grip',()=>{
-    expect(resizeCss).toContain('right:-6px;width:12px;min-width:12px');
+    expect(resizeCss).toContain('right:-7px;width:14px;min-width:14px');
     expect(resizeCss).toContain('border:0;background:transparent;box-shadow:none');
     expect(resizeCss).toContain('cursor:col-resize');
     expect(resizeCss).not.toContain("content:'↔'");
