@@ -24,7 +24,7 @@ describe('normal-view Admin report visibility',()=>{
     expect(guest).not.toContain('inline-excel-report-trigger');
     expect(guest).not.toContain('inline-excel-report-bar');
     expect(admin).toContain('inline-excel-report-trigger');
-    expect(admin).toContain('Cột đã ẩn');
+    expect(admin).toContain('Hiện cột ẩn');
     expect(admin).toContain('Tùy chọn ẩn hiện cột');
     expect(admin).not.toContain('inline-g02-table-actions');
   });
