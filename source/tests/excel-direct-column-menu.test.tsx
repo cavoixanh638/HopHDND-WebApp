@@ -75,7 +75,7 @@ describe('Excel-like admin header visibility in normal view',()=>{
     const block=vi.fn(),target={};
     tree.props.onKeyDown({key:'F10',shiftKey:true,altKey:false,target,currentTarget:target,
       preventDefault:block});
-    expect(block).not.toHaveBeenCalled();
+    expect(block).toHaveBeenCalledTimes(1);
     tree.props.onContextMenu({target:null,preventDefault:block,stopPropagation:vi.fn()});
     tree=render(props);
     const hide=nodes(tree).find(n=>n.props['aria-label']==='Ẩn cột Nội dung trình');
