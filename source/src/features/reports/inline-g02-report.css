@@ -42,9 +42,9 @@
 .report-table thead th[data-quick-report-menu],
 .report-table thead th:has(.inline-g02-hide){padding-right:32px;}
 .report-table thead th[data-quick-report-menu] .inline-excel-report-tools{
-  position:absolute;top:3px;right:13px;z-index:8;
-  display:inline-flex;align-items:center;justify-content:center;
-  width:20px;height:20px;margin:0;
+  position:absolute;top:3px;right:13px;bottom:0;z-index:8;
+  display:inline-flex;align-items:flex-start;justify-content:center;
+  width:20px;height:auto;margin:0;
 }
 .report-table thead th[data-quick-report-menu] .inline-excel-report-trigger,
 .report-table thead th .inline-g02-column-heading>.inline-g02-hide{
