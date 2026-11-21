@@ -36,3 +36,6 @@
 .inline-excel-status-menu>span{font-size:12px;padding:4px}
 .inline-excel-report-trigger:focus-visible,.inline-excel-status-menu button:focus-visible,.inline-excel-report-bar summary:focus-visible{outline:2px solid #116eb0;outline-offset:2px}
 @media print{.inline-excel-report-bar,.inline-excel-report-tools{display:none!important}}
+
+/* Report status heading textContent must remain identical to source. */
+.inline-excel-report-trigger::before{content:'⋯';}
