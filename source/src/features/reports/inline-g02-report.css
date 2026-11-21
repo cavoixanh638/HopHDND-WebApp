@@ -37,5 +37,57 @@
 .inline-excel-report-trigger:focus-visible,.inline-excel-status-menu button:focus-visible,.inline-excel-report-bar summary:focus-visible{outline:2px solid #116eb0;outline-offset:2px}
 @media print{.inline-excel-report-bar,.inline-excel-report-tools{display:none!important}}
 
-/* Report status heading textContent must remain identical to source. */
-.inline-excel-report-trigger::before{content:'⋯';}
+/* Lightweight admin column controls: a single 13px eye, quietly tucked in
+   the top-right of *that* status-heading cell. CSS icon keeps textContent clean. */
+.report-table thead th[data-quick-report-menu],
+.report-table thead th:has(.inline-g02-hide){padding-right:32px;}
+.report-table thead th[data-quick-report-menu] .inline-excel-report-tools{
+  position:absolute;top:3px;right:13px;z-index:8;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;margin:0;
+}
+.report-table thead th[data-quick-report-menu] .inline-excel-report-trigger,
+.report-table thead th .inline-g02-column-heading>.inline-g02-hide{
+  box-sizing:border-box;display:inline-grid;place-items:center;
+  flex:none;width:20px;min-width:20px;height:20px;min-height:20px;
+  padding:0;border:1px solid transparent;border-radius:5px;
+  background:rgba(255,255,255,.9);color:#416b58;cursor:pointer;
+  box-shadow:0 1px 2px rgba(23,59,41,.08);font-size:0;
+}
+.report-table thead th .inline-g02-column-heading>.inline-g02-hide{
+  position:absolute;top:3px;right:13px;z-index:8;
+}
+.inline-excel-report-trigger::before,
+.report-table .inline-g02-hide::before{
+  content:'';display:block;width:13px;height:13px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.report-table thead th .inline-excel-report-trigger:is(:hover,:focus-visible),
+.report-table thead th .inline-g02-hide:is(:hover,:focus-visible),
+.report-table thead th .inline-excel-report-trigger[aria-expanded="true"]{
+  background:#e5f1e9;border-color:#a6c7b4;color:#155d43;
+}
+.report-table thead th:has(.inline-excel-status-menu){z-index:26;}
+/* Only the heading under the pointer reveals the eye; never an entire row. */
+@media (hover:hover) and (pointer:fine){
+  .report-table thead th[data-quick-report-menu] .inline-excel-report-tools,
+  .report-table thead th .inline-g02-column-heading>.inline-g02-hide{
+    opacity:0;pointer-events:none;
+  }
+  .report-table thead th[data-quick-report-menu]:is(:hover,:focus-within) .inline-excel-report-tools,
+  .report-table thead th .inline-excel-report-tools:has(.inline-excel-status-menu),
+  .report-table thead th:is(:hover,:focus-within) .inline-g02-column-heading>.inline-g02-hide{
+    opacity:1;pointer-events:auto;
+  }
+}
+@media (hover:none){
+  .report-table thead th[data-quick-report-menu] .inline-excel-report-tools,
+  .report-table thead th .inline-g02-column-heading>.inline-g02-hide{
+    opacity:1;pointer-events:auto;
+  }
+}
+@media print{
+  .report-table thead th[data-quick-report-menu],
+  .report-table thead th:has(.inline-g02-hide){padding-right:15px;}
+}
