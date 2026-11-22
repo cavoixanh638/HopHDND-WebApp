@@ -106,7 +106,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [otherFiltersOpen,setOtherFiltersOpen]=useState(false);
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
-  const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
   const [inlineMode,setInlineMode]=useState(false);
   // The ordinary List owns the only visible data table. Layout edits stay in
   // this local draft until the Admin explicitly chooses Save (one shared CAS).
@@ -611,7 +610,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       window.visualViewport?.removeEventListener('resize',schedule);
       table.style.removeProperty('--hdnd-preview-table-fill-height');
     };
-  },[customizing,permissionMode,otherFiltersOpen,previewOptionsOpen,activeConditions.length]);
+  },[customizing,permissionMode,otherFiltersOpen,inlineMode,activeConditions.length]);
   // A single physical <col> per group: all visible readonly rows use the 2-track
   // width, but one editable party-level row requires the larger mode width.
   // Status editability alone must NOT switch a row to the three-track layout.
@@ -857,7 +856,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const openGroupLabelEditor=()=>{
     if(!canViewerArrange)return;
-    const snapshot=validateItemLayout(initialLayout??activeLayout);
+    const snapshot=validateItemLayout(activeLayout);
     setGroupLabelBaseline(snapshot);
     setEditingGroupLabels({...snapshot.groupLabels});
     setGroupLabelConflicts([]);setGroupLabelChoices({});setGroupLabelsError('');
@@ -873,6 +872,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     // No-op edits should not create unnecessary Firebase revisions or
     // overwrite an edit made in another tab while this dialog was open.
     if(JSON.stringify(next.groupLabels)===JSON.stringify(groupLabelBaseline.groupLabels)){
+      closeGroupLabelEditor();return;
+    }
+    if(inlineMode){
+      // Group titles belong to the same visual draft as columns and summary cards.
+      stageInlineLayout(base=>({...base,groupLabels:next.groupLabels}));
       closeGroupLabelEditor();return;
     }
     viewSavingRef.current=true;setViewSaving(true);setGroupLabelsError('');
@@ -907,7 +911,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     ?'100%':`${Math.min(6000,Math.max(320,Number.isFinite(activeLayout.frameWidth)?activeLayout.frameWidth:1500))}px`;
   const widthError=layoutError.toLowerCase().includes('độ rộng');
   const openL03WidthEditor=()=>{
-    const snapshot=validateItemLayout(sharedBase.current),saved=resolvedPartyTrackWidths(snapshot);
+    const snapshot=validateItemLayout(activeLayout),saved=resolvedPartyTrackWidths(snapshot);
     l03EditBaseline.current=snapshot;
     setL03WidthsDraft({readonly:{label:String(saved.readonly.label),status:String(saved.readonly.status)},
       editable:{label:String(saved.editable.label),level:String(saved.editable.level),status:String(saved.editable.status)}});
@@ -971,7 +975,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
     p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
-  const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
+  const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&(!shareCompact||inlineMode)&&
     (<>
       <details className="compact-columns-menu" ref={compactDetailsRef}
         onToggle={event=>{
@@ -1045,7 +1049,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel focusColumnKey={requestedColumnFocus??focusColumnKey} catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     {(!customizing||permissionMode)&&<div className="item-data-region"
-      data-preview-options={denseChrome?(previewOptionsOpen?'open':'closed'):undefined}
+      data-preview-options={denseChrome?(inlineMode?'open':'closed'):undefined}
       style={{width:visibleWidth,maxWidth:'100%'}}>
     {/* B00–B03 and C01–C03 summarize all source items, regardless of F
         filters. Keep toolbarBase for filtered table rows / visible count. */}
@@ -1097,22 +1101,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
           aria-pressed={inlineMode} disabled={inlineMode}
           onClick={()=>{stageInlineLayout();setShowAllSourceColumns(false);
-            setPreviewOptionsOpen(true);setTitleEditorOpen(false);
+            setTitleEditorOpen(false);
             setListTitleDraft(null);setSearchScopeOpen(false);}}>
           {inlineMode?'Đang chỉnh giao diện':'Chỉnh giao diện'}
-        </button>}
-        {denseChrome&&<button type="button"
-          className="button ghost admin-preview-options-toggle"
-          aria-label="Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách"
-          title="Tùy chọn hiển thị bảng, thẻ tổng hợp và độ rộng L03"
-          aria-expanded={previewOptionsOpen} aria-controls="admin-list-controls"
-          onClick={()=>setPreviewOptionsOpen(open=>!open)}>
-          {previewOptionsOpen?'Ẩn tùy chọn':'Tùy chọn'}
         </button>}
         {compactChrome&&canEditListSettings&&referenceListLayoutNeedsSync(activeLayout)&&
           <button type="button" className="button admin-reference-sync-shortcut"
             title="Chỉ cập nhật cấu hình Danh sách; giữ nguyên dữ liệu, quyền và lịch sử"
-            onClick={()=>{setPreviewOptionsOpen(true);setReferencePresetConfirm(true);}}>
+            onClick={()=>{stageInlineLayout();setReferencePresetConfirm(true);}}>
             Khôi phục bố cục chuẩn
           </button>}
         {denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"
@@ -1139,10 +1135,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             disabled={locked||viewSaving} onClick={finishInlineLayout}>Hủy thay đổi</button>
         </div>
       </div>}
-      {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
-        className="admin-list-controls" id={denseChrome?'admin-list-controls':undefined}
-        hidden={denseChrome&&!previewOptionsOpen}
-        aria-label="Tùy chọn quản trị danh sách">
+      {inlineMode&&adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
+        className="admin-list-controls" id="admin-layout-controls"
+        aria-label="Thiết lập hiển thị khi chỉnh giao diện">
         {compactChrome&&referencePresetConfirm&&<div className="admin-reference-preset" aria-label="Khôi phục bố cục chuẩn">
           <div className="admin-reference-preset-confirm" role="group"
             aria-label="Xác nhận áp dụng bố cục mẫu">
@@ -1160,32 +1155,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             </div>
           </div>
           <small>Chỉ lưu khi quản trị xác nhận và Firebase phản hồi thành công.</small>
-        </div>}
-        {denseChrome&&<details className="admin-control-section"><summary>Tìm kiếm không dấu · Chỉ trên trình duyệt này</summary><fieldset className="admin-search-scope">
-          <legend>Ô “Tìm kiếm không dấu” tìm trong cột nào?</legend>
-          <div className="admin-search-scope-options">
-            {searchChoices.map(key=><label key={key}>
-              <input type="checkbox" aria-label={'Tìm trong '+(
-                key==='*'?'Cột tùy chỉnh':EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key)}
-                checked={selectedSearchColumns.includes(key)}
-                onChange={event=>{
-                  const next=event.currentTarget.checked
-                    ?searchChoices.filter(value=>value===key||selectedSearchColumns.includes(value))
-                    :selectedSearchColumns.filter(value=>value!==key);
-                  if(next.length)setSelectedSearchColumns(next);
-                }}/>
-              <span>{key==='*'?'Cột tùy chỉnh':
-                EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key}</span>
-            </label>)}
-          </div>
-          <button type="button" className="button ghost" onClick={()=>
-            setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
-          <small>Áp dụng khi chọn “Tất cả trường” · Chỉ trên trình duyệt này, không đổi cấu hình dùng chung.</small>
-        </fieldset></details>}
-        {denseChrome&&onBulkApply&&<div className="admin-bulk-paste-tools">
-          <button type="button" className="button ghost" disabled={locked||!rows.length}
-            onClick={()=>setBulkPasteOpen(true)}>Dán nhiều ô từ Excel</button>
-          <small>Copy nhiều hàng/cột C–O, xem trước và xác nhận. {sourceKind==='firebase'?'Firebase sẽ kiểm tra khóa và tự lưu sau khi duyệt.':''}</small>
         </div>}
         <details className="admin-control-section"><summary>Hiện/ẩn thẻ tổng hợp</summary><fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
           <legend>Hiện/ẩn thẻ tổng hợp</legend>
@@ -1248,9 +1217,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
       {compactMenu}
-      {!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
+      {inlineMode&&!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
         className="button ghost group-label-shortcut"
-        disabled={!canViewerArrange||inlineMode}
+        disabled={!canViewerArrange}
         title={personalViewActive?'Đóng giao diện cá nhân để sửa tên cột dùng chung':!canViewerArrange?'Chờ bố cục dùng chung tải xong':'Đổi tiêu đề cột gộp, không đổi dữ liệu Excel'}
         onClick={openGroupLabelEditor}>
         Đổi tên cột gộp
@@ -1350,16 +1319,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         </select>
         <details className="list-filter-other" data-filter-active={otherActiveCount>0?'true':'false'}
           onToggle={e=>setOtherFiltersOpen(e.currentTarget.open)}>
-          <summary>Lọc khác {otherActiveCount>0&&<strong className="list-filter-other-count" aria-label={otherActiveCount+' điều kiện lọc khác'}>{otherActiveCount}</strong>} <span aria-hidden="true">▾</span></summary>
+          <summary>Lọc nâng cao {otherActiveCount>0&&<strong className="list-filter-other-count" aria-label={otherActiveCount+' điều kiện lọc nâng cao'}>{otherActiveCount}</strong>} <span aria-hidden="true">▾</span></summary>
           {otherFiltersOpen&&<div className="list-filter-other-panel" role="group" aria-label="Các trường lọc chi tiết">
-            <label>Chọn trường tìm kiếm
-              <select aria-label="Chọn trường tìm kiếm" className={toolbar.search.trim()&&toolbar.field!=='all'?'is-filter-active':undefined} value={toolbar.field}
-                onChange={e=>setToolbar(old=>({...old,field:e.currentTarget.value}))}>
-                {SEARCH_FIELDS.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}
-                {activeLayout.columns.filter(c=>c.origin==='custom'&&!c.removed).map(c=>
-                  <option key={c.key} value={c.key}>{c.label}</option>)}
-              </select>
-            </label>
             {DETAIL_FIELDS.map(({key,label})=><label key={key}>{label}
               <select aria-label={'Lọc '+label} className={toolbar.details[key]?'is-filter-active':undefined} value={toolbar.details[key]}
                 onChange={e=>setToolbar(old=>({...old,details:{...old.details,
@@ -1370,6 +1331,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             </label>)}
           </div>}
         </details>
+        {adminControls&&denseChrome&&onBulkApply&&<button type="button"
+          className="button ghost admin-bulk-paste-trigger" disabled={locked||!rows.length||inlineMode}
+          onClick={()=>setBulkPasteOpen(true)} title="Dán dữ liệu Excel theo hàng/cột, xem trước và xác nhận trước khi lưu">
+          Dán từ Excel
+        </button>}
         <button type="button" className="button ghost list-filter-clear"
           onClick={clearAllListFilters} disabled={!anyListFilter}
           title="Xóa mọi bộ lọc Danh sách (Esc khi không ở trong ô nhập)">
