@@ -55,8 +55,7 @@ const clickText=async text=>{
   if(text==='Danh sách các ND trình HĐND' &&
     await evaluate('Boolean(document.querySelector("[data-role=guest] .item-data-table"))&&'+
       '!document.querySelector(".pr95-preview-nav")'))return true;
-  const alias={'Tài khoản':'Tài khoản và dữ liệu','Cài đặt':'Cài đặt báo cáo và màu sắc',
-    'Phân quyền chỉnh sửa':'Phân quyền chỉnh sửa ô'}[text]??text;
+  const alias={'Tài khoản':'Tài khoản và dữ liệu','Cài đặt':'Cài đặt báo cáo và màu sắc'}[text]??text;
   const find='[...document.querySelectorAll("button")].some(x=>x.textContent?.trim()==='+JSON.stringify(alias)+'||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith('+JSON.stringify(alias)+')))';
   if(!await evaluate('Boolean('+find+')')){
     await interact('const gear=document.querySelector(".pr95-preview-gear");if(!gear)throw Error("No gear");gear.click()');
@@ -66,6 +65,28 @@ const clickText=async text=>{
     'const button=[...document.querySelectorAll("button")].find(x=>x.textContent?.trim()===label||(x.matches(".pr95-preview-nav .primary-section-card")&&x.textContent?.trim().startsWith(label)));'+
     'if(!button)throw Error("Button missing: "+label);button.click()');
 };
+
+const setColumnGrants=async({note,build}={})=>{
+  await clickText('Tùy chỉnh cột và hiển thị');
+  await waitFor('document.querySelector(".column-manager-advanced-toggle")','real column manager');
+  await interact('const toggle=document.querySelector(".column-manager-advanced-toggle");'+
+    'if(toggle.getAttribute("aria-expanded")!=="true")toggle.click()');
+  await waitFor('document.querySelector(".column-manager-grid input[aria-label*=\"Ghi chú\"]")',
+    'column rights checkboxes available');
+  await interact('const fields=[...document.querySelectorAll(".column-manager-right input[type=checkbox]")];'+
+    'const choose=(label,desired)=>{if(desired===undefined)return;'+
+    'const box=fields.find(x=>x.getAttribute("aria-label")?.includes(label));'+
+    'if(!box||box.disabled)throw Error("Column grant missing: "+label);'+
+    'if(box.checked!==desired)box.click();};'+
+    'choose("Ghi chú",'+JSON.stringify(note)+');'+
+    'choose("Tiến độ xây dựng NQ",'+JSON.stringify(build)+')');
+  await waitFor('document.querySelector(".column-save-button:not(:disabled)")',
+    'column grant draft ready to save');
+  await interact('document.querySelector(".column-save-button").click()');
+  await waitFor('document.querySelector(".column-save-success")',
+    'column grant saved in synthetic RAM');
+};
+
 const selectValue=async(selector,value)=>{
   if(selector==='#pr95-role'){
     if(!['guest','admin'].includes(value))throw Error('Bad simulated role');
@@ -452,21 +473,8 @@ try{
   // Reset to 27 seed rows, demonstrate grant -> guest edit -> revoke.
   await clickText('Tài khoản');await clickText('Đặt lại dữ liệu mô phỏng');
   await waitFor('document.querySelector(".pr95-preview-context")?.textContent.includes("Hồ sơ: 27")','restore fixture');
-  await clickText('Phân quyền chỉnh sửa');
-  await waitFor('document.querySelector(".inline-permission-table")','real permissions grid');
-  // V5: a synthetic admin may grant Build to everyone, but the business
-  // eligibility rule still locks every HC and BC record for the guest.
-  await interact('const head=[...document.querySelectorAll(".inline-permission-table thead th")].find(x=>x.querySelector(".permission-header-title")?.textContent.toLocaleLowerCase("vi").includes("xây dựng nq"));'+
-    'const box=head?.querySelector("input[type=checkbox]");if(!box)throw Error("Build column missing");if(!box.checked)box.click()');
-  await selectValue('select[aria-label*="Ghi chú"]','allow');
-  // Real React setCell() is batched after the native select change. Wait until
-  // the original mandatory row/individual-cell risk acknowledgment is actually
-  // mounted. The test still MUST check it and click it; no permission bypass.
-  await waitFor('document.querySelector(".permission-risk-confirm input[type=checkbox]")',
-    'per-cell permission risk acknowledgment after React commit');
-  await interact('const cb=document.querySelector("input[aria-label=\\"Xác nhận rủi ro quyền theo dòng/ô\\"]");if(!cb)throw Error("Missing risk acknowledgement");cb.click()');
-  await clickText('Lưu quyền chỉnh sửa');
-  await waitFor('document.querySelector(".permission-save-status")?.textContent.includes("đã được lưu")','RAM grant saved');
+  // Apply the real column-wide Build + Note grants; HC/BC remain business-locked.
+  await setColumnGrants({note:true,build:true});
   await selectValue('#pr95-role','guest');
   await waitFor('document.querySelector("[data-role=guest]")','guest switch');
   await clickText('Danh sách các ND trình HĐND');
@@ -485,7 +493,7 @@ try{
   await waitFor('document.querySelector("textarea.inline-note-textarea")','guest textarea');
   await interact('const input=document.querySelector("textarea.inline-note-textarea");'+
     'const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set;'+
-    'setter.call(input,"MẪU: Khách sửa quyền riêng ô");'+
+    'setter.call(input,"MẪU: Khách sửa cột được cho phép");'+
     'input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}));'+
     'input.dispatchEvent(new KeyboardEvent("keydown",{key:"Enter",ctrlKey:true,bubbles:true}))');
   await waitFor('document.querySelector("[data-testid=guest-edits]")?.textContent==="1"','guest edit RAM applied');
@@ -511,12 +519,7 @@ try{
   await interact('document.querySelector("dialog.report-grid-modal button[aria-label=\\"Đóng cửa sổ\\"]")?.click()');
   await waitFor('!document.querySelector("dialog.report-grid-modal[open]")','admin readonly popup closed');
   console.log('UI6_R02_ADMIN_VIEW_ONLY_REPORT_POPUP_PASS');
-  await clickText('Phân quyền chỉnh sửa');
-  await waitFor('document.querySelector(".inline-permission-table")','permission revoke');
-  await selectValue('select[aria-label*="Ghi chú"]','deny');
-  await interact('document.querySelector("input[aria-label=\\"Xác nhận rủi ro quyền theo dòng/ô\\"]")?.click()');
-  await clickText('Lưu quyền chỉnh sửa');
-  await waitFor('document.querySelector(".permission-save-status")?.textContent.includes("đã được lưu")','RAM revoke saved');
+  await setColumnGrants({note:false});
   await selectValue('#pr95-role','guest');
   await clickText('Danh sách các ND trình HĐND');
   await waitFor('document.querySelector(".item-data-table")','revoked guest list');
@@ -577,7 +580,7 @@ try{
   if(logs.length)console.log('PR95_V3_L5_BROWSER_CONSOLE_ERRORS',logs.slice(0,3));
   console.log('PR95_V3_L5_FULL_PREVIEW_BROWSER_PASS '+JSON.stringify({
     realReports:5,popup:'ReportDetailGrid',list:'ItemList',
-    permission:'InlinePermissionsTable',file:'real A–O parse RAM replacement',
+    permission:'ItemColumnPanel column-only',file:'real A–O parse RAM replacement',
     roles:'admin guest grant edit revoke',mobile:390,productionRequests:forbidden.length}));
 }finally{
  for(const entry of pending.values())entry.fail(Error('CDP closing'));pending.clear();
