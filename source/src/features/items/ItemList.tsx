@@ -618,8 +618,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const l03Pair=compactPairs.find(pair=>pair.variant==='partyTogether');
   const l03Key=l03Pair?.anchor;
   const l03Widths=resolvedPartyTrackWidths(activeLayout);
+  // Layout editing freezes *business interaction*, not the physical width
+  // contract of the surrounding table. The L03 grouped column must retain
+  // its 3-track editable width while a layout draft is open; otherwise the
+  // first border drag shrinks L03 by ~73px and redistributes the pixels to
+  // unrelated columns, breaking the pair-first / last-fallback resize math.
+  const partyLevelPotentiallyEditable=canEditDraft&&!permissionMode&&
+    (customizing||anonymousViewer||!!canEditCell);
   const hasEditablePartyLevel=!!l03Pair&&l03Pair.memberFields.includes('partyLevel')&&
-    rows.some(item=>canEdit&&!locked&&(!canEditCell||canEditCell(item.recordId,'partyLevel')));
+    rows.some(item=>partyLevelPotentiallyEditable&&!locked&&
+      (!canEditCell||canEditCell(item.recordId,'partyLevel')));
   const l03PhysicalWidth=partyTrackPhysicalWidth(l03Widths,hasEditablePartyLevel);
   const baseWidths=displayedColumns.map(c=>({key:c.key,
     width:l03Key===c.key?l03PhysicalWidth:baseVisualWidth(c.width,c.key)}));
