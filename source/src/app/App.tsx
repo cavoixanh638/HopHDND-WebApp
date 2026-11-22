@@ -715,7 +715,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
             {adminTools?<>
               <div className="settings-menu-group" role="group" aria-label="Giao diện và bố cục">
                 <p className="settings-menu-group-label">Giao diện và bố cục</p>
-                <button type="button" onClick={event=>openOptions('items-customize',event)}>Thiết lập cột nâng cao</button>
+                <button type="button" onClick={event=>openOptions('items-customize',event)}>Chỉnh sửa</button>
                 <button type="button" onClick={event=>openOptions('customize',event)}>Tùy chỉnh báo cáo</button>
               </div>
               <div className="settings-menu-group" role="group" aria-label="Tài khoản và phân quyền">
@@ -792,7 +792,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       </div>}
       {adminTools&&(['customize','items-customize','items-permissions','catalogs'].includes(page))&&<><nav className="settings-hub-tabs" aria-label="Nhóm chỉnh sửa chính">
         <button type="button" className={page==='customize'?'active':''} aria-current={page==='customize'?'page':undefined} onClick={event=>openOptions('customize',event)} disabled={!canCustomize}>Bảng thống kê</button>
-        <button type="button" className={page==='items-customize'?'active':''} aria-current={page==='items-customize'?'page':undefined} onClick={event=>openOptions('items-customize',event)}>Thiết lập cột nâng cao</button>
+        <button type="button" className={page==='items-customize'?'active':''} aria-current={page==='items-customize'?'page':undefined} onClick={event=>openOptions('items-customize',event)}>Danh sách dữ liệu</button>
         {isFirebase&&firebase!.isAdmin&&<button type="button"
           className={page==='items-permissions'?'active':''}
           aria-current={page==='items-permissions'?'page':undefined}

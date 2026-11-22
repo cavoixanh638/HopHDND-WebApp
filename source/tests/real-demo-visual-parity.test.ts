@@ -61,7 +61,7 @@ describe('real App display parity with accepted isolated preview',()=>{
     expect(list).toContain("live={sourceKind==='firebase'}");
     expect(list).toContain('{denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"');
     expect(list).toContain('hidden={denseChrome&&!previewOptionsOpen}');
-    expect(list).toContain('applyViewerLayout(createReferenceListLayout)');
+    expect(list).toContain('stageInlineLayout(createReferenceListLayout)');
     expect(list).toContain('referencePresetConfirm');
     expect(css).toContain('.app-shell.list-visual-parity .admin-list-controls[hidden]');
     expect(css).not.toContain('permission:true');
