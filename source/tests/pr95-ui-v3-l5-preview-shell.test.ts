@@ -33,16 +33,17 @@ describe('PR95 UI V3 L5 preview shell: synthetic role-policy contracts',()=>{
       expect(previewCanEdit('guest',grants,first.recordId,field)).toBe(false);
     expect(previewCanEdit('admin',grants,first.recordId,'note')).toBe(true);
   });
-  it('grant then revoke affects only the permitted synthetic cell, RAM CAS still detects stale save',()=>{
+  it('column grant and revoke apply to all rows and keep CAS protection',()=>{
     const blank:CellPermissions={columns:{},rows:{},cells:{}};
-    const grant:CellPermissions={columns:{},rows:{},cells:{[first.recordId]:{note:true}}};
+    const grant:CellPermissions={columns:{note:true},rows:{},cells:{[first.recordId]:{note:false}}};
     const saved=previewPermissionSave(blank,grant,blank);
     expect(previewCanEdit('guest',saved,first.recordId,'note')).toBe(true);
+    expect(previewCanEdit('guest',saved,second.recordId,'note')).toBe(true);
     expect(previewCanEdit('guest',saved,first.recordId,'specificProgress')).toBe(false);
-    expect(previewCanEdit('guest',saved,second.recordId,'note')).toBe(false);
-    const revoke:CellPermissions={columns:{},rows:{},cells:{[first.recordId]:{note:false}}};
+    const revoke:CellPermissions={...saved,columns:{note:false}};
     const revoked=previewPermissionSave(saved,revoke,saved);
     expect(previewCanEdit('guest',revoked,first.recordId,'note')).toBe(false);
+    expect(previewCanEdit('guest',revoked,second.recordId,'note')).toBe(false);
     expect(()=>previewPermissionSave(revoked,grant,saved)).toThrow('đã thay đổi');
   });
 });
