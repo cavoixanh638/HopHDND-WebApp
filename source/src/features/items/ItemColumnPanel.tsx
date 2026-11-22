@@ -16,13 +16,13 @@ const columnKind=(column:ItemColumn):'text'|'select'=>
   column.kind??(column.origin==='custom'?'text':
     editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text');
 const kindCanChange=(column:ItemColumn)=>column.origin==='custom'||CATALOG_KEYS.includes(column.key as CatalogKey);
-// Rights here are always column-wide. Row/cell exceptions survive column edits
-// unless the owner explicitly requests their deletion.
+// Retired row/cell values remain historical data for safe CAS/rollback.
+// Only the column field now grants editing (see mayEdit/Rules).
 export const composeColumnRightsDraft=(saved:CellPermissions,
-  columns:CellPermissions['columns'],clearExceptions:boolean):CellPermissions=>({
+  columns:CellPermissions['columns']):CellPermissions=>({
     columns:{...columns},
-    rows:clearExceptions?{}:{...(saved.rows??{})},
-    cells:clearExceptions?{}:structuredClone(saved.cells??{})
+    rows:{...(saved.rows??{})},
+    cells:structuredClone(saved.cells??{})
   });
 import {DeferredWidthInput} from './DeferredWidthInput';
 
@@ -73,14 +73,9 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   });
   const [columnRights,setColumnRights]=useState({...savedPermissions.current.columns});
   const awaitingPermissionsEcho=useRef<string|null>(null);
-  const [clearExceptions,setClearExceptions]=useState(false);
-  const exceptions=Object.keys(savedPermissions.current.rows??{}).length+
-    Object.values(savedPermissions.current.cells??{}).reduce((sum,cells)=>sum+Object.keys(cells).length,0);
-  const rightsDraft=composeColumnRightsDraft(savedPermissions.current,columnRights,clearExceptions);
-  const rightsDirty=!!onSavePermissions&&(
-    !samePermissions({columns:columnRights},{columns:savedPermissions.current.columns})||
-    (clearExceptions&&exceptions>0)
-  );
+  const rightsDraft=composeColumnRightsDraft(savedPermissions.current,columnRights);
+  const rightsDirty=!!onSavePermissions&&
+    !samePermissions({columns:columnRights},{columns:savedPermissions.current.columns});
   const [saveError,setSaveError]=useState('');
   useEffect(()=>{
     if(!catalog||saving)return;
@@ -137,9 +132,8 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         currentPart='quyền chỉnh sửa cột';
         if(!onSavePermissions)throw new Error('Chưa kết nối nơi lưu quyền cột.');
         await onSavePermissions(rightsDraft,savedPermissions.current);
-        savedPermissions.current=composeColumnRightsDraft(savedPermissions.current,columnRights,clearExceptions);
+        savedPermissions.current=composeColumnRightsDraft(savedPermissions.current,columnRights);
         awaitingPermissionsEcho.current=JSON.stringify(savedPermissions.current);
-        setClearExceptions(false);
         completed.push(currentPart);
       }
       if(layoutDirty){
@@ -250,10 +244,6 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
          </div>
          <p className="muted">Để hủy thay đổi chưa lưu, rời chế độ chỉnh sửa và chọn bỏ nháp; tên đang lưu không bị thay đổi.</p>
        </details>
-       {onSavePermissions&&exceptions>0&&<label className="column-rights-warning">
-        <input type="checkbox" checked={clearExceptions} onChange={e=>setClearExceptions(e.currentTarget.checked)}/>
-        Chủ động xóa {exceptions} quyền riêng theo dòng/ô. Mặc định giữ nguyên các quyền riêng khi thay đổi quyền chung của cột.
-      </label>}
       <details className="cell-highlights-editor">
         <summary>Tô màu chữ/nền ô theo từ khóa ({layout.cellHighlights?.length??0})</summary>
         <p className="muted">Quy tắc chỉ tô ô có chứa từ khóa (không phân biệt hoa/thường và dấu); sử dụng chung trong Bảng dữ liệu và popup. Bấm Lưu thay đổi để áp dụng.</p>
@@ -328,7 +318,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
             <option value="text">Nhập tự do</option>
             <option value="select">Danh sách chọn</option>
           </select>
-          <label className="column-manager-right" title="Quyền chung của toàn cột. Quyền riêng từng dòng/ô nằm ở tab Phân quyền chỉnh sửa."><input type="checkbox"
+          <label className="column-manager-right" title="Cho phép sửa toàn bộ các ô thuộc cột này."><input type="checkbox"
             aria-label={'Cho phép sửa cột '+column.label}
             checked={columnRights[column.key as keyof typeof columnRights]===true}
             disabled={!onSavePermissions||!editableSourceKeys.has(column.key as never)||column.origin==='custom'}
