@@ -1,3 +1,13 @@
+## 23/11/2026 — PR #231 đã merge, Rules production đã nghiệm thu, Pages chờ owner
+
+Chủ tài khoản đã phê duyệt exact Rules SHA256 `1b397824d2f225f92353a96c3ac57f84fe22ec6ecab2f814d814ee205af6120b`. Backup Rules/quyền mới, restore/compile localhost, explicit deploy đúng project/instance và Cloud canonical readback PASS. Canary thật cho hai khách Anonymous và phiên Google admin trong Chrome PASS; chỉ dữ liệu QA mới được tạo/sửa/thu dọn, quyền cũ không đổi, website trở lại 59 nội dung.
+
+PR #231 đã merge bằng expected exact HEAD tại `29c6ab700e7dad807226daaf12b07cc86bf990f3`. Source tree không khác HEAD đã có 11/11 CI. Publisher sau merge [45049904159](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45049904159) có release-gate SUCCESS nhưng publish SKIPPED, **chưa phát hành web mới**. Đã xác minh Spark/status-CAS confirmed đều true; approved Rules variable còn hash cũ. Khi lưu hash mới, GitHub yêu cầu Confirm access qua email; thay đổi **chưa lưu**, chờ chủ tài khoản tự xác thực. Không giả lập owner Run workflow.
+
+[Biên nhận triển khai 23/11](checkpoints/PR231_PRODUCTION_RULES_2026-11-23.md) ghi hashes, thời gian, canary, cleanup, merge và thao tác owner còn thiếu. Issue #232 OPEN/HOLD đến khi owner lưu đúng Rules hash, Run workflow trên main và nghiệm thu version/UI mới.
+
+---
+
 ## 22/11/2026 — PR #231: Cloud backup/readback và restore quyền PASS, phát hành HOLD
 
 Đã tái xác minh exact code HEAD `d8744b2932d8de3f6557b3fcef3768f7119fc6b7`: 11/11 Actions SUCCESS. Local `npm ci`, typecheck, 1158 unit PASS/170 SKIP, 18 release-guard tests và Spark build PASS; generator tạo đúng candidate SHA256 `1b397824d2f225f92353a96c3ac57f84fe22ec6ecab2f814d814ee205af6120b`. Không sửa logic nguồn hoặc chạy lại hàng loạt CI đã hợp lệ.
