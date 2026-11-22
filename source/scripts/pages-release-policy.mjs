@@ -27,6 +27,59 @@ const bootstrapOnly=new Set([
   'source/tests/pages-release-policy.test.ts',
   'README.md',
 ]);
+
+/**
+ * One-time, auditable transition from the owner-reviewed single-table UI
+ * release to automatic, CI-gated presentation deployments. The two historic
+ * UI changes outside the normal allowlist have a PINNED commit SHA and an
+ * exact first-parent/file-set contract. Do NOT add App.tsx or the column
+ * manager as blanket auto-publishable files.
+ *
+ * Only the policy migration immediately after that vetted UI commit may
+ * change the guarded workflow/policy without a second manual approval.
+ * Any subsequent auth/Firebase/rules/permission/policy change still HOLDS.
+ * This exception expires automatically once the published baseline advances.
+ */
+export const reviewedUiTransition={
+  baseline:'c08244db4a52ac410d00abc86c1e21bb07cc0ba5',
+  uiCommit:'f09e792c5e4b5395f6c668366fb78bca00d5211e',
+  uiParent:'74bd9bc8a28cc574b717ef29e4e4ac17dbbf775d',
+  migrationMessage:'ci(pages): restore guarded UI auto publish',
+};
+const reviewedUiFiles=new Set([
+  'source/docs/checkpoints/G00_SINGLE_TABLE_2026-11-22.md',
+  'source/scripts/smoke-pages-browser.mjs',
+  'source/src/app/App.tsx',
+  'source/src/features/items/ItemColumnPanel.tsx',
+  'source/src/features/items/ItemList.tsx',
+  'source/src/features/items/inline-g01-list.css',
+  'source/tests/admin-single-data-table-layout.test.ts',
+  'source/tests/item-save-flow.test.ts',
+  'source/tests/real-demo-visual-parity.test.ts',
+]);
+const transitionFiles=new Set([
+  '.github/workflows/publish-pages.yml',
+  'source/scripts/pages-release-policy.mjs',
+  'source/scripts/pages-release-policy.check.mjs',
+  'source/tests/pages-release-policy.test.ts',
+  'source/docs/checkpoints/G00_SAFE_AUTOPUBLISH_2026-11-22.md',
+]);
+const sameFileSet=(files,set)=>Array.isArray(files)&&files.length===set.size&&
+  new Set(files).size===set.size&&files.every(path=>set.has(path));
+
+export function isVettedSingleTableUi(commit,baseline){
+  return baseline===reviewedUiTransition.baseline&&
+    commit.sha===reviewedUiTransition.uiCommit&&
+    commit.parent===reviewedUiTransition.uiParent&&
+    sameFileSet(commit.files,reviewedUiFiles);
+}
+export function isScopedAutopublishMigration(commit,baseline){
+  return baseline===reviewedUiTransition.baseline&&
+    commit.parent===reviewedUiTransition.uiCommit&&
+    commit.message===reviewedUiTransition.migrationMessage&&
+    sameFileSet(commit.files,transitionFiles);
+}
+
 const uiModules=new Set([
   'source/src/features/items/ItemList.tsx',
   'source/src/features/items/CompactGroupedValue.tsx',
@@ -114,7 +167,8 @@ export function classifyCommits({commits,baseline,head,approved,sourceContents={
   let sourceChanged=false;
   for(const commit of commits){
     if(isPagesArtifactCommit(commit))continue;
-    if(isBootstrapPolicyCommit(commit,baseline,head)){sourceChanged=true;continue;}
+    if(isBootstrapPolicyCommit(commit,baseline,head)||isVettedSingleTableUi(commit,baseline)||
+       isScopedAutopublishMigration(commit,baseline)){sourceChanged=true;continue;}
     for(const file of commit.files??[]){
       sourceChanged=true;
       if(!isAutoUiPath(file)||
