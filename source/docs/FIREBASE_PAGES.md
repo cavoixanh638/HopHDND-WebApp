@@ -1,3 +1,5 @@
+> **Cập nhật chính sách quyền 22/11/2026:** `hdnd/permissions.columns` là cấp quyền **duy nhất** trong WebApp và Spark Rules ứng viên mới. `rows` và `cells` trong sơ đồ bên dưới được giữ như dữ liệu lịch sử, không còn cấp quyền sau khi candidate được triển khai. Rules và dữ liệu **production chưa được thay đổi** bởi nhánh PR này; bắt buộc sao lưu, xem xét và deploy Rules riêng trước khi xác nhận quyền cũ đã ngừng hiệu lực. [Mã lưu trữ](chuc-nang-cu-khong-dung/README.md).
+
 ## Sơ đồ Firebase đích — 25/10/2026 (PR #71/#72, chưa chạy production)
 - `hdnd/items/{recordId}`: bản ghi chính độc lập Excel, CAS revision, event history. `hdnd/editLocks/{recordId}/{field}`: lease UID+tab token, TTL và quyền thực theo field. `hdnd/freezeControl`: trạng thái OPEN/DRAINING/FROZEN. `hdnd/freezeReceipts/{epoch}`: biên nhận đã chốt. `hdnd/permissions`: cấp quyền ô/hàng/cột. `hdnd/profile/dataSource=primary` được chọn **chỉ sau khi chuyển dữ liệu một lần và đối chiếu**.
 - `hdnd/mirrors` là tạm nhập/backup; việc link Google Sheets còn trong lịch sử không tạo yêu cầu phụ thuộc cho nguồn primary.

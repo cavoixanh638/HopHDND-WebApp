@@ -453,7 +453,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(nodes(tree).some(n=>n.props?.className==='settings-sub-tabs')).toBe(false);
     expect(nodes(tree).some(n=>n.props?.className==='settings-section')).toBe(false);
     const list=nodes(tree).find(n=>n.type===ItemList);
-    expect(list.props.permissionModeOnly).toBe(false);
+    expect(list.props).not.toHaveProperty('permissionModeOnly');
     expect(list.props.onPersistCatalog).toBeInstanceOf(Function);
     expect(list.props.onSavePermissions).toBe(firebase.savePermissions);
     expect(text(tree)).toContain('Quản lý cột');
@@ -467,7 +467,7 @@ describe('Pages integrates Sheets content with Firebase administration',()=>{
     expect(menu).toBeDefined();
     const popover=nodes(menu).find(n=>n.type==='div'&&n.props.className==='options-popover');
     expect(nodes(popover).filter(n=>n.type==='button').map(n=>text(n))).toEqual([
-      'Chỉnh sửa','Tùy chỉnh báo cáo','Phân quyền chỉnh sửa ô','Tài khoản','Nhập / Xuất Excel','Chốt số liệu','Hiện mã khu vực'
+      'Chỉnh sửa','Tùy chỉnh báo cáo','Tài khoản','Nhập / Xuất Excel','Chốt số liệu','Hiện mã khu vực'
     ]);
     expect(nodes(menu).filter(n=>n.type==='details')).toHaveLength(2);
     tree=open('Chỉnh sửa');

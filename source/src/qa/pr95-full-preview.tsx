@@ -1,11 +1,10 @@
 /** PR95 V2 L4: purely in-memory, synthetic full-application preview.
- * Reuse baseline ItemList, ReportTable, ReportDetailGrid, InlinePermissionsTable
+ * Reuse baseline ItemList, ReportTable, ReportDetailGrid
  * and real reporting domain. Never initialize Firebase/Google APIs here.
  */
 import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import {UiReferenceOverlay,UI_REFERENCE_LEGEND} from './ui-reference-codes';
 import type {EditableField,GroupField,Item,TextField} from '../../shared/types';
-import {TEXT_FIELDS} from '../../shared/field-definitions';
 import {createDemoItems} from '../data/demo-items';
 import {catalogFromItems,loadCatalog,saveCatalog as saveCatalogLocally,validateCatalog,type CatalogConfig} from '../data/catalogs';
 import {renameReportGroupIdentity} from '../domain/report-reference-identity';
@@ -18,18 +17,16 @@ import type {BulkPatch} from '../features/items/bulk-paste';
 import {SummaryDiagnosticVisibilityProvider} from '../features/items/summary-diagnostic-visibility';
 import {ReportTable} from '../features/reports/ReportTable';
 import {ReportDetailGrid} from '../features/reports/ReportDetailGrid';
-import {InlinePermissionsTable} from '../features/items/InlinePermissionsTable';
 import {Pr95PreviewExcel} from './pr95-preview-excel';
 import './pr95-full-preview.css';
 
-type Page='items'|'reports'|'items-customize'|'permissions'|'excel'|'account'|'settings';
+type Page='items'|'reports'|'items-customize'|'excel'|'account'|'settings';
 type AdminPage=Exclude<Page,'items'|'reports'>;
 /** Pages are guarded in event handlers AND in rendering; role is synthetic only. */
 export const previewCanOpenPage=(role:Role,page:Page):boolean=>
   role==='admin'||page==='items'||page==='reports';
 export const PREVIEW_ADMIN_TOOLS:readonly {key:AdminPage;label:string}[]=[
   {key:'items-customize',label:'Tùy chỉnh cột và hiển thị'},
-  {key:'permissions',label:'Phân quyền chỉnh sửa ô'},
   {key:'excel',label:'Excel · Nhập / Xuất'},
   {key:'account',label:'Tài khoản và dữ liệu'},
   {key:'settings',label:'Cài đặt báo cáo và màu sắc'},
@@ -49,7 +46,7 @@ const baseLayout=():ItemLayout=>{
 /** Mirrored business precedence in a QA-only pure function.
  * This intentionally DOES NOT import the runtime Firebase adapter/SDK. */
 export const previewCanEdit=(role:Role,permissions:CellPermissions,id:string,field:EditableField):boolean=>
-  role==='admin'||(permissions.cells?.[id]?.[field]??permissions.rows?.[id]??permissions.columns[field])===true;
+  role==='admin'||permissions.columns[field]===true;
 const permissionSignature=(value:CellPermissions):string=>JSON.stringify([
   ...Object.entries(value.columns??{}).map(([field,allowed])=>['c',field,allowed]),
   ...Object.entries(value.rows??{}).map(([id,allowed])=>['r',id,allowed]),
@@ -270,7 +267,7 @@ export function Pr95FullPreview(){
               <div className="pr95-preview-context" role="note">
                 <span>Quản trị <strong>MÔ PHỎNG</strong></span>
                 <span>Hồ sơ: <strong>{items.length}</strong> · Đang trình: <strong>{active}</strong></span>
-                <span>Quyền ô: <strong>{Object.values(permissions.cells??{}).reduce((n,c)=>n+Object.keys(c).length,0)}</strong></span>
+                <span>Cột cho sửa: <strong>{Object.values(permissions.columns??{}).filter(Boolean).length}</strong></span>
                 <span>Lượt sửa khách: <strong>{guestEditCount}</strong></span>
               </div>
             </details>
@@ -324,7 +321,6 @@ export function Pr95FullPreview(){
           onBulkApply={admin?applyBulkRAM:undefined}
           permissions={admin?permissions:undefined}
           onSavePermissions={admin?savePermissions:undefined}
-          onReloadPermissions={admin?async()=>permissions:undefined}
           onPersistLayout={admin?saveLayout:undefined}
           onPersistCatalog={admin?saveCatalog:undefined}
           statusPaletteStore={palette}
@@ -337,20 +333,6 @@ export function Pr95FullPreview(){
           onLayoutSaved={setNotice}
           onPersistViewerLayout={admin?saveLayout:undefined}
         />
-      </section>}
-      {page==='permissions'&&admin&&<section aria-label="Quyền chỉnh sửa mô phỏng">
-        <h2>Phân quyền chỉnh sửa — bộ nhớ</h2>
-        <p>Thử đặt quyền riêng ô: chọn <strong>Cho phép sửa</strong> tại một ô, lưu quyền,
-          chuyển vai trò Khách, sửa ô đó rồi quay lại Quản trị để thu hồi.
-          Nút lưu chỉ cập nhật state mô phỏng.</p>
-        <InlinePermissionsTable key={'preview-permission-'+revision} items={items}
-          columns={TEXT_FIELDS.map(f=>({key:f.key,label:f.label}))}
-          permissions={permissions}
-          onSave={async(next,expected)=>{
-            setPermissions(old=>previewPermissionSave(old,next,expected));
-            setNotice('Đã cập nhật quyền mô phỏng trong RAM, không gọi Rules.');
-          }}
-          onReload={async()=>permissions} onBack={()=>openPage('items')}/>
       </section>}
       {page==='excel'&&admin&&<Pr95PreviewExcel role={role} items={items} onReplace={next=>{
         if(!admin){setNotice('Khách không được áp dụng dữ liệu demo.');return;}

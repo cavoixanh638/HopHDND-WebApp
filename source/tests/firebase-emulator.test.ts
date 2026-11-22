@@ -113,13 +113,21 @@ describe.skipIf(!enabled)('Firebase FULL Rules Auth+Functions+RTDB: 14 business/
     expect(result.ok).toBe(false);
   });
 
-  it('admin configures cells; explicit deny overrides allowed column at lease AND save',async()=>{
+  it('column-only Spark ignores archived cell deny; legacy candidate remains backward-compatible',async()=>{
     await assertSucceeds(set(ref(admin(),'hdnd/permissions/cells/r1/note'),false));
     const model=repo('a');
-    await expect(lease(model,'r1','note')).rejects.toThrow();
-    expect((await model.save([patch((await model.list())[0],
-      {note:'không thể ghi'})]))[0].ok).toBe(false);
-    expect((await model.list())[0].note).toBe(base.note);
+    if(spark){
+      await lease(model,'r1','note');
+      const result=(await model.save([patch((await model.list())[0],
+        {note:'Cột cho phép sửa'})]))[0];
+      expect(result.ok,result.message).toBe(true);
+      expect((await model.list())[0].note).toBe('Cột cho phép sửa');
+    }else{
+      await expect(lease(model,'r1','note')).rejects.toThrow();
+      expect((await model.save([patch((await model.list())[0],
+        {note:'không thể ghi'})]))[0].ok).toBe(false);
+      expect((await model.list())[0].note).toBe(base.note);
+    }
   });
 
   it('server-ACKed save broadcasts to second browser, truthful history, replay does not duplicate',async()=>{

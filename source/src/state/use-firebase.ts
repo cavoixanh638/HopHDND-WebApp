@@ -285,6 +285,16 @@ export function useFirebase(){
   };
   const savePermissions=async(next:CellPermissions,expected=datasetActive?datasetPermissions:permissions)=>{
     if(!firebaseAdmin(auth.currentUser)||!connected||!permissionsReady||!datasetEpochReady)throw new Error('Cần quản trị Google, kết nối mạng, quyền gốc và con trỏ thế hệ đã xác nhận để lưu quyền sửa.');
+    // Historical rows/cells are read-only archives, never writable through
+    // this live API. Preserve them byte-for-byte across column-only CAS.
+    const legacy={columns:{},rows:expected.rows??{},cells:expected.cells??{}};
+    const requestedLegacy={columns:{},rows:next.rows??expected.rows??{},cells:next.cells??expected.cells??{}};
+    if(!samePermissions(legacy,requestedLegacy))
+      throw new Error('Phân quyền theo dòng/ô đã ngừng hỗ trợ. Chỉ được thay quyền theo cột.');
+    const columnDraft:CellPermissions={
+      columns:{...next.columns},rows:{...(expected.rows??{})},
+      cells:structuredClone(expected.cells??{})
+    };
     if(saving.current)throw new Error('Đang lưu thiết lập.');
     saving.current=true;setBusy(true);
     try{
@@ -306,7 +316,7 @@ export function useFirebase(){
       // Retry is safe: an unrelated admin's update invalidates this CAS.
       if(current===null&&!samePermissions(expected,{columns:{}}))return undefined;
       if(!samePermissions({columns:current?.columns??{},rows:current?.rows??{},cells:current?.cells??{}},expected))return undefined;
-      return next;
+      return columnDraft;
     },{applyLocally:false});
     const activeAfter=(await get(ref(database,'hdnd/datasetV2/active'))).val();
     if(datasetActive
@@ -318,7 +328,7 @@ export function useFirebase(){
     const confirmed=result.snapshot.val() as CellPermissions|null;
     if(!result.committed)
       throw new Error('Quyền đã được thay đổi ở phiên khác. Hãy đọc lại quyền và kiểm tra trước khi lưu tiếp.');
-    if(!samePermissions(confirmed,next))
+    if(!samePermissions(confirmed,columnDraft))
       throw new Error('Firebase chưa xác nhận đúng quyền đã lưu. Hãy đọc lại và đối chiếu; bản nháp vẫn được giữ.');
     }finally{saving.current=false;setBusy(false);}
   };

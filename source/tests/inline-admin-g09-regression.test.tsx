@@ -83,12 +83,12 @@ describe('G09 | BASE: list, filter, report and authority regression',()=>{
     expect(data).toEqual(snapshot);
   });
 
-  it('role permission gate rejects forged guest/staff edits; an explicit grant remains scoped',()=>{
+  it('role permission gate rejects forged guest/staff edits; a column grant applies to all rows',()=>{
     expect(mayEdit(null,'demo-0001','note',false)).toBe(false);
     expect(mayEdit(null,'demo-0001','note',true)).toBe(true);
-    const permissions={cells:{'demo-0001':{note:true}}} as unknown as Parameters<typeof mayEdit>[0];
+    const permissions={columns:{note:true},cells:{'demo-0001':{note:false}}} as Parameters<typeof mayEdit>[0];
     expect(mayEdit(permissions,'demo-0001','note',false)).toBe(true);
-    expect(mayEdit(permissions,'demo-0002','note',false)).toBe(false);
+    expect(mayEdit(permissions,'demo-0002','note',false)).toBe(true);
     expect(mayEdit(permissions,'demo-0001','content',false)).toBe(false);
   });
 });
