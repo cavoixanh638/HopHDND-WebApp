@@ -222,21 +222,29 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(after.revision).toBe(initial.revision);
     await editor.dispose();
   });
-  it('QA permission guard: historical cell deny is inert; column revoke blocks leases',async()=>{
+  it('QA permission guard: Spark uses columns only; archived legacy Rules retain their old contract',async()=>{
+    const spark=process.env.VITE_FIREBASE_WRITE_MODE==='spark';
     await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),false);
     const editor=manager('a');
-    await editor.acquire('r1','note','multiline');
-    expect(editor.proof('r1','note')).toBeTruthy();
-    await editor.cancel('r1','note');
+    if(spark){
+      await editor.acquire('r1','note','multiline');
+      expect(editor.proof('r1','note')).toBeTruthy();
+      await editor.cancel('r1','note');
+    }else{
+      // The separate exclusive/Functions Rules candidate is deliberately not
+      // migrated here; its legacy per-cell deny still takes precedence.
+      await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
+    }
     await set(ref(admin() as never,'hdnd/permissions/columns/note'),false);
     await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
-    // Cancel leaves a non-active lease tombstone (expiresAt=0); do not
-    // mistake its existence for an active/renewable lock after column revoke.
+    // Spark cancel leaves a non-active lease tombstone; zero means expired.
     const lock=(await get(ref(guest('a') as never,'hdnd/editLocks/r1/note'))).val();
     expect(Number(lock?.expiresAt??0)).toBeLessThanOrEqual(Date.now());
-    // An archived cell-level allow is also powerless against a denied column.
-    await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),true);
-    await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
+    if(spark){
+      // Only Spark's new Rules ignore an archived per-cell allow.
+      await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),true);
+      await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
+    }
     await editor.acquire('r1','specificProgress','multiline');
     expect(editor.proof('r1','specificProgress')).toBeTruthy();
     await editor.cancel('r1','specificProgress');await editor.dispose();
