@@ -1,3 +1,13 @@
+## 22/11/2026 — PR #231: Cloud backup/readback và restore quyền PASS, phát hành HOLD
+
+Đã tái xác minh exact code HEAD `d8744b2932d8de3f6557b3fcef3768f7119fc6b7`: 11/11 Actions SUCCESS. Local `npm ci`, typecheck, 1158 unit PASS/170 SKIP, 18 release-guard tests và Spark build PASS; generator tạo đúng candidate SHA256 `1b397824d2f225f92353a96c3ac57f84fe22ec6ecab2f814d814ee205af6120b`. Không sửa logic nguồn hoặc chạy lại hàng loạt CI đã hợp lệ.
+
+Qua Firebase CLI đã xác thực, xác nhận đúng project/instance ACTIVE, sao lưu riêng tư effective Rules, `hdnd/permissions`, V2 permissions/active; hai lần GET từng path khớp canonical. Rules production canonical bằng candidate Spark trên main trước PR; candidate mới chỉ thay 34 vị trí chứa 42 biểu thức legacy, không thêm/xóa nhánh hoặc đổi chính sách ngoài quyền dòng/ô. Restore/compile Rules và dữ liệu quyền trên localhost demo Emulator PASS lúc `2026-11-22T16:05:09.602Z`. Đây là backup **hẹp Rules/quyền**, không phải full business-data backup; không ghi production.
+
+Website thực tế đã tải được bảng 59 nội dung; `version.json` vẫn là source `f1a307d40e91b75ce38bbb9dd7071607e23acde2`, `status_cas=true`, chưa phải PR #231. **HOLD:** thiếu chấp thuận exact Rules hash; chưa deploy/readback Rules mới, merge, owner Pages dispatch hoặc nghiệm thu quyền cột thật. Không đóng Issue #232. [Checkpoint đầy đủ](checkpoints/PR231_COLUMN_ONLY_CLOUD_PREFLIGHT_2026-11-22.md) · [Issue #232](https://github.com/cavoixanh638/HopHDND-WebApp/issues/232) · [PR #231](https://github.com/cavoixanh638/HopHDND-WebApp/pull/231).
+
+---
+
 ## 15/11/2026 — PR #190: both security blockers repaired; final release gate pending
 
 Both independent review findings are repaired in the candidate. Older audit slot payloads and maintenance epoch metadata are preserved at a non-deleted parent, with the 50-slot rollover and Google Admin maintenance restore rights retained. Each lease-free status draft pins its original OPEN legacy maintenance epoch; Rules require that epoch in the new audit event at server commit. Missing/recovered old epochs, stale maintenance drafts and queued offline CAS are rejected. Current epoch is checked again before committed/idempotent acknowledgements. Coherent server-only reads never attach a new epoch to cached old rows; workspace epoch transitions retain drafts and operationIds, block replay and fence delayed callbacks.
