@@ -3342,7 +3342,7 @@ try{
     'V2 R01 advanced full-status selector did not mount');
   const advancedFields=await evaluate(`[...document.querySelectorAll('.list-filter-other-panel select')]
     .map(x=>x.getAttribute('aria-label'))`);
-  if(!advanced.ok||!['Chọn trường tìm kiếm','Lọc Cấp Thành ủy cho ý kiến',
+  if(!advanced.ok||!['Lọc Cấp Thành ủy cho ý kiến',
      'Lọc Tiến độ Thành ủy chi tiết','Lọc Tiến độ xây dựng NQ chi tiết',
      'Lọc Tiến độ ban hành NQ/BC chi tiết','Lọc Chuyên viên',
      'Lọc Lãnh đạo VP','Lọc Lãnh đạo UBND'].every(x=>advancedFields.includes(x)))

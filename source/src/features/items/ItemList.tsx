@@ -978,7 +978,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
     p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
-  const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&(!shareCompact||inlineMode)&&
+  const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
     (<>
       <details className="compact-columns-menu" ref={compactDetailsRef}
         onToggle={event=>{
