@@ -54,22 +54,35 @@ beforeEach(()=>{
     removeEventListener:vi.fn()});
 });
 afterEach(()=>vi.unstubAllGlobals());
-describe('R15 group header two-tab editing regression',()=>{
-  it('uses the open-time baseline, blocks competing rename, and requires explicit remote/local decision',async()=>{
-    const baseline=defaultItemLayout(),remote={
-      ...baseline,groupLabels:{partyTogether:'Tab B'}};
+const startLayoutEditing=(props:any)=>{
+  let tree=view(props);
+  const mode=nodes(tree).find(n=>n.type==='button'&&n.props?.className?.includes('inline-g01-mode-toggle'));
+  expect(mode).toBeDefined();mode.props.onClick();
+  tree=view(props);
+  expect(shortcut(tree)).toBeDefined();
+  shortcut(tree).props.onClick();
+  return view(props);
+};
+const saveLayout=(tree:any)=>nodes(tree).find(n=>n.type==='button'&&
+  n.props?.className?.includes('inline-layout-save'));
+
+describe('R15 grouped titles are staged with layout and retain two-tab CAS',()=>{
+  it('stages group title until explicit Save, then resolves a competing edit',async()=>{
+    const baseline=defaultItemLayout(),remote={...baseline,groupLabels:{partyTogether:'Tab B'}};
     const saver=vi.fn(async(next:ItemLayout,old:ItemLayout,choices={})=>
       mergeItemLayout(old,next,remote,choices));
     const props=propsFor(saver,baseline);
-    let tree=view(props);
-    shortcut(tree).props.onClick();tree=view(props);
+    let tree=startLayoutEditing(props);
     expect(inputs(tree)).toHaveLength(1);
     inputs(tree)[0].props.onChange({currentTarget:{value:'Tab A'}});
     tree=view(props);
-    // Simulate Firebase listener replacing initialLayout while dialog stays open.
     props.initialLayout=remote;
     tree=view(props);
     form(tree).props.onSubmit({preventDefault:()=>{}});await settle();
+    expect(saver).not.toHaveBeenCalled();
+    tree=view(props);
+    expect(saveLayout(tree).props.disabled).toBe(false);
+    saveLayout(tree).props.onClick();await settle();
     expect(saver).toHaveBeenCalledTimes(1);
     expect(saver.mock.calls[0][1].groupLabels).toEqual(baseline.groupLabels);
     expect(saver.mock.calls[0][0].groupLabels?.partyTogether).toBe('Tab A');
@@ -77,9 +90,7 @@ describe('R15 group header two-tab editing regression',()=>{
     const resolver=nodes(tree).find(n=>n.type===LayoutConflictResolver);
     expect(resolver).toBeDefined();
     expect(resolver.props.conflicts).toEqual([
-      expect.objectContaining({id:'groupLabels.partyTogether',
-        local:'Tab A',remote:'Tab B'})]);
-    expect(inputs(tree)[0].props.value).toBe('Tab A');
+      expect.objectContaining({id:'groupLabels.partyTogether',local:'Tab A',remote:'Tab B'})]);
     resolver.props.onChoose('groupLabels.partyTogether','remote');
     tree=view(props);
     nodes(tree).find(n=>n.type===LayoutConflictResolver).props.onConfirm();
@@ -87,32 +98,32 @@ describe('R15 group header two-tab editing regression',()=>{
     expect(saver).toHaveBeenCalledTimes(2);
     expect(saver.mock.calls[1][1].groupLabels).toEqual(baseline.groupLabels);
     expect(saver.mock.calls[1][2]).toEqual({'groupLabels.partyTogether':'remote'});
-    expect(inputs(view(props))).toHaveLength(0);
   });
-  it('keeps independent names from both tabs and never rewrites remote unrelated labels',async()=>{
+  it('merges independent group titles from two browser tabs after Save',async()=>{
     const baseline=defaultItemLayout(),remote={...baseline,
       groupLabels:{contentDetails:'Tab B: Hồ sơ'}};
     const saver=vi.fn(async(next:ItemLayout,old:ItemLayout,choices={})=>
       mergeItemLayout(old,next,remote,choices));
     const props=propsFor(saver,baseline);
-    let tree=view(props);shortcut(tree).props.onClick();tree=view(props);
+    let tree=startLayoutEditing(props);
     inputs(tree)[0].props.onChange({currentTarget:{value:'Tab A: Tiến độ'}});
-    props.initialLayout=remote;
-    tree=view(props);form(tree).props.onSubmit({preventDefault:()=>{}});
-    await settle();
+    props.initialLayout=remote;tree=view(props);
+    form(tree).props.onSubmit({preventDefault:()=>{}});await settle();
+    expect(saver).not.toHaveBeenCalled();
+    tree=view(props);saveLayout(tree).props.onClick();await settle();
+    expect(saver).toHaveBeenCalledTimes(1);
     const confirmed=await saver.mock.results[0].value;
     expect(confirmed.groupLabels).toEqual({
       contentDetails:'Tab B: Hồ sơ',partyTogether:'Tab A: Tiến độ'});
-    expect(inputs(view(props))).toHaveLength(0);
   });
-  it('does not write to Firebase if no label was changed while the other tab edited',async()=>{
+  it('a no-op group title cannot cause an unnecessary Firebase write',async()=>{
     const baseline=defaultItemLayout(),saver=vi.fn();
     const props=propsFor(saver,baseline);
-    let tree=view(props);shortcut(tree).props.onClick();tree=view(props);
+    let tree=startLayoutEditing(props);
     props.initialLayout={...baseline,groupLabels:{partyTogether:'Remote'}};
-    tree=view(props);form(tree).props.onSubmit({preventDefault:()=>{}});
-    await settle();
+    tree=view(props);form(tree).props.onSubmit({preventDefault:()=>{}});await settle();
     expect(saver).not.toHaveBeenCalled();
-    expect(inputs(view(props))).toHaveLength(0);
+    tree=view(props);
+    expect(saveLayout(tree).props.disabled).toBe(true);
   });
 });

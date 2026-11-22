@@ -12,6 +12,18 @@ import {EXCEL_COLUMN_KEYS} from '../../data/item-preferences';
 import {TEXT_FIELDS} from '../../../shared/field-definitions';
 import {CATALOG_KEYS,type CatalogConfig,type CatalogKey} from '../../data/catalogs';
 const editableSourceKeys=new Set(TEXT_FIELDS.map(f=>f.key));
+const columnKind=(column:ItemColumn):'text'|'select'=>
+  column.kind??(column.origin==='custom'?'text':
+    editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text');
+const kindCanChange=(column:ItemColumn)=>column.origin==='custom'||CATALOG_KEYS.includes(column.key as CatalogKey);
+// Rights here are always column-wide. Row/cell exceptions survive column edits
+// unless the owner explicitly requests their deletion.
+export const composeColumnRightsDraft=(saved:CellPermissions,
+  columns:CellPermissions['columns'],clearExceptions:boolean):CellPermissions=>({
+    columns:{...columns},
+    rows:clearExceptions?{}:{...(saved.rows??{})},
+    cells:clearExceptions?{}:structuredClone(saved.cells??{})
+  });
 import {DeferredWidthInput} from './DeferredWidthInput';
 
 type Props={
@@ -33,6 +45,9 @@ type Props={
  */
 export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage,savedGroupLabels={},focusColumnKey}:Props){
   const [selected,setSelected]=useState<string|null>(focusColumnKey??null);
+  const [renaming,setRenaming]=useState<string|null>(null);
+  const [draftName,setDraftName]=useState('');
+  const skipRenameBlur=useRef(false);
   // Keep advanced controls available, but do not put the 15-field roster
   // above the actual table on every visit to Customize mode.
   const [advancedOpen,setAdvancedOpen]=useState(()=>!!focusColumnKey);
@@ -61,7 +76,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   const [clearExceptions,setClearExceptions]=useState(false);
   const exceptions=Object.keys(savedPermissions.current.rows??{}).length+
     Object.values(savedPermissions.current.cells??{}).reduce((sum,cells)=>sum+Object.keys(cells).length,0);
-  const rightsDraft:CellPermissions={columns:columnRights,rows:{},cells:{}};
+  const rightsDraft=composeColumnRightsDraft(savedPermissions.current,columnRights,clearExceptions);
   const rightsDirty=!!onSavePermissions&&(
     !samePermissions({columns:columnRights},{columns:savedPermissions.current.columns})||
     (clearExceptions&&exceptions>0)
@@ -102,10 +117,6 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   const canSave=layoutDirty||catalogDirty||rightsDirty;
   const saveAll=async()=>{
     if(!canSave||saving)return;
-    if(rightsDirty&&exceptions&&!clearExceptions){
-      setSaveError('Quyền riêng theo dòng/ô còn tồn tại. Tick xác nhận bỏ các ngoại lệ cũ rồi lưu lại.');
-      return;
-    }
     setSaving(true);setSaveError('');setSaveSuccess('');
     const completed:string[]=[];
     let currentPart='danh sách chọn';
@@ -126,7 +137,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         currentPart='quyền chỉnh sửa cột';
         if(!onSavePermissions)throw new Error('Chưa kết nối nơi lưu quyền cột.');
         await onSavePermissions(rightsDraft,savedPermissions.current);
-        savedPermissions.current={columns:{...columnRights},rows:{},cells:{}};
+        savedPermissions.current=composeColumnRightsDraft(savedPermissions.current,columnRights,clearExceptions);
         awaitingPermissionsEcho.current=JSON.stringify(savedPermissions.current);
         setClearExceptions(false);
         completed.push(currentPart);
@@ -156,6 +167,16 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   const update=(key:string,change:Partial<ItemColumn>)=>onChange({
     ...layout,columns:layout.columns.map(c=>c.key===key?{...c,...change}:c),
   });
+  const beginRename=(column:ItemColumn)=>{
+    skipRenameBlur.current=false;setSaveError('');
+    setRenaming(column.key);setDraftName(column.label);
+  };
+  const finishRename=(column:ItemColumn)=>{
+    const label=draftName.trim();
+    if(!label){setSaveError('Tên cột không được để trống.');return;}
+    if(label!==column.label)update(column.key,{label,renamed:true});
+    setRenaming(null);setSaveError('');
+  };
   const move=(key:string,delta:number)=>{
     const from=layout.columns.findIndex(c=>c.key===key),to=from+delta;
     if(from<0||to<0||to>=layout.columns.length)return;
@@ -231,7 +252,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
        </details>
        {onSavePermissions&&exceptions>0&&<label className="column-rights-warning">
         <input type="checkbox" checked={clearExceptions} onChange={e=>setClearExceptions(e.currentTarget.checked)}/>
-        Bỏ {exceptions} quyền riêng theo dòng/ô đã lưu trước đây khi lưu quyền cột. Nếu chưa xác nhận, các quyền riêng cũ vẫn được giữ.
+        Chủ động xóa {exceptions} quyền riêng theo dòng/ô. Mặc định giữ nguyên các quyền riêng khi thay đổi quyền chung của cột.
       </label>}
       <details className="cell-highlights-editor">
         <summary>Tô màu chữ/nền ô theo từ khóa ({layout.cellHighlights?.length??0})</summary>
@@ -273,31 +294,52 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         {active.map((column,index)=><div key={column.key} className={'column-manager-row'+(selected===column.key?' selected':'')}>
           <label className="column-manager-check"><input type="checkbox" checked={column.visible}
             aria-label={`Hiện cột ${column.label}`} onChange={e=>update(column.key,{visible:e.currentTarget.checked})}/></label>
-          <span className="column-manager-label" title={column.label}>{column.label}</span>
-          <span className="column-manager-type">{(column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text'))==='select'?'Danh sách chọn':'Nhập tự do'}</span>
-          <label className="column-manager-right"><input type="checkbox"
+          <span className="column-manager-label" title={column.label}>
+            {renaming===column.key
+              ?<input className="column-manager-rename-input" autoFocus
+                aria-label={`Tên cột ${column.key}`}
+                maxLength={100} value={draftName}
+                onChange={event=>setDraftName(event.currentTarget.value)}
+                onBlur={()=>{
+                  if(skipRenameBlur.current){skipRenameBlur.current=false;return;}
+                  finishRename(column);
+                }}
+                onKeyDown={event=>{
+                  if(event.key==='Enter'&&!event.nativeEvent.isComposing){
+                    event.preventDefault();skipRenameBlur.current=true;finishRename(column);
+                  }else if(event.key==='Escape'){
+                    event.preventDefault();event.stopPropagation();skipRenameBlur.current=true;
+                    setRenaming(null);setDraftName('');
+                  }
+                }}/>
+              :<>
+                <span className="column-manager-name">{column.label}</span>
+                <button className="column-manager-rename-button" type="button"
+                  aria-label={`Đổi tên cột ${column.label}`}
+                  title="Đổi tên cột · Enter để áp dụng, Esc để hủy"
+                  onClick={()=>beginRename(column)}>✎</button>
+              </>}
+          </span>
+          <select className="column-manager-type column-manager-type-select"
+            aria-label={`Kiểu nhập cột ${column.label}`}
+            title={kindCanChange(column)?'Thay kiểu nhập, lưu bằng nút Lưu thay đổi':'Kiểu nhập cố định của cột nguồn'}
+            disabled={!kindCanChange(column)} value={columnKind(column)}
+            onChange={event=>update(column.key,{kind:event.currentTarget.value as 'text'|'select'})}>
+            <option value="text">Nhập tự do</option>
+            <option value="select">Danh sách chọn</option>
+          </select>
+          <label className="column-manager-right" title="Quyền chung của toàn cột. Quyền riêng từng dòng/ô nằm ở tab Phân quyền chỉnh sửa."><input type="checkbox"
             aria-label={'Cho phép sửa cột '+column.label}
             checked={columnRights[column.key as keyof typeof columnRights]===true}
             disabled={!onSavePermissions||!editableSourceKeys.has(column.key as never)||column.origin==='custom'}
             onChange={e=>setColumnRights(current=>({...current,[column.key]:e.currentTarget.checked}))}
           /></label>
-          <button type="button" className="button ghost" aria-expanded={selected===column.key}
+          <button type="button" className="button ghost column-manager-advanced-action" aria-expanded={selected===column.key}
             aria-label={`Thiết lập cột ${column.label}`}
             onClick={()=>{setSelected(selected===column.key?null:column.key);setConfirmDelete(null);}}>
-            {selected===column.key?'Đóng':'Sửa'}
+            {selected===column.key?'Thu gọn':'Nâng cao'}
           </button>
           {selected===column.key&&<div className="column-manager-detail">
-            <label className="field">Tên cột<input aria-label={`Tên cột ${column.key}`}
-              value={column.label} maxLength={100}
-              onChange={e=>update(column.key,{label:e.currentTarget.value,renamed:true})}/></label>
-            <label className="field">Kiểu dữ liệu
-              <select aria-label={`Kiểu dữ liệu ${column.key}`}
-                disabled={column.origin!=='custom'&&!CATALOG_KEYS.includes(column.key as CatalogKey)}
-                value={column.kind??(column.origin==='custom'?'text':editableSourceKeys.has(column.key as never)&&column.key!=='content'&&column.key!=='note'?'select':'text')}
-                onChange={e=>update(column.key,{kind:e.currentTarget.value as 'text'|'select'})}>
-                <option value="text">Nhập văn bản tự do</option><option value="select">Danh sách chọn</option>
-              </select>
-            </label>
             {(column.origin==='custom'?column.kind==='select':CATALOG_KEYS.includes(column.key as CatalogKey))&&
               <div className="column-manager-options">
                 <G05ChoiceEditor key={column.key} label={column.label}

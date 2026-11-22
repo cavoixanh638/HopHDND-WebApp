@@ -38,29 +38,28 @@ try{
   await page.locator('.item-data-table tbody tr').first().waitFor();
   const initial=await page.locator('.item-data-table tbody tr').count();
   assert.equal(initial,27,'Fixture row count');
-  const toggle=page.getByRole('button',
-    {name:'Mở hoặc đóng các tùy chọn hiển thị và công cụ quản trị Danh sách'});
-  await toggle.click();
-  // Advanced search scope is intentionally collapsed until the admin requests it.
-  await page.locator('.admin-control-section > summary').first().click();
-  await page.locator('.admin-control-section[open] .admin-search-scope-options input').first()
-    .waitFor({state:'visible'});
-  const checks=page.locator('.admin-search-scope-options input[type=checkbox]');
+  // The single search-column picker now lives beside the search input,
+  // not inside a second expanded "Tùy chọn" block.
+  await page.getByRole('button',{name:'Chọn cột tìm kiếm không dấu'}).click();
+  await page.locator('.inline-g01-search-choices input').first().waitFor();
+  const checks=page.locator('.inline-g01-search-choices input[type=checkbox]');
   const count=await checks.count();
   assert(count>=13,'Missing configurable search columns');
   for(let index=0;index<count;index++){
     const option=checks.nth(index);
-    if(await option.getAttribute('aria-label')!=='Tìm trong Nội dung trình')
-      await option.uncheck();
+    const label=await option.locator('..').innerText();
+    if(label.trim()!=='Nội dung trình')await option.uncheck();
   }
   await page.locator('.list-filter-search').fill('Sở mẫu A');
   await page.locator('.item-data-table td.empty').waitFor();
-  await page.getByRole('checkbox',{name:'Tìm trong Sở, ngành chủ trì'}).check();
+  await page.locator('.inline-g01-search-choices label')
+    .filter({hasText:'Sở, ngành chủ trì'}).locator('input').check();
   await page.locator('.item-data-table tbody tr:not(:has(td.empty))').first().waitFor();
   await page.locator('.list-filter-search').fill('');
   await page.locator('.item-data-table tbody tr').first().waitFor();
 
-  await page.getByRole('button',{name:'Dán nhiều ô từ Excel'}).click();
+  await page.getByRole('button',{name:'Đóng',exact:true}).click();
+  await page.getByRole('button',{name:'Dán từ Excel'}).click();
   const dialog=page.getByRole('dialog',{name:'Dán dữ liệu hàng loạt từ Excel'});
   await dialog.waitFor();
   await dialog.getByRole('textbox',{name:'Dán dữ liệu nhiều ô từ Excel'}).fill(
