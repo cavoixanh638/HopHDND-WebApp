@@ -24,7 +24,7 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).toContain('stageInlineLayout(base=>setInlineSummaryVisibility(base,key,checked))');
     expect(list).toContain('stageInlineLayout(base=>({...base,partyTrackWidths:widths}))');
     // Staff shortcut is a direct entry to the same Save/Cancel visual draft.
-    expect(list).toContain('const compactMenu=adminControls&&compactOn&&!permissionMode');
+    expect(list).toContain('const compactMenu=adminControls&&compactOn&&!customizing');
     expect(list).toContain('stageInlineLayout(previous=>({...previous,compactDisplay:next}))');
     expect(list).toContain('if(inlineMode){\n      // Group titles belong');
     expect(list).toContain('className="button ghost admin-bulk-paste-trigger"');

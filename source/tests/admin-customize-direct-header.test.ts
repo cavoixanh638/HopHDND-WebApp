@@ -10,7 +10,7 @@ const borderCss=read('../src/components/inline-g07-resize.css');
 
 describe('G00 direct Admin header editing in Customize mode',()=>{
   it('offers the eye in Customize mode, not only View mode',()=>{
-    expect(list).toContain('const canDraftEditHeaders=customizing&&adminControls&&!permissionMode&&!locked&&allowLayout;');
+    expect(list).toContain('const canDraftEditHeaders=customizing&&adminControls&&!locked&&allowLayout;');
     expect(list).toContain('inlineEditing={headerInlineEditing} quickVisibility={headerQuickVisibility}');
     expect(header).toContain('const visibilityEnabled=inlineEditing||quickVisibility');
   });

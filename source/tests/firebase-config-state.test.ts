@@ -96,7 +96,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(state.canEdit('sheet:42:row:3','note')).toBe(true);
     expect(state.canEdit('sheet:42:row:3','content')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true},cells:{'sheet:42:row:3':{note:false}}});
-    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(true); // retired cell deny ignored; column still grants
     emit('hdnd/control',{revision:2,editingLocked:true});
     expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     expect(render().isAdmin).toBe(false);
@@ -242,10 +242,10 @@ describe('Firebase config controller remains independent of business data',()=>{
     const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
   });
 });
-describe('cell, row and column policy',()=>{
-  it('uses cell > row > column > deny, while identity fields remain locked even for admin',()=>{
+describe('column-only policy with inactive historical row/cell records',()=>{
+  it('uses only columns and keeps identity fields locked even for admin',()=>{
     const permission={columns:{note:true,content:false},rows:{r1:false,r2:true},cells:{r1:{content:true},r2:{note:false}}};
-    expect(mayEdit(permission,'r1','note')).toBe(false);expect(mayEdit(permission,'r1','content')).toBe(true);expect(mayEdit(permission,'r2','content')).toBe(true);expect(mayEdit(permission,'r2','note')).toBe(false);expect(mayEdit(permission,'r3','note')).toBe(true);expect(mayEdit({columns:{}},'r3','note')).toBe(false);expect(mayEdit(permission,'r1','stt' as never,true)).toBe(false);
+    expect(mayEdit(permission,'r1','note')).toBe(true);expect(mayEdit(permission,'r1','content')).toBe(false);expect(mayEdit(permission,'r2','content')).toBe(false);expect(mayEdit(permission,'r2','note')).toBe(true);expect(mayEdit(permission,'r3','note')).toBe(true);expect(mayEdit({columns:{}},'r3','note')).toBe(false);expect(mayEdit(permission,'r1','stt' as never,true)).toBe(false);
     expect(firebaseAdmin(user(true) as never)).toBe(true);expect(firebaseAdmin({...user(true),emailVerified:false} as never)).toBe(false);expect(firebaseAdmin({...user(true),providerData:[{providerId:'password'}]} as never)).toBe(false);
   });
 });

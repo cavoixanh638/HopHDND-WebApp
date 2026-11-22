@@ -79,9 +79,9 @@ describe('PR95 UI V5 L2 — admin-only diagnostics without numeric changes',()=>
     expect(rows.find(x=>x.recordId===unknownQppl.recordId)?.progressBuild)
       .toBe('Không xác định bước xây dựng');
   });
-  it('a guest granted cell-edit permission is still NOT a summary administrator',()=>{
-    const grants={columns:{progressParty:true},rows:{},cells:{
-      [unknownQppl.recordId]:{note:true}
+  it('a guest granted whole-column edit permission is still NOT a summary administrator',()=>{
+    const grants={columns:{note:true,progressParty:true},rows:{},cells:{
+      [unknownQppl.recordId]:{note:false}
     }};
     expect(previewCanEdit('guest',grants,unknownQppl.recordId,'note')).toBe(true);
     expect(previewCanEdit('guest',grants,unknownQppl.recordId,'progressParty')).toBe(true);
