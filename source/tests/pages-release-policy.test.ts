@@ -39,6 +39,13 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
     expect(policy).toContain("commit.sha===reviewedUiTransition.uiCommit");
     expect(policy).toContain("commit.parent===reviewedUiTransition.uiCommit");
     expect(workflow).toContain('node scripts/smoke-pages-browser.mjs');
+    // The publish job builds compact QA only, while full browser smoke
+    // requires a separately isolated dist-pages-test HTML entrypoint.
+    const smoke=readFileSync(new URL('../scripts/smoke-pages-browser.mjs',import.meta.url),'utf8');
+    expect(smoke).toContain("const appRoot=resolve('dist-pages-test')");
+    expect(smoke).toContain("['run','build:pages:test']");
+    expect(smoke).toContain('BROWSER_PAGES_TEST_ARTIFACT_AUTO_BUILT_PASS');
+    expect(smoke).toContain("if(error?.code!=='ENOENT')throw error;");
   });
   it('keeps a separate Spark cutover gate and exact SHA approval for sensitive changes',()=>{
     const flow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');

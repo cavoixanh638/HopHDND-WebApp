@@ -257,7 +257,24 @@ async function startAndSeedFirebase(){
 
 const appRoot=resolve('dist-pages-test');
 const qaRoot=resolve('dist-compact-qa');
-const html=readFileSync(resolve(appRoot,'index.html'));
+// The protected Pages publish job builds compact QA before running this smoke,
+// but the full source CI builds both artifacts. Build the missing isolated
+// pages-test bundle on demand; NEVER use production Pages assets or endpoints.
+let html;
+try{
+  html=readFileSync(resolve(appRoot,'index.html'));
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.log('BROWSER_PAGES_TEST_ARTIFACT_MISSING_BUILDING');
+  const result=spawnSync(process.platform==='win32'?'npm.cmd':'npm',
+    ['run','build:pages:test'],{
+      cwd:process.cwd(),stdio:'inherit',timeout:180000,env:{...process.env,CI:'true'}
+    });
+  if(result.error||result.status!==0)
+    throw Error('BROWSER_PAGES_TEST_BUILD_FAIL: '+(result.error?.message??result.status));
+  html=readFileSync(resolve(appRoot,'index.html'));
+  console.log('BROWSER_PAGES_TEST_ARTIFACT_AUTO_BUILT_PASS');
+}
 const server=createServer((req,res)=>{
   try{
     const pathname=new URL(req.url??'/', 'http://127.0.0.1').pathname;
