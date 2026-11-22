@@ -150,7 +150,7 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(fresh.history[String(fresh.revision%50)].changes.note).toBe('Khách cập nhật ô được phép');
     await session.finish('r1','note');await session.dispose();
   });
-  it('public anonymous cannot bypass per-cell deny, lease or edit permission revocation',async()=>{
+  it('public anonymous cannot bypass revoked column rights, lease or edit lock',async()=>{
     const id='anon-denied',db=anonymous(id),session=publicManager(id),writer=publicRepo(id,session);
     const [before]=await writer.list();
     await assertFails(set(ref(db as never,'hdnd/items'),{r1:{}}));
@@ -161,13 +161,13 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     }));
     await assertFails(update(ref(db as never,'hdnd/items/r1'),{
       note:'Forged direct write',revision:before.revision+1}));
-    await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),false);
+    await set(ref(admin() as never,'hdnd/permissions/columns/note'),false);
     await expect(session.acquire('r1','note','multiline')).rejects.toThrow();
     await assertFails(get(ref(db as never,'hdnd/editLocks/r1/note')));
     const [denied]=await writer.save([updateDraft(before,undefined,{note:'Cố ghi ô bị chặn'})!]);
     expect(denied.ok).toBe(false);
     await session.acquire('r1','specificProgress','multiline');
-    await set(ref(admin() as never,'hdnd/permissions/cells/r1/specificProgress'),false);
+    await set(ref(admin() as never,'hdnd/permissions/columns/specificProgress'),false);
     const [revoked]=await writer.save([updateDraft(before,undefined,{specificProgress:'Quyền bị thu hồi'})!]);
     expect(revoked.ok).toBe(false);
     expect((await writer.list())[0].specificProgress).toBe(before.specificProgress);
@@ -222,11 +222,18 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(after.revision).toBe(initial.revision);
     await editor.dispose();
   });
-  it('QA permission guard: per-cell deny overrides a global column allow at the lock server',async()=>{
+  it('QA permission guard: historical cell deny is inert; column revoke blocks leases',async()=>{
     await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),false);
     const editor=manager('a');
+    await editor.acquire('r1','note','multiline');
+    expect(editor.proof('r1','note')).toBeTruthy();
+    await editor.cancel('r1','note');
+    await set(ref(admin() as never,'hdnd/permissions/columns/note'),false);
     await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
     expect((await get(ref(guest('a') as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
+    // An archived cell-level allow is also powerless against a denied column.
+    await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),true);
+    await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
     await editor.acquire('r1','specificProgress','multiline');
     expect(editor.proof('r1','specificProgress')).toBeTruthy();
     await editor.cancel('r1','specificProgress');await editor.dispose();
