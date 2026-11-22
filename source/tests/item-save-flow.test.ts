@@ -114,16 +114,14 @@ describe('separate item layout save and data draft',()=>{
     expect(SEARCH_FIELDS.map(f=>f.key)).toEqual([
       'all','displayCode','content','specificProgress','note'
     ]);
-    // Existing source-level column filters are retained in the editing view.
+    // G00: advanced configuration no longer mounts a second data table or
+    // source-column filter row. Filters live on the sole List table above.
     const editTree=ItemList({items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
       readOnly:true,sourceKind:'google',customizing:true,sourceKey:'old-layout-edit-filters',
       catalog:catalogFromItems(items),onClose:vi.fn(),onSaveData:vi.fn().mockResolvedValue(false),
       onDiscardData:vi.fn(),onLayoutSaved:vi.fn(),initialLayout:old});
-    const editFilters=nodes(editTree).filter(n=>n.type===ColumnFilterCell);
-    expect(editFilters.map(n=>n.props.field)).toEqual(expect.arrayContaining([
-      'type','department','content','partyLevel','progressParty',
-      'progressBuild','progressCouncil'
-    ]));
+    expect(nodes(editTree).filter(n=>n.type===ColumnFilterCell)).toHaveLength(0);
+    expect(nodes(editTree).filter(n=>n.props?.className==='item-data-region')).toHaveLength(0);
   });
   it('keeps shared hidden columns hidden in edit mode for an accurate saved-layout preview',()=>{
     const items=createDemoItems(1);

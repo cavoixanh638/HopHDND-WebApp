@@ -756,7 +756,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
       {([['overview','Báo cáo tổng hợp'],
         ['items',itemLayout.listTitle??DEFAULT_LIST_TITLE]] as const)
         .map(([key,title])=><button type="button" key={key} data-ui-reference-nav={key}
-          disabled={editingPage} className={'primary-section-card'+(page===key?' active':'')}
+          disabled={editingPage||editorUnsaved} className={'primary-section-card'+(page===key?' active':'')}
           aria-current={page===key?'page':undefined}
           onClick={()=>{setListFramePreview(null);setPage(key);}}>
           <span className="section-card-copy">
@@ -776,7 +776,7 @@ export function App({firebase,TransferPanel}:{firebase?:FirebaseController;Trans
         <span>Chưa đọc được bố cục đã lưu từ Firebase. Không tự áp dụng cấu hình mặc định.</span>
         <button type="button" className="button ghost" onClick={()=>setAllowTemporaryLayout(true)}>Xem dữ liệu tạm (bố cục mặc định)</button>
       </div>:<>
-      {adminTools&&page!=='overview'&&page!=='items'&&<div className="page-heading"><div><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page==='connection'?(isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu'):page==='transfer'?'Nhập / Xuất Excel':page==='customize'?'Tùy chỉnh bảng báo cáo':page==='items-permissions'?'Phân quyền chỉnh sửa':'Quản lý cột'}</h1></div><span className="muted">{workspace.busy?'Đang đọc dữ liệu…':workspace.loadedAt?`Đọc thành công: ${workspace.loadedAt}`:'Chưa đọc được dữ liệu'}</span></div>}
+      {adminTools&&page!=='overview'&&page!=='items'&&<div className="page-heading"><div><h1>{page==='sync'?'Danh mục và cách hiển thị dùng chung':page==='source'?'Nguồn dữ liệu Google Sheets':page==='review'?'Theo dõi thay đổi và phê duyệt':page==='connection'?(isFirebase?'Tài khoản Firebase':'Nguồn dữ liệu'):page==='transfer'?'Nhập / Xuất Excel':page==='customize'?'Tùy chỉnh bảng báo cáo':page==='items-permissions'?'Phân quyền chỉnh sửa':'Quản lý cột nâng cao'}</h1></div><span className="muted">{workspace.busy?'Đang đọc dữ liệu…':workspace.loadedAt?`Đọc thành công: ${workspace.loadedAt}`:'Chưa đọc được dữ liệu'}</span></div>}
       {adminTools&&(page==='connection'||page==='source')&&<div className="account-source-actions">
         <button type="button" className="button ghost" disabled={workspace.busy||common.busy}
           onClick={()=>{void workspace.refresh();void common.refresh();}}>Làm mới dữ liệu</button>

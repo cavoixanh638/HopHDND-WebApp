@@ -165,3 +165,16 @@
 .report-grid-modal .report-detail-grid thead .report-grid-heading-row th:has(.inline-g01-column-tools) .column-sort-button:is(:hover,:focus-visible){
   opacity:1;
 }
+
+/* G00 single-table layout editor: Save/Cancel is always beside the real List.
+   Never layer a second data table under advanced field configuration. */
+.inline-layout-savebar{display:flex;gap:12px;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;padding:9px 12px;margin:8px 0;border:1px solid #9fbfae;border-radius:8px;
+  background:#f2f8f4;color:#21533f}
+.inline-layout-savebar>span{display:flex;flex-direction:column;gap:2px;min-width:210px}
+.inline-layout-savebar small{font-size:12px;color:#3a6550}
+.inline-layout-save-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.inline-layout-save-actions .button{min-height:34px}
+@media(max-width:700px){.inline-layout-savebar{align-items:stretch}
+.inline-layout-save-actions{width:100%}.inline-layout-save-actions>.button{flex:1}}
+@media print{.inline-layout-savebar{display:none!important}}

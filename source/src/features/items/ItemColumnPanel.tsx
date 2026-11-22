@@ -188,7 +188,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         onClick={()=>setAdvancedOpen(open=>!open)}>
         {advancedOpen?'▾ Thu gọn quản lý cột':'▸ Quản lý cột nâng cao'}
       </button>
-      <span className="column-count">{active.length} cột · Rê chuột lên tiêu đề để thấy mắt; kéo đường phân cách để đổi độ rộng</span>
+      <span className="column-count">{active.length} cột · Thêm/xóa cột, kiểu nhập, danh sách chọn và quyền sửa. Chỉnh độ rộng, vị trí, ẩn/hiện ở Danh sách dữ liệu → Chỉnh giao diện.</span>
     </div>
     <div className="column-manager-body">
       {validationMessage&&<div className="layout-inline-error" role="alert">
