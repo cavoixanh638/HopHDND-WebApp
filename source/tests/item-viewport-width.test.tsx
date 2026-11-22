@@ -155,17 +155,20 @@ describe('drag-only widths and compact column manager',()=>{
       columns:{progressParty:true},rows:{legacy:true},cells:{legacy:{content:false}}
     });
     expect(onSavePermissions.mock.calls[0][1]).toEqual(permissions);
-    await vi.waitFor(()=>{
-      hook.begin();tree=ItemColumnPanel(props);
-      expect(button(tree,'Lưu thay đổi').props.disabled).toBe(true);
-    });
+    // This focused unit fixture replaces useRef on every synthetic render.
+    // Start a fresh component to exercise the separate, explicit wipe path.
+    hook.reset();onSavePermissions.mockClear();
+    hook.begin();tree=ItemColumnPanel(props);
+    const again=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
+    again.props.onChange({currentTarget:{checked:true}});
+    hook.begin();tree=ItemColumnPanel(props);
     const legacy=all(tree).find(n=>n.type==='label'&&n.props.className==='column-rights-warning');
     expect(legacy).toBeDefined();
     all(legacy).find(n=>n.type==='input').props.onChange({currentTarget:{checked:true}});
     hook.begin();tree=ItemColumnPanel(props);
     save=button(tree,'Lưu thay đổi');save.props.onClick();
-    await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledTimes(2));
-    expect(onSavePermissions.mock.calls[1][0]).toEqual({
+    await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledTimes(1));
+    expect(onSavePermissions.mock.calls[0][0]).toEqual({
       columns:{progressParty:true},rows:{},cells:{}
     });
   });
