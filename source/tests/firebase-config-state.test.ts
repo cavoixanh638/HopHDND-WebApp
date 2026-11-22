@@ -233,13 +233,22 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(h.transaction).not.toHaveBeenCalled();
     expect(h.get).toHaveBeenCalledWith('hdnd/permissions');
   });
-  it('saves normalized row and cell permissions against their original baseline',async()=>{
-    login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();
-    const next={columns:{note:true},rows:{'sheet:42:row:3':false}};
-    h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/datasetV2/active'?null:{columns:{note:true}}}));
+  it('saves only column grants; historical row/cell values remain untouched and immutable',async()=>{
+    const original={columns:{note:true},rows:{'sheet:42:row:3':true},
+      cells:{'sheet:42:row:3':{note:false}}};
+    login(true);emit('hdnd/permissions',original);const state=render();
+    const next={...original,columns:{note:false}};
+    h.get.mockImplementation(async(path:string)=>({val:()=>
+      path==='hdnd/datasetV2/active'?null:original}));
     h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>next}});
-    await state.savePermissions(next);
-    const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
+    await state.savePermissions(next,original);
+    const [path,update]=h.transaction.mock.calls[0];
+    expect(path).toBe('hdnd/permissions');
+    expect(update(original)).toEqual(next);
+    expect(update({columns:{note:false},rows:original.rows,cells:original.cells})).toBeUndefined();
+    await expect(state.savePermissions({...next,rows:{'sheet:42:row:3':false}},original))
+      .rejects.toThrow('đã ngừng hỗ trợ');
+    expect(h.transaction).toHaveBeenCalledTimes(1);
   });
 });
 describe('column-only policy with inactive historical row/cell records',()=>{
