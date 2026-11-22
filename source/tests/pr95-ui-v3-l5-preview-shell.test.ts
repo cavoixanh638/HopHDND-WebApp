@@ -18,19 +18,19 @@ describe('PR95 UI V3 L5 preview shell: synthetic role-policy contracts',()=>{
     ]);
     expect(new Set(PREVIEW_ADMIN_TOOLS.map(x=>x.key)).size).toBe(4);
   });
-  it('preserves field-level editing for note, specificProgress and statuses',()=>{
+  it('only whole-column grants determine guest editing on every row',()=>{
     const grants:CellPermissions={
-      columns:{note:false,progressParty:true},
+      columns:{note:true,progressParty:true,progressBuild:false},
       rows:{[first.recordId]:false},
-      cells:{[first.recordId]:{note:true,specificProgress:true,
+      cells:{[first.recordId]:{note:false,specificProgress:true,
         progressBuild:true,progressParty:false}}
     };
-    for(const field of ['note','specificProgress','progressBuild'] as const)
+    for(const field of ['note','progressParty'] as const){
       expect(previewCanEdit('guest',grants,first.recordId,field)).toBe(true);
-    expect(previewCanEdit('guest',grants,first.recordId,'progressParty')).toBe(false);
-    expect(previewCanEdit('guest',grants,first.recordId,'content')).toBe(false);
-    expect(previewCanEdit('guest',grants,second.recordId,'progressParty')).toBe(true);
-    expect(previewCanEdit('guest',grants,second.recordId,'note')).toBe(false);
+      expect(previewCanEdit('guest',grants,second.recordId,field)).toBe(true);
+    }
+    for(const field of ['specificProgress','progressBuild','content'] as const)
+      expect(previewCanEdit('guest',grants,first.recordId,field)).toBe(false);
     expect(previewCanEdit('admin',grants,first.recordId,'note')).toBe(true);
   });
   it('grant then revoke affects only the permitted synthetic cell, RAM CAS still detects stale save',()=>{
