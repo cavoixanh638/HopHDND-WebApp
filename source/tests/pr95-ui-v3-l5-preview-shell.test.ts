@@ -6,7 +6,7 @@ import type {CellPermissions} from '../src/data/firebase-repository';
 
 describe('PR95 UI V3 L5 preview shell: synthetic role-policy contracts',()=>{
   const [first,second]=createDemoItems(2);
-  it('exposes exactly two public tabs and denies every admin-only route to guest',()=>{
+  it('exposes exactly two public tabs and hides all admin-only routes from guests',()=>{
     expect(previewCanOpenPage('guest','items')).toBe(true);
     expect(previewCanOpenPage('guest','reports')).toBe(true);
     for(const tool of PREVIEW_ADMIN_TOOLS){
@@ -14,9 +14,9 @@ describe('PR95 UI V3 L5 preview shell: synthetic role-policy contracts',()=>{
       expect(previewCanOpenPage('admin',tool.key),tool.label).toBe(true);
     }
     expect(PREVIEW_ADMIN_TOOLS.map(x=>x.key)).toEqual([
-      'items-customize','permissions','excel','account','settings'
+      'items-customize','excel','account','settings'
     ]);
-    expect(new Set(PREVIEW_ADMIN_TOOLS.map(x=>x.key)).size).toBe(5);
+    expect(new Set(PREVIEW_ADMIN_TOOLS.map(x=>x.key)).size).toBe(4);
   });
   it('preserves field-level editing for note, specificProgress and statuses',()=>{
     const grants:CellPermissions={
