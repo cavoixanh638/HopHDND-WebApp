@@ -33,7 +33,12 @@ type Props={
  */
 export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,layoutDirty=false,onSaveLayout,onSaveCatalog,onSavePermissions,onDirtyChange,validationMessage,savedGroupLabels={},focusColumnKey}:Props){
   const [selected,setSelected]=useState<string|null>(focusColumnKey??null);
-  useEffect(()=>{if(focusColumnKey)setSelected(focusColumnKey);},[focusColumnKey]);
+  // Keep advanced controls available, but do not put the 15-field roster
+  // above the actual table on every visit to Customize mode.
+  const [advancedOpen,setAdvancedOpen]=useState(()=>!!focusColumnKey);
+  useEffect(()=>{
+    if(focusColumnKey){setSelected(focusColumnKey);setAdvancedOpen(true);}
+  },[focusColumnKey]);
   const [confirmDelete,setConfirmDelete]=useState<string|null>(null);
   const [selectedSpecialist,setSelectedSpecialist]=useState('');
   const copyCatalog=(value:CatalogConfig):CatalogConfig=>({
@@ -177,7 +182,14 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
     setSelected(null);setConfirmDelete(null);
   };
   return <section className="card item-column-panel column-manager">
-    <div className="column-manager-heading"><h3>Quản lý cột</h3><span className="column-count">{active.length} cột · tên, kiểu nhập, danh sách chọn và quyền sửa</span></div>
+    <div className="column-manager-heading">
+      <button type="button" className="column-manager-advanced-toggle"
+        aria-controls="column-manager-advanced-panel" aria-expanded={advancedOpen}
+        onClick={()=>setAdvancedOpen(open=>!open)}>
+        {advancedOpen?'▾ Thu gọn quản lý cột':'▸ Quản lý cột nâng cao'}
+      </button>
+      <span className="column-count">{active.length} cột · Rê chuột lên tiêu đề để thấy mắt; kéo đường phân cách để đổi độ rộng</span>
+    </div>
     <div className="column-manager-body">
       {validationMessage&&<div className="layout-inline-error" role="alert">
         <strong>Chưa lưu được:</strong> {validationMessage}
@@ -193,6 +205,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
         </button>
       </div>
       {saveSuccess&&<p className="column-save-success" role="status">{saveSuccess}</p>}
+      <div id="column-manager-advanced-panel" className="column-manager-advanced" hidden={!advancedOpen}>
       <details className="cell-highlights-editor group-label-editor">
          <summary>Đổi tên cột gộp</summary>
          <p className="muted">Tên nhóm chỉ thay tiêu đề gộp, không đổi tên trường Excel hoặc nhãn từng khâu. Chọn Lưu thay đổi để cập nhật cấu hình dùng chung.</p>
@@ -366,6 +379,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
           <DeferredWidthInput label="Chiều rộng trang (px)" value={layout.frameWidth} min={320} max={6000}
             onCommit={width=>onChange({...layout,frameWidth:width})}/>}
       </details>
+      </div>
     </div>
   </section>;
 }

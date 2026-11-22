@@ -12,8 +12,12 @@ describe('G00 + G05 catalog shortcut / canonical contract',()=>{
     expect(app).toContain("onOpenCatalog={adminTools&&canCustomize&&page==='items'?key=>{");
     expect(app).toContain("openOptions('items-customize',{currentTarget:document.body});");
     expect(app).toContain("focusColumnKey={page==='items-customize'?focusedAdminColumn:null}");
-    expect(list).toContain("onOpenColumnSettings={inlineReady?onOpenCatalog:undefined}");
-    expect(list).toContain("<ItemColumnPanel focusColumnKey={focusColumnKey}");
+    // Normal Admin view enters Customize via App; Customize itself opens the
+    // matching field from the header without persisting until Save.
+    expect(list).toContain("onOpenColumnSettings={canDraftEditHeaders");
+    expect(list).toContain("setRequestedColumnFocus(key)");
+    expect(list).toContain(":inlineReady?onOpenCatalog:undefined}");
+    expect(list).toContain("<ItemColumnPanel focusColumnKey={requestedColumnFocus??focusColumnKey}");
     expect(head).toContain("onOpenColumnSettings(columnKey)");
   });
   it('official status remains locked while nonofficial department options can be edited',()=>{
