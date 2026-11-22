@@ -4360,6 +4360,43 @@ try{
   await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
   console.log('L018_GROUP_TITLE_ADMIN_SAVE_CANCEL_RELOAD_RESET_PASS');
 
+  // G00: the advanced screen has no second data table, and the one real List
+  // requires an explicit Save/Cancel for a layout change (no silent CAS).
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  await eventually("document.querySelector('.column-manager-advanced-toggle')!==null",
+    'G00 advanced field configuration missing');
+  if(await evaluate("!!document.querySelector('.item-data-table,.item-data-region')"))
+    throw Error('G00 duplicate large data table still exists in advanced settings');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?edit=1'});
+  await eventually("document.querySelector('.item-data-table')!==null",
+    'G00 ordinary data table missing');
+  await evaluate("document.querySelector('.inline-g01-mode-toggle').click()");
+  await eventually("!!document.querySelector('.inline-layout-savebar')",
+    'G00 no Save/Cancel bar in ordinary List');
+  const singleTable=await evaluate(`(()=>({
+    tableCount:document.querySelectorAll('.item-data-table').length,
+    advanced:!!document.querySelector('.column-manager'),
+    hasSave:!!document.querySelector('.inline-layout-save'),
+    hasCancel:!!document.querySelector('.inline-layout-cancel'),
+    initiallyClean:document.querySelector('.inline-layout-save')?.disabled
+  }))()`);
+  if(singleTable.tableCount!==1||singleTable.advanced||!singleTable.hasSave||
+     !singleTable.hasCancel||!singleTable.initiallyClean)
+    throw Error('G00 single-table edit mode invalid: '+JSON.stringify(singleTable));
+  await evaluate("document.querySelector('th[data-column-key=content] .inline-g01-column-menu-trigger').click()");
+  await eventually("!!document.querySelector('th[data-column-key=content] .inline-g01-column-menu')",
+    'G00 column eye menu failed to open in List');
+  await evaluate("document.querySelector('th[data-column-key=content] .inline-g01-column-menu button[aria-label^=\\\"Ẩn cột\\\"]').click()");
+  await eventually("!!document.querySelector('.inline-layout-save:not(:disabled)')",
+    'G00 hiding a column did not mark layout as a draft');
+  if(await evaluate("!!document.querySelector('th[data-column-key=content]')"))
+    throw Error('G00 draft hide did not update the only List table');
+  await evaluate("document.querySelector('.inline-layout-cancel').click()");
+  await eventually("!!document.querySelector('th[data-column-key=content]') && !document.querySelector('.inline-layout-savebar')",
+    'G00 Cancel did not restore the saved column layout');
+  console.log('G00_SINGLE_TABLE_ADVANCED_NO_DUPLICATE_SAVE_CANCEL_PASS',JSON.stringify(singleTable));
+
+
 
   // Codex Lượt 020 R06/P1: this fixture MUST carry the actual App.tsx
   // wide-table-page + list-fit-page shell, not just a standalone ItemList.

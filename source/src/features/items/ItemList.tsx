@@ -108,6 +108,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
   const [inlineMode,setInlineMode]=useState(false);
+  // The ordinary List owns the only visible data table. Layout edits stay in
+  // this local draft until the Admin explicitly chooses Save (one shared CAS).
+  const [inlineDraft,setInlineDraft]=useState<ItemLayout|null>(null);
+  const inlineEditBase=useRef<ItemLayout|null>(null);
   // G00: a header command in Customize mode opens the matching advanced field.
   const [requestedColumnFocus,setRequestedColumnFocus]=useState<string|null>(null);
   const [searchScopeOpen,setSearchScopeOpen]=useState(false);
@@ -160,7 +164,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const saveBaseline=restoredBase??sharedBase.current;
   useEffect(()=>{if(initialLayout&&!customizing){setApplied(initialLayout);sharedBase.current=initialLayout;}},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
-  const activeLayout = customizing ? layout : applied;
+  const activeLayout = customizing ? layout : inlineMode&&inlineDraft ? inlineDraft : applied;
+  const inlineDirty=inlineMode&&!!inlineDraft&&!!inlineEditBase.current&&
+    JSON.stringify(inlineDraft)!==JSON.stringify(inlineEditBase.current);
   // Only admin writes the shared Firebase layout; all other viewers get local preferences.
   const adminControls=allowLayout&&!anonymousViewer;
   const shareCompact=adminControls&&!!onPersistViewerLayout&&!personalViewActive;
@@ -245,7 +251,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       if(!allowLayout)return;
       setLayout(previous=>({...previous,compactDisplay:next}));
     }else if(shareCompact){
-      void applyViewerLayout(previous=>({...previous,compactDisplay:next}));
+      stageInlineLayout(previous=>({...previous,compactDisplay:next}));
     }else{
       setPersonalCompact(next);
       setCompactStorageWarning(writePersonalCompactDisplay(viewerCompactScope,next)?'':
@@ -283,7 +289,15 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [columnExtrasDirty,setColumnExtrasDirty]=useState(false);
   const exitAfterPermissions=useRef(false);
   const handledExitRequest=useRef(exitRequest);
-  useEffect(()=>{onDirtyChange?.(customizing&&(dirty||permissionDirty||columnExtrasDirty));},[customizing,dirty,permissionDirty,columnExtrasDirty,onDirtyChange]);
+  useEffect(()=>{
+    onDirtyChange?.((customizing&&(dirty||permissionDirty||columnExtrasDirty))||inlineDirty);
+  },[customizing,dirty,permissionDirty,columnExtrasDirty,inlineDirty,onDirtyChange]);
+  useEffect(()=>{
+    if(!inlineDirty)return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
+    window.addEventListener('beforeunload',warn);
+    return()=>window.removeEventListener('beforeunload',warn);
+  },[inlineDirty]);
   const locked=busy||saving||viewSaving||!!unmatchedCheckpoint&&customizing;
   const pendingData=Object.keys(drafts).length>0;
   const cannotSaveData=readOnly&&pendingData;
@@ -338,7 +352,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     aria-label={'Tiến độ xây dựng NQ: Không phải trình. '+buildLockReason(item)}>
     Không phải trình
   </span>;
-  const canEdit = canEditDraft && !permissionMode && (customizing || anonymousViewer || !!canEditCell);
+  const canEdit = canEditDraft && !permissionMode && !inlineMode &&
+    (customizing || anonymousViewer || !!canEditCell);
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
   const latestExit=useRef({dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
   const exit = () => {
@@ -675,7 +690,12 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       titleRestoreFocus.current=false;titleInlineTrigger.current?.focus();
     }
   },[titleEditorOpen]);
-  useEffect(()=>{if(!adminControls||customizing||permissionMode){setInlineMode(false);setTitleEditorOpen(false);setSearchScopeOpen(false);}},[adminControls,customizing,permissionMode]);
+  useEffect(()=>{
+    if(!adminControls||customizing||permissionMode){
+      setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
+      setTitleEditorOpen(false);setSearchScopeOpen(false);
+    }
+  },[adminControls,customizing,permissionMode]);
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
     baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
     kind:'title'|'cards'|'layout'='layout'):Promise<boolean>=>{
@@ -717,16 +737,47 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       return false;
     }finally{viewSavingRef.current=false;setViewSaving(false);}
   };
-  // Excel-style hide/show works in the normal Admin table, not just advanced edit mode.
-  // This is a shared presentation-only CAS write, never a business-cell edit.
+  // Opening/dragging/renaming a column stages a recoverable visual draft;
+  // never write profile/Firebase until the explicit Save layout button.
+  const stageInlineLayout=(transform?:(base:ItemLayout)=>ItemLayout)=>{
+    if(!canEditListSettings||permissionMode||customizing)return;
+    try{
+      if(inlineMode&&inlineDraft){
+        if(transform)setInlineDraft(previous=>previous?validateItemLayout(transform(previous)):previous);
+      }else{
+        const baseline=validateItemLayout(sharedBase.current);
+        const next=transform?validateItemLayout(transform(structuredClone(baseline))):structuredClone(baseline);
+        inlineEditBase.current=baseline;
+        setInlineDraft(next);setInlineMode(true);setShowAllSourceColumns(false);
+      }
+      setLayoutError('');
+    }catch(error){
+      setLayoutError(error instanceof Error?error.message:'Chưa sửa được bố cục.');
+    }
+  };
+  const finishInlineLayout=()=>{
+    setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
+    setTitleEditorOpen(false);setListTitleDraft(null);listTitleBaseline.current=null;
+    setViewLayoutConflicts([]);setViewLayoutChoices({});
+    pendingViewLayout.current=null;
+  };
+  const saveInlineLayout=async()=>{
+    if(!canEditListSettings||!inlineMode||!inlineDraft||viewSavingRef.current)return;
+    if(!inlineDirty){finishInlineLayout();return;}
+    const next=inlineDraft;
+    const saved=await applyViewerLayout(()=>next,inlineEditBase.current??undefined);
+    if(saved)finishInlineLayout();
+  };
+  // Excel-style hide/show works in the normal Admin table.
+  // Both ordinary View and 'Chỉnh giao diện' enter the same Save/Cancel flow.
   const changeInlineColumnVisibility=(key:string,visible:boolean)=>{
     if(!canEditListSettings||showAllSourceColumns||key==='stt')return;
     if(!visible&&(displayedColumns.length<=1||!canHideInlineColumn(activeLayout,key)))return;
-    void applyViewerLayout(base=>setInlineColumnVisibility(base,key,visible));
+    stageInlineLayout(base=>setInlineColumnVisibility(base,key,visible));
   };
   const showAllInlineColumns=()=>{
     if(!canEditListSettings||showAllSourceColumns)return;
-    void applyViewerLayout(base=>({...base,columns:base.columns.map(column=>
+    stageInlineLayout(base=>({...base,columns:base.columns.map(column=>
       column.removed||column.key==='stt'?column:{...column,visible:true})}));
   };
   const hiddenQuickColumns=activeLayout.columns.filter(column=>
@@ -764,11 +815,18 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const changeInlineColumnName=(key:string,label:string):Promise<boolean>=>{
     if(!inlineReady)return Promise.resolve(false);
-    return applyViewerLayout(base=>renameInlineColumn(base,key,label));
+    try{
+      renameInlineColumn(activeLayout,key,label);
+      stageInlineLayout(base=>renameInlineColumn(base,key,label));
+      return Promise.resolve(true);
+    }catch(error){
+      setLayoutError(error instanceof Error?error.message:'Tên cột không hợp lệ.');
+      return Promise.resolve(false);
+    }
   };
   const changeInlineCardVisibility=(key:(typeof SUMMARY_CARD_KEYS)[number],visible:boolean)=>{
     if(!inlineReady)return;
-    void applyViewerLayout(base=>setInlineSummaryVisibility(base,key,visible),undefined,{},'cards');
+    stageInlineLayout(base=>setInlineSummaryVisibility(base,key,visible));
   };
   const beginTitleInline=()=>{
     if(!inlineReady)return;
@@ -831,7 +889,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     if(customizing){if(locked||!allowLayout)return;
       setLayout(previous=>({...previous,columns:reorderByKey(previous.columns,column=>column.key,from,to)}));return;
     }
-    void applyViewerLayout(base=>({...base,columns:reorderByKey(base.columns,column=>column.key,from,to)}));
+    stageInlineLayout(base=>({...base,columns:reorderByKey(base.columns,column=>column.key,from,to)}));
   };
   const changeColorRules=(next:ColorRule[])=>{if(saveColorRules(personalScope,next))setColorRules(next);else setLayoutError('Không lưu được màu trên trình duyệt này.');};
   const visibleWidth=activeLayout.frameWidth==='auto'||activeLayout.frameWidth===undefined
@@ -862,10 +920,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     let widths;
     try{widths=validatePartyTrackWidths(input);}
     catch(error){setL03WidthErrors({global:saveIssue(error)});return;}
-    const saved=await applyViewerLayout(base=>({...base,partyTrackWidths:widths}),
-      l03EditBaseline.current??undefined);
-    if(saved){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
-    else setL03WidthErrors({global:'Chưa xác nhận lưu. Đã giữ nguyên 5 số nháp.'});
+    stageInlineLayout(base=>({...base,partyTrackWidths:widths}));
+    setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;
   };
   const editableField=(item:Item,field:TextField)=>
     canEdit&&!locked&&!savingRows?.has(item.recordId)&&!(field==='progressBuild'&&buildLocked(item))&&
@@ -977,7 +1033,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
 </div>}
 {!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel focusColumnKey={requestedColumnFocus??focusColumnKey} catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
-    <div className="item-data-region"
+    {(!customizing||permissionMode)&&<div className="item-data-region"
       data-preview-options={denseChrome?(previewOptionsOpen?'open':'closed'):undefined}
       style={{width:visibleWidth,maxWidth:'100%'}}>
     {/* B00–B03 and C01–C03 summarize all source items, regardless of F
@@ -1010,9 +1066,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             onSubmit={event=>{event.preventDefault();
               try{const title=validateListTitle(listTitleDraft??activeLayout.listTitle??DEFAULT_LIST_TITLE);
                 setTitleValidationError('');
-                void applyViewerLayout(base=>({...base,listTitle:title}),listTitleBaseline.current??undefined,{},'title')
-                  .then(saved=>{if(saved){setTitleEditorOpen(false);setListTitleDraft(null);
-                    listTitleBaseline.current=null;titleRestoreFocus.current=true;}});
+                stageInlineLayout(base=>({...base,listTitle:title}));
+                setTitleEditorOpen(false);setListTitleDraft(null);
+                listTitleBaseline.current=null;titleRestoreFocus.current=true;
               }catch(error){setTitleValidationError(error instanceof Error?error.message:'Tên không hợp lệ.');}
             }}>
             <input ref={titleInlineInput} id="admin-list-title-input" aria-label="Tên danh sách mới"
@@ -1020,7 +1076,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               onChange={event=>{setTitleValidationError('');setListTitleDraft(event.currentTarget.value);}}
               onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancelTitleInline();}}}
               disabled={viewSaving}/>
-            <button className="button" type="submit" disabled={viewSaving}>Lưu</button>
+            <button className="button" type="submit" disabled={viewSaving}>Áp dụng tên vào nháp</button>
             <button className="button ghost" type="button" onClick={cancelTitleInline} disabled={viewSaving}>Hủy</button>
             {titleValidationError&&<span role="alert">{titleValidationError}</span>}
           </form>:<h2 className="item-list-page-title" onDoubleClick={inlineReady?beginTitleInline:undefined}>{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
@@ -1028,8 +1084,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             onClick={beginTitleInline} aria-label="Sửa tên danh sách tại chỗ" title="Sửa tên danh sách">✎</button>}
         </div>
         {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
-          aria-pressed={inlineMode} onClick={()=>{setInlineMode(open=>!open);setShowAllSourceColumns(false);setPreviewOptionsOpen(true);setTitleEditorOpen(false);setListTitleDraft(null);setSearchScopeOpen(false);}}>
-          {inlineMode?'Xong chỉnh giao diện':'Chỉnh giao diện'}
+          aria-pressed={inlineMode} disabled={inlineMode}
+          onClick={()=>{stageInlineLayout();setShowAllSourceColumns(false);
+            setPreviewOptionsOpen(true);setTitleEditorOpen(false);
+            setListTitleDraft(null);setSearchScopeOpen(false);}}>
+          {inlineMode?'Đang chỉnh giao diện':'Chỉnh giao diện'}
         </button>}
         {denseChrome&&<button type="button"
           className="button ghost admin-preview-options-toggle"
@@ -1055,6 +1114,20 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
           }}>In / PDF A4</button>}
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
+      {inlineMode&&adminControls&&<div className="inline-layout-savebar"
+        role="group" aria-label="Lưu hoặc hủy thay đổi giao diện Danh sách">
+        <span><strong>Đang chỉnh trực tiếp trên bảng</strong>
+          <small>{inlineDirty?'Có thay đổi bố cục chưa lưu':'Chưa có thay đổi bố cục'} · Không sửa dữ liệu hồ sơ</small>
+        </span>
+        <div className="inline-layout-save-actions">
+          <button type="button" className="button primary inline-layout-save"
+            disabled={!inlineDirty||locked||viewSaving} onClick={()=>void saveInlineLayout()}>
+            {viewSaving?'Đang lưu…':'Lưu bố cục'}
+          </button>
+          <button type="button" className="button ghost inline-layout-cancel"
+            disabled={locked||viewSaving} onClick={finishInlineLayout}>Hủy thay đổi</button>
+        </div>
+      </div>}
       {adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
         className="admin-list-controls" id={denseChrome?'admin-list-controls':undefined}
         hidden={denseChrome&&!previewOptionsOpen}
@@ -1068,9 +1141,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <div className="admin-reference-preset-actions">
               <button type="button" className="button primary"
                 disabled={!canEditListSettings||personalViewActive}
-                onClick={()=>{void applyViewerLayout(createReferenceListLayout).then(saved=>{
-                  if(saved){setReferencePresetConfirm(false);setShowAllSourceColumns(false);}
-                });}}>Xác nhận áp dụng mẫu</button>
+                onClick={()=>{stageInlineLayout(createReferenceListLayout);
+                  setReferencePresetConfirm(false);setShowAllSourceColumns(false);
+                }}>Áp dụng vào nháp</button>
               <button type="button" className="button ghost"
                 onClick={()=>setReferencePresetConfirm(false)}>Hủy</button>
             </div>
@@ -1110,7 +1183,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <input type="checkbox" checked={activeLayout.summaryCards?.[key]!==false}
               aria-label={'Hiện C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}
               onChange={event=>{const checked=event.currentTarget.checked;
-                void applyViewerLayout(base=>setInlineSummaryVisibility(base,key,checked),undefined,{},'cards');}}/>
+                stageInlineLayout(base=>setInlineSummaryVisibility(base,key,checked));}}/>
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset></details>
@@ -1152,7 +1225,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                     23+(mode==='readonly'?8:16))+' px':'—'
               }</output>
             </fieldset>)}
-            <button className="button" type="submit" disabled={viewSaving}>Lưu 5 độ rộng dùng chung</button>
+            <button className="button" type="submit" disabled={viewSaving}>Áp dụng 5 độ rộng vào nháp</button>
             {l03WidthErrors.global&&<p role="alert">{l03WidthErrors.global}</p>}
             <small>Tổng = rail + 8px mỗi khoảng + 23px padding/viền. Khi mode khác nhau, cột vật lý chọn tổng lớn nhất.</small>
           </form>}
@@ -1166,7 +1239,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       {compactMenu}
       {!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
         className="button ghost group-label-shortcut"
-        disabled={!canViewerArrange}
+        disabled={!canViewerArrange||inlineMode}
         title={personalViewActive?'Đóng giao diện cá nhân để sửa tên cột dùng chung':!canViewerArrange?'Chờ bố cục dùng chung tải xong':'Đổi tiêu đề cột gộp, không đổi dữ liệu Excel'}
         onClick={openGroupLabelEditor}>
         Đổi tên cột gộp
@@ -1174,7 +1247,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
-        role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo đầu cột để đổi vị trí, kéo mép để đổi độ rộng · tự lưu dùng chung'}</span>}
+        role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo tiêu đề/đường phân cách để chỉnh bố cục · bấm Lưu bố cục để ghi dùng chung'}</span>}
       {inlineReady&&<div className="inline-g01-restore-columns">
         <details><summary>Thẻ ẩn ({SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).length})</summary>
           <div role="group" aria-label="Khôi phục thẻ C01 C02 C03">
@@ -1215,9 +1288,12 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           setLayoutError('');listTitleBaseline.current=null;}}
         onConfirm={()=>{const request=pendingViewLayout.current;
           if(request)void applyViewerLayout(()=>request.next,request.baseline,viewLayoutChoices,request.kind)
-            .then(saved=>{if(saved&&request.kind==='title'){
-              setListTitleDraft(null);listTitleBaseline.current=null;
-            }});
+            .then(saved=>{
+              if(saved&&inlineMode)finishInlineLayout();
+              else if(saved&&request.kind==='title'){
+                setListTitleDraft(null);listTitleBaseline.current=null;
+              }
+            });
         }}/>}
 
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
@@ -1345,9 +1421,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         // growth only upon an explicit drag, so a wide neighbor can shrink.
         if(customizing)setLayout(previous=>resizeProjectedWithAdjacent(previous,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
-        else if(canViewerArrange)void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
-          column.key,width,projectedExtras,compactOn,groupExtras));
-        else if(canViewerResize)void applyViewerLayout(base=>resizeProjectedWithAdjacent(base,keys,
+        else if(canViewerArrange||canViewerResize)stageInlineLayout(base=>resizeProjectedWithAdjacent(base,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
       }}/>}</ColumnHeader>)}</tr>{adminControls&&(customizing||permissionMode)&&<tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
@@ -1396,19 +1470,20 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                   verifiedAdmin:canEditListSettings,
                   layoutEditing:true,dataEditing:false,disabled:viewSaving,
                   widths:l03Widths,
-                  onWidthsCommit:next=>applyViewerLayout(base=>({...base,partyTrackWidths:next}))
+                  onWidthsCommit:next=>{stageInlineLayout(base=>({...base,partyTrackWidths:next}));return Promise.resolve(true);}
                 }:undefined}/>
           </td>;
         }
         if(column.origin==='custom'){
           const rowKey=customRowKey(item),value=column.values?.[rowKey]??'';
-          const updateCustom=(next:string)=>setLayout(previous=>({...previous,columns:previous.columns.map(c=>c.key!==column.key?c:{
-            ...c,values:{...(c.values??{}),[rowKey]:next}
-          })}));
-          const writable=customizing&&allowLayout&&!locked;
+          const updateCustom=(next:string)=>stageInlineLayout(previous=>({...previous,
+            columns:previous.columns.map(c=>c.key!==column.key?c:{
+              ...c,values:{...(c.values??{}),[rowKey]:next}
+            })}));
+          const writable=inlineMode&&canEditListSettings&&!locked;
           return <td key={column.key} data-col-key={column.key} className={writable?'editable-cell':undefined} onClick={activateEditableCell}
             data-edit-hint={writable?'Bấm để sửa':undefined}
-            style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{customizing&&allowLayout&&!locked
+            style={cellHighlightStyle(value,column.key,activeLayout.cellHighlights)}>{writable
             ?column.kind==='select'
               ?<CellPicker label={`${displayId(item)}: ${column.label}`} value={value}
                 options={column.options??[]} onChange={updateCustom}/>
@@ -1481,7 +1556,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         data-visible-count={rows.length} data-total-count={items.length}>
         <span>Đang hiển thị <strong>{rows.length}</strong> / {items.length} nội dung</span>
       </footer></>}
-    </div>
+    </div>}
     {bulkPasteOpen&&denseChrome&&onBulkApply&&<BulkPasteModal rows={rows} live={sourceKind==='firebase'}
       canEdit={(id,field)=>!locked&&!!canEditCell?.(id,field)}
       onApply={onBulkApply} onClose={()=>setBulkPasteOpen(false)}/>}
