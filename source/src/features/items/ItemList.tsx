@@ -769,6 +769,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
     setTitleEditorOpen(false);setListTitleDraft(null);listTitleBaseline.current=null;
     setViewLayoutConflicts([]);setViewLayoutChoices({});
+    setCompactMenuOpen(false);setCompactMenuPlacement(null);
+    setL03WidthEditorOpen(false);setL03WidthErrors({});
+    setReferencePresetConfirm(false);
     pendingViewLayout.current=null;
   };
   const saveInlineLayout=async()=>{

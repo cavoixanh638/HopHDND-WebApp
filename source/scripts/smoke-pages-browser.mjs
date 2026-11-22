@@ -4279,8 +4279,11 @@ try{
   // R12: an admin must see a DIRECT header-rename entry in the normal
   // list, not only a collapsed subpanel several screens into customization.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("!!document.querySelector('.inline-g01-mode-toggle:not(:disabled)')",
+    'R12 List layout editor entry missing');
+  await evaluate("document.querySelector('.inline-g01-mode-toggle').click()");
   await eventually("!!document.querySelector('.group-label-shortcut:not(:disabled)')",
-    'R12 admin list header rename shortcut missing');
+    'R12 layout-editor header rename shortcut missing');
   await evaluate("document.querySelector('.group-label-shortcut').click()");
   // A native dialog mounts its form before React's showModal() effect runs.
   // Focus must wait for the dialog's real open state; closed dialogs are inert.
@@ -4296,7 +4299,12 @@ try{
     'R12 header rename input lost controlled state');
   await evaluate("document.querySelector('.group-label-quick-editor button[type=submit]').click()");
   await eventually("document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim()==='Tiến độ công việc 3 bước'",
-    'R12 shared CAS rename did not update live table title');
+    'R12 group title draft did not update live preview');
+  await eventually("!!document.querySelector('.inline-layout-save:not(:disabled)')",
+    'R12 group title draft did not request explicit save');
+  await evaluate("document.querySelector('.inline-layout-save').click()");
+  await eventually("!document.querySelector('.inline-layout-savebar')",
+    'R12 grouped title Save did not exit layout-edit mode');
   const quickRename=await evaluate(`({
     heading:document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim(),
     modalOpen:!!document.querySelector('.group-label-quick-editor'),
@@ -4522,16 +4530,16 @@ try{
     {width:1600,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&r05=1'});
-  await eventually("!!document.querySelector('.app-shell.list-fit-page .admin-preview-options-toggle')",
-    'Dense admin preview options missing');
+  await eventually("!!document.querySelector('.app-shell.list-fit-page .inline-g01-mode-toggle:not(:disabled)')",
+    'Dense admin layout edit button missing');
   const adminClosedScroll=await evaluate(`(()=>{
     const shell=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
     return {overflow:getComputedStyle(shell).overflowY,max:doc.scrollHeight-doc.clientHeight,
-      hidden:!!document.querySelector('.admin-list-controls[hidden]')};
+      hidden:!document.querySelector('.admin-list-controls')};
   })()`);
   if(!adminClosedScroll.hidden||adminClosedScroll.max>3||adminClosedScroll.overflow!=='hidden')
     throw Error('ADMIN_OPTIONS_COLLAPSED_ONE_SCREEN_FAIL '+JSON.stringify(adminClosedScroll));
-  await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
+  await evaluate("document.querySelector('.inline-g01-mode-toggle').click()");
   await eventually("!!document.querySelector('.admin-list-controls:not([hidden])')",
     'Dense admin options did not expand');
   await evaluate("document.querySelector('.admin-control-section-l03 > summary')?.click()");
@@ -4581,9 +4589,9 @@ try{
     throw Error('ADMIN_PAGE_AND_INNER_TABLE_SCROLL_NOT_INDEPENDENT '+JSON.stringify(pageAndTable));
   console.log('ADMIN_OPTIONS_DOCUMENT_AND_TABLE_SCROLL_PASS',JSON.stringify({
     collapsed:adminClosedScroll,expanded:adminOpenScroll,l03Reach,pageAndTable}));
-  await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
-  await eventually("!!document.querySelector('.admin-list-controls[hidden]')",
-    'Dense admin options did not collapse');
+  await evaluate("document.querySelector('.inline-layout-cancel').click()");
+  await eventually("!document.querySelector('.admin-list-controls')",
+    'Dense layout options did not close on Cancel');
   const restored=await evaluate(`(()=>{
     const root=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
     return {overflow:getComputedStyle(root).overflowY,
