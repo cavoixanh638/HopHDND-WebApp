@@ -30,6 +30,16 @@ describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
     expect(helper).toContain('approvedSha:legacyApprovedSha');
     expect(workflow).toContain('if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]');
   });
+  it('allows only the reviewed, exact-SHA one-time UI migration; preserves guarded future edits',()=>{
+    const policy=readFileSync(new URL('../scripts/pages-release-policy.mjs',import.meta.url),'utf8');
+    const workflow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');
+    expect(policy).toContain('isVettedSingleTableUi(commit,baseline)');
+    expect(policy).toContain('isScopedAutopublishMigration(commit,baseline)');
+    expect(policy).toContain('new Set(files).size===set.size');
+    expect(policy).toContain("commit.sha===reviewedUiTransition.uiCommit");
+    expect(policy).toContain("commit.parent===reviewedUiTransition.uiCommit");
+    expect(workflow).toContain('node scripts/smoke-pages-browser.mjs');
+  });
   it('keeps a separate Spark cutover gate and exact SHA approval for sensitive changes',()=>{
     const flow=readFileSync(new URL('../../.github/workflows/publish-pages.yml',import.meta.url),'utf8');
     expect(flow).toContain("vars.HOPHDND_SPARK_PRODUCTION_CONFIRMED == 'true'");

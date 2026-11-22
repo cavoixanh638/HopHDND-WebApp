@@ -93,9 +93,10 @@ jobs:
         run: npm test
       # Auto UI releases must pass the same real Chrome dropdown interaction
       # checks as PR QA, not just a TypeScript/CSS build.
-      - name: Real Chromium dropdown placement and fixed-search scroll regression (synthetic)
+      - name: Real Chromium UI smoke, layout draft Save/Cancel and dropdown QA (synthetic)
         run: |
           npm run build:compact:qa
+          node scripts/smoke-pages-browser.mjs
           node scripts/pr95-v5-l1-dropdown-browser.mjs
       - name: Firebase Spark Auth/RTDB Emulator tests (no Cloud Functions)
         run: npm run test:spark
