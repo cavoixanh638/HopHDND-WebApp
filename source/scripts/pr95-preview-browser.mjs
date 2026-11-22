@@ -64,7 +64,7 @@ const setColumnGrants=async({note,build}={})=>{
   await waitFor('document.querySelector(".column-manager-advanced-toggle")','real column manager');
   await interact('const toggle=document.querySelector(".column-manager-advanced-toggle");'+
     'if(toggle.getAttribute("aria-expanded")!=="true")toggle.click()');
-  await waitFor('document.querySelector(".column-manager-grid input[aria-label*=\"Ghi chú\"]")',
+  await waitFor('document.querySelector(".column-manager-grid input[aria-label*=Ghi]")',
     'column rights checkboxes available');
   await interact('const fields=[...document.querySelectorAll(".column-manager-right input[type=checkbox]")];'+
     'const choose=(label,desired)=>{if(desired===undefined)return;'+
