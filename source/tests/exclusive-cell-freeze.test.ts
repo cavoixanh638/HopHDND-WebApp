@@ -230,7 +230,10 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     await editor.cancel('r1','note');
     await set(ref(admin() as never,'hdnd/permissions/columns/note'),false);
     await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
-    expect((await get(ref(guest('a') as never,'hdnd/editLocks/r1/note'))).val()).toBe(null);
+    // Cancel leaves a non-active lease tombstone (expiresAt=0); do not
+    // mistake its existence for an active/renewable lock after column revoke.
+    const lock=(await get(ref(guest('a') as never,'hdnd/editLocks/r1/note'))).val();
+    expect(Number(lock?.expiresAt??0)).toBeLessThanOrEqual(Date.now());
     // An archived cell-level allow is also powerless against a denied column.
     await set(ref(admin() as never,'hdnd/permissions/cells/r1/note'),true);
     await expect(editor.acquire('r1','note','multiline')).rejects.toThrow();
