@@ -16,6 +16,10 @@
 
 Tài liệu trong `source/docs/` (trên máy tính: `docs/`). **Các trang 0.5.x–0.7.0 mô tả mốc quá khứ có thể còn ví dụ A–P/16 cột; mọi việc đang sửa phải ưu tiên Excel A–O mới và các đoạn 19/10/2026 trong tài liệu nguồn chuẩn. Lịch sử chat đã archived chỉ truy xuất được một phần, không được coi là đã đối soát 100%.** [README mã nguồn](../README.md) là điểm bắt đầu; **trạng thái thực tế** xem [CURRENT_STATE](CURRENT_STATE.md), không suy từ kế hoạch hoặc kết quả test local rằng production đã hoạt động.
 
+## Chức năng cũ không dùng
+
+- [Phân quyền theo dòng/ô (ngừng từ 22/11/2026)](chuc-nang-cu-khong-dung/README.md): lưu nguyên mã và kiểm thử lịch sử; phiên bản hiện hành chỉ phân quyền theo cột.
+
 ## Nguồn chuẩn — mỗi loại thông tin một nơi
 
 | Cần biết | Nguồn chuẩn |
