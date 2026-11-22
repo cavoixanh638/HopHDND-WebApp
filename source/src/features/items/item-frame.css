@@ -1939,3 +1939,27 @@
     max-height:none;
   }
 }
+
+/* G00 2026-11-22: direct table editing is primary; full field/permission
+   roster is a reversible advanced disclosure. Save bar stays visible to avoid
+   silently losing draft layout, catalog or permissions changes. */
+.app-shell.settings-page .column-manager-heading{
+  display:flex;align-items:center;gap:7px 13px;flex-wrap:wrap;
+}
+.column-manager-advanced-toggle{
+  min-height:28px;padding:5px 10px;border:1px solid #b7d0c2;
+  background:#f2f8f4;color:#275e45;border-radius:7px;
+  font:inherit;font-weight:650;font-size:12px;cursor:pointer;
+}
+.column-manager-advanced-toggle:hover,
+.column-manager-advanced-toggle[aria-expanded="true"]{
+  background:#e4f2e9;border-color:#8bb8a2;
+}
+.column-manager-advanced-toggle:focus-visible{
+  outline:2px solid #286b9a;outline-offset:2px;
+}
+.column-manager-advanced[hidden]{display:none!important;}
+.column-manager-advanced{display:grid;gap:12px;min-width:0;}
+@media (prefers-reduced-motion:reduce){
+  .column-manager-advanced-toggle{transition:none;}
+}

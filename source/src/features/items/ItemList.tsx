@@ -108,6 +108,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [previewOptionsOpen,setPreviewOptionsOpen]=useState(false);
   const [inlineMode,setInlineMode]=useState(false);
+  // G00: a header command in Customize mode opens the matching advanced field.
+  const [requestedColumnFocus,setRequestedColumnFocus]=useState<string|null>(null);
   const [searchScopeOpen,setSearchScopeOpen]=useState(false);
   const titleInlineInput=useRef<HTMLInputElement>(null);
   const titleInlineTrigger=useRef<HTMLButtonElement>(null);
@@ -661,6 +663,12 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // use the Firebase CAS writer; demo edits remain in this component's RAM.
   const canViewerResize=canEditListSettings&&!customizing&&!showAllSourceColumns;
   const inlineReady=inlineMode&&canEditListSettings;
+  // The old implementation hid header eye/rename controls in the very
+  // Customize screen where the owner expected to use them. This path writes
+  // only to the existing recoverable DRAFT, never directly to Firebase.
+  const canDraftEditHeaders=customizing&&adminControls&&!permissionMode&&!locked&&allowLayout;
+  const headerInlineEditing=inlineReady||canDraftEditHeaders;
+  const headerQuickVisibility=(canEditListSettings||canDraftEditHeaders)&&!showAllSourceColumns;
   useEffect(()=>{
     if(titleEditorOpen)titleInlineInput.current?.focus();
     else if(titleRestoreFocus.current){
@@ -723,6 +731,37 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const hiddenQuickColumns=activeLayout.columns.filter(column=>
     !column.removed&&!column.visible&&column.key!=='stt');
+  // Keep the two persistence paths distinct: draft in Customize, CAS in View.
+  const changeHeaderColumnVisibility=(key:string,visible:boolean)=>{
+    if(canDraftEditHeaders){
+      if(key==='stt'||(!visible&&(!canHideInlineColumn(activeLayout,key)||displayedColumns.length<=1)))return;
+      setLayout(previous=>setInlineColumnVisibility(previous,key,visible));
+      return;
+    }
+    changeInlineColumnVisibility(key,visible);
+  };
+  const showAllHeaderColumns=()=>{
+    if(canDraftEditHeaders){
+      setLayout(previous=>({...previous,columns:previous.columns.map(column=>
+        column.removed||column.key==='stt'?column:{...column,visible:true})}));
+      return;
+    }
+    showAllInlineColumns();
+  };
+  const changeHeaderColumnName=(key:string,label:string):Promise<boolean>=>{
+    if(canDraftEditHeaders){
+      try{
+        const next=renameInlineColumn(activeLayout,key,label);
+        setLayout(next);
+        setLayoutError('');
+        return Promise.resolve(true);
+      }catch(error){
+        setLayoutError(error instanceof Error?error.message:'Tên cột không hợp lệ.');
+        return Promise.resolve(false);
+      }
+    }
+    return changeInlineColumnName(key,label);
+  };
   const changeInlineColumnName=(key:string,label:string):Promise<boolean>=>{
     if(!inlineReady)return Promise.resolve(false);
     return applyViewerLayout(base=>renameInlineColumn(base,key,label));
@@ -936,7 +975,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   </div>
   <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
 </div>}
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel focusColumnKey={focusColumnKey} catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
+{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel focusColumnKey={requestedColumnFocus??focusColumnKey} catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
     <div className="item-data-region"
       data-preview-options={denseChrome?(previewOptionsOpen?'open':'closed'):undefined}
@@ -1268,12 +1307,18 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
-   inlineEditing={inlineReady} quickVisibility={canEditListSettings&&!showAllSourceColumns}
+   inlineEditing={headerInlineEditing} quickVisibility={headerQuickVisibility}
    saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1}
    hiddenColumns={hiddenQuickColumns.map(({key,label})=>({key,label}))}
-   onShow={key=>changeInlineColumnVisibility(key,true)} onShowAll={showAllInlineColumns}
-   onRename={changeInlineColumnName} onHide={key=>changeInlineColumnVisibility(key,false)}
-   onOpenColumnSettings={inlineReady?onOpenCatalog:undefined}
+   onShow={key=>changeHeaderColumnVisibility(key,true)} onShowAll={showAllHeaderColumns}
+   onRename={changeHeaderColumnName} onHide={key=>changeHeaderColumnVisibility(key,false)}
+   onOpenColumnSettings={canDraftEditHeaders
+     ?key=>{
+       setRequestedColumnFocus(key);
+       document.querySelector<HTMLElement>('.settings-saving .column-manager')
+         ?.scrollIntoView({block:'start'});
+     }
+     :inlineReady?onOpenCatalog:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
   onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
