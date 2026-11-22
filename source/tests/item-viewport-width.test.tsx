@@ -138,7 +138,7 @@ describe('drag-only widths and compact column manager',()=>{
     });
     expect(button(tree,'Lưu thay đổi').props.disabled).toBe(false);
   });
-  it('keeps row/cell overrides when changing whole-column rights, unless explicitly cleared',async()=>{
+  it('saves a column grant without offering the archived row/cell override editor',async()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
     const permissions={columns:{progressParty:false},rows:{legacy:true},cells:{legacy:{content:false}}};
     const onSavePermissions=vi.fn().mockResolvedValue(undefined);
@@ -148,29 +148,14 @@ describe('drag-only widths and compact column manager',()=>{
     const grant=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
     expect(grant).toBeDefined();grant.props.onChange({currentTarget:{checked:true}});
     hook.begin();tree=ItemColumnPanel(props);
-    let save=button(tree,'Lưu thay đổi');expect(save.props.disabled).toBe(false);
+    expect(all(tree).find(n=>n.type==='label'&&n.props.className==='column-rights-warning')).toBeUndefined();
+    const save=button(tree,'Lưu thay đổi');expect(save.props.disabled).toBe(false);
     save.props.onClick();
     await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledTimes(1));
     expect(onSavePermissions.mock.calls[0][0]).toEqual({
       columns:{progressParty:true},rows:{legacy:true},cells:{legacy:{content:false}}
     });
     expect(onSavePermissions.mock.calls[0][1]).toEqual(permissions);
-    // This focused unit fixture replaces useRef on every synthetic render.
-    // Start a fresh component to exercise the separate, explicit wipe path.
-    hook.reset();onSavePermissions.mockClear();
-    hook.begin();tree=ItemColumnPanel(props);
-    const again=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
-    again.props.onChange({currentTarget:{checked:true}});
-    hook.begin();tree=ItemColumnPanel(props);
-    const legacy=all(tree).find(n=>n.type==='label'&&n.props.className==='column-rights-warning');
-    expect(legacy).toBeDefined();
-    all(legacy).find(n=>n.type==='input').props.onChange({currentTarget:{checked:true}});
-    hook.begin();tree=ItemColumnPanel(props);
-    save=button(tree,'Lưu thay đổi');save.props.onClick();
-    await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledTimes(1));
-    expect(onSavePermissions.mock.calls[0][0]).toEqual({
-      columns:{progressParty:true},rows:{},cells:{}
-    });
   });
 
 });
