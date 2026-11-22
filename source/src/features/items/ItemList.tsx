@@ -36,7 +36,6 @@ import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {activateEditableCell} from './activate-editable-cell';
 import { reorderByKey } from '../../domain/reorder-columns';
 import type {CellPermissions} from '../../data/firebase-repository';
-import {InlinePermissionsTable} from './InlinePermissionsTable';
 import './item-frame.css';
 import './admin-list-controls.css';
 import './real-list-visual-parity.css';
@@ -71,7 +70,7 @@ import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placem
 import {canHideInlineColumn,renameInlineColumn,setInlineColumnVisibility,setInlineSummaryVisibility} from './inline-g01-layout';
 import './inline-g01-list.css';
 
-export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onReloadPermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,permissionModeOnly=false,externalSectionTabs=false,onOpenCatalog,focusColumnKey,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,directStatusCasActive=false,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; savingRows?:ReadonlySet<string>; busy: boolean; onUpdate: (id: string, changes: Changes) => boolean|void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onReloadPermissions?:()=>Promise<CellPermissions>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;permissionModeOnly?:boolean;externalSectionTabs?:boolean;onOpenCatalog?:(key:string)=>void;focusColumnKey?:string|null;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;directStatusCasActive?:boolean;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
+export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,onOpenCatalog,focusColumnKey,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,directStatusCasActive=false,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; savingRows?:ReadonlySet<string>; busy: boolean; onUpdate: (id: string, changes: Changes) => boolean|void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;onOpenCatalog?:(key:string)=>void;focusColumnKey?:string|null;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;directStatusCasActive?:boolean;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
   useEffect(()=>mountSharedEditTooltip(),[]);
   // Dense visual chrome is independent of RAM-only preview tools.
   const denseChrome=compactPreview||compactChrome;
@@ -276,21 +275,17 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [viewLayoutConflicts,setViewLayoutConflicts]=useState<LayoutFieldConflict[]>([]);
   const [viewLayoutChoices,setViewLayoutChoices]=useState<LayoutConflictChoices>({});
   const pendingViewLayout=useRef<{baseline:ItemLayout;next:ItemLayout;kind:'title'|'cards'|'layout'}|null>(null);
-  const [permissionMode,setPermissionMode] = useState(permissionModeOnly);
   useEffect(()=>{
-    if(!compactOn||customizing||permissionMode){
+    if(!compactOn||customizing){
       setCompactMenuOpen(false);
       setCompactMenuPlacement(null);
     }
-  },[compactOn,customizing,permissionMode]);
-  const [permissionSwitchRequest,setPermissionSwitchRequest] = useState(0);
-  const [permissionDirty,setPermissionDirty] = useState(false);
+  },[compactOn,customizing]);
   const [columnExtrasDirty,setColumnExtrasDirty]=useState(false);
-  const exitAfterPermissions=useRef(false);
   const handledExitRequest=useRef(exitRequest);
   useEffect(()=>{
-    onDirtyChange?.((customizing&&(dirty||permissionDirty||columnExtrasDirty))||inlineDirty);
-  },[customizing,dirty,permissionDirty,columnExtrasDirty,inlineDirty,onDirtyChange]);
+    onDirtyChange?.((customizing&&(dirty||columnExtrasDirty))||inlineDirty);
+  },[customizing,dirty,columnExtrasDirty,inlineDirty,onDirtyChange]);
   useEffect(()=>{
     // Synthetic demo/Chromium QA intentionally navigates between fixtures:
     // no persisted business layout exists there and an unload dialog would
@@ -354,18 +349,17 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     aria-label={'Tiến độ xây dựng NQ: Không phải trình. '+buildLockReason(item)}>
     Không phải trình
   </span>;
-  const canEdit = canEditDraft && !permissionMode && !inlineMode &&
+  const canEdit = canEditDraft && !inlineMode &&
     (customizing || anonymousViewer || !!canEditCell);
   useEffect(() => { if (!customizing) { setContentItem(null); } }, [customizing]);
-  const latestExit=useRef({dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode}); latestExit.current={dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked,permissionMode};
+  const latestExit=useRef({dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked}); latestExit.current={dirty:dirty||columnExtrasDirty,dataDirty:Object.keys(drafts).length>0,onClose,customizing,locked};
   const exit = () => {
     if(locked||dataSaving)return;
-    if(permissionMode){exitAfterPermissions.current=true;setPermissionSwitchRequest(current=>current+1);return;}
     if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);
     else onClose();
   };
   useEffect(()=>{if(exitRequest===handledExitRequest.current)return;handledExitRequest.current=exitRequest;exit();},[exitRequest]);
-  useEffect(()=>{const escape=(event:KeyboardEvent)=>{const current=latestExit.current;if(current.customizing&&!current.locked&&event.key==='Escape'&&!event.defaultPrevented&&!document.querySelector('dialog[open]')){event.preventDefault();if(current.permissionMode){setLayoutError('Hãy trở về bảng Danh sách từ chế độ phân quyền trước khi thoát.');}else if(current.dirty||current.dataDirty)setConfirmExit(true);else current.onClose();}};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[]);
+  useEffect(()=>{const escape=(event:KeyboardEvent)=>{const current=latestExit.current;if(current.customizing&&!current.locked&&event.key==='Escape'&&!event.defaultPrevented&&!document.querySelector('dialog[open]')){event.preventDefault();if(current.dirty||current.dataDirty)setConfirmExit(true);else current.onClose();}};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[]);
   const resolveAndSaveLayout=async()=>{
     if(locked||savingRef.current||!dirty||!onPersistLayout||layoutConflicts.some(c=>!conflictChoices[c.id]))return;
     savingRef.current=true;setSaving(true);setLayoutError('');setSaveFeedback('Đang đối chiếu bản Firebase mới nhất…');
@@ -437,7 +431,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     });
   },[items,columnFilters,activeLayout.columns,compactOn,compactDisplay,showAllSourceColumns,filterIndex]);
 
-  const toolbarBase=useMemo(()=>customizing||permissionMode?columnFiltered:
+  const toolbarBase=useMemo(()=>customizing?columnFiltered:
     filterToolbarRows(columnFiltered,toolbar,(item,key)=>{
       if(key==='*')return activeLayout.columns.filter(col=>col.origin==='custom')
         .map(col=>col.values?.[customRowKey(item)]??'').join(' ')+' '+
@@ -446,11 +440,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
     },denseChrome?selectedSearchColumns:undefined),
-    [columnFiltered,toolbar,customizing,permissionMode,activeLayout.columns,codeCounts,
+    [columnFiltered,toolbar,customizing,activeLayout.columns,codeCounts,
       denseChrome,selectedSearchColumns]);
-  const filtered=useMemo(()=>customizing||permissionMode?columnFiltered:
+  const filtered=useMemo(()=>customizing?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
-    [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing,permissionMode]);
+    [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing]);
   const summaryStagesForFilters=useMemo(()=>
     summarySelection?summarizeListItems(toolbarBase).stages:[],
     [summarySelection,toolbarBase]);
@@ -472,16 +466,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     setToolbar(newToolbarState());setColumnFilters({});
     setSummarySelection(null);setKindSelection(null);
   };
-  const latestListFilterState=useRef({anyListFilter,customizing,permissionMode,
+  const latestListFilterState=useRef({anyListFilter,customizing,
     editorOpen:!!contentItem});
-  latestListFilterState.current={anyListFilter,customizing,permissionMode,
+  latestListFilterState.current={anyListFilter,customizing,
     editorOpen:!!contentItem};
   useEffect(()=>{
     const handler=(event:KeyboardEvent)=>{
       const state=latestListFilterState.current;
       if(!shouldClearListOnEscape(event,{
         active:state.anyListFilter,customizing:state.customizing,
-        permissionMode:state.permissionMode,editorOpen:state.editorOpen,popupOpen:false
+        permissionMode:false,editorOpen:state.editorOpen,popupOpen:false
       }))return;
       event.preventDefault();
       setToolbar(newToolbarState());setColumnFilters({});
@@ -527,7 +521,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // ACTUAL document top and the footer/floor instead of guessing header height.
   // Only max-height changes: a short/filtered table keeps its natural height.
   useEffect(()=>{
-    if(!anonymousViewer||!denseChrome||customizing||permissionMode||
+    if(!anonymousViewer||!denseChrome||customizing||
        typeof document==='undefined'||typeof window==='undefined')return;
     const table=document.querySelector<HTMLElement>(
       '.app-shell.guest-view.list-fit-page .item-data-region .item-table-scroll');
@@ -568,7 +562,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       window.visualViewport?.removeEventListener('resize',schedule);
       table.style.removeProperty('--hdnd-guest-table-max-height');
     };
-  },[anonymousViewer,denseChrome,customizing,permissionMode,rows.length,
+  },[anonymousViewer,denseChrome,customizing,rows.length,
     otherFiltersOpen,activeConditions.length]);
 
   // UI preview-only: fit the internal table viewport to the remaining screen
@@ -610,7 +604,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       window.visualViewport?.removeEventListener('resize',schedule);
       table.style.removeProperty('--hdnd-preview-table-fill-height');
     };
-  },[customizing,permissionMode,otherFiltersOpen,inlineMode,activeConditions.length]);
+  },[customizing,otherFiltersOpen,inlineMode,activeConditions.length]);
   // A single physical <col> per group: all visible readonly rows use the 2-track
   // width, but one editable party-level row requires the larger mode width.
   // Status editability alone must NOT switch a row to the three-track layout.
@@ -622,7 +616,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // its 3-track editable width while a layout draft is open; otherwise the
   // first border drag shrinks L03 by ~73px and redistributes the pixels to
   // unrelated columns, breaking the pair-first / last-fallback resize math.
-  const partyLevelPotentiallyEditable=canEditDraft&&!permissionMode&&
+  const partyLevelPotentiallyEditable=canEditDraft&&
     (customizing||anonymousViewer||!!canEditCell);
   const hasEditablePartyLevel=!!l03Pair&&l03Pair.memberFields.includes('partyLevel')&&
     rows.some(item=>partyLevelPotentiallyEditable&&!locked&&
@@ -680,10 +674,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const isRamAdminList=effectiveSourceKind==='demo';
   // Display settings are available even when the admin is viewing all source
   // columns. Column drag/resize remains restricted by canViewerArrange.
-  const canEditListSettings=adminControls&&!customizing&&!permissionMode&&!locked&&
+  const canEditListSettings=adminControls&&!customizing&&!locked&&
     (!!onPersistViewerLayout||isRamAdminList);
   const canViewerArrange=adminControls&&!customizing&&!anonymousViewer&&!!onPersistViewerLayout&&
-    !personalViewActive&&!showAllSourceColumns&&!locked&&!permissionMode;
+    !personalViewActive&&!showAllSourceColumns&&!locked;
   // A visual column drag is not a shared-layout write. Only verified admins
   // use the Firebase CAS writer; demo edits remain in this component's RAM.
   const canViewerResize=canEditListSettings&&!customizing&&!showAllSourceColumns;
@@ -691,7 +685,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // The old implementation hid header eye/rename controls in the very
   // Customize screen where the owner expected to use them. This path writes
   // only to the existing recoverable DRAFT, never directly to Firebase.
-  const canDraftEditHeaders=customizing&&adminControls&&!permissionMode&&!locked&&allowLayout;
+  const canDraftEditHeaders=customizing&&adminControls&&!locked&&allowLayout;
   const headerInlineEditing=inlineReady||canDraftEditHeaders;
   const headerQuickVisibility=(canEditListSettings||canDraftEditHeaders)&&!showAllSourceColumns;
   useEffect(()=>{
@@ -701,11 +695,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     }
   },[titleEditorOpen]);
   useEffect(()=>{
-    if(!adminControls||customizing||permissionMode){
+    if(!adminControls||customizing){
       setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
       setTitleEditorOpen(false);setSearchScopeOpen(false);
     }
-  },[adminControls,customizing,permissionMode]);
+  },[adminControls,customizing]);
   const applyViewerLayout=async(transform:(base:ItemLayout)=>ItemLayout,
     baselineOverride?:ItemLayout,choices:LayoutConflictChoices={},
     kind:'title'|'cards'|'layout'='layout'):Promise<boolean>=>{
@@ -750,7 +744,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // Opening/dragging/renaming a column stages a recoverable visual draft;
   // never write profile/Firebase until the explicit Save layout button.
   const stageInlineLayout=(transform?:(base:ItemLayout)=>ItemLayout)=>{
-    if(!canEditListSettings||permissionMode||customizing)return;
+    if(!canEditListSettings||customizing)return;
     try{
       if(inlineMode&&inlineDraft){
         if(transform)setInlineDraft(previous=>previous?validateItemLayout(transform(previous)):previous);
@@ -978,7 +972,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
     p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
-  const compactMenu=adminControls&&compactOn&&!permissionMode&&!customizing&&(shareCompact||allowPersonalCompact)&&
+  const compactMenu=adminControls&&compactOn&&!customizing&&(shareCompact||allowPersonalCompact)&&
     (<>
       <details className="compact-columns-menu" ref={compactDetailsRef}
         onToggle={event=>{
@@ -1030,7 +1024,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         <button className="button ghost" onClick={exit}>Về danh sách</button>
       </div>
     </div>}
-    {customizing&&adminControls&&!permissionMode&&<>
+    {customizing&&adminControls&&<>
     {layoutError&&!widthError&&<div className="layout-save-alert" role="alert"><strong>Chưa lưu được.</strong><span>{layoutError}</span></div>}
     {saveFeedback&&<p className="notice layout-save-feedback" role="status">{saveFeedback}</p>}
     {customizing&&layoutConflicts.length>0&&<LayoutConflictResolver
@@ -1039,24 +1033,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       onChoose={(field:string,choice:LayoutConflictChoice)=>setConflictChoices(current=>({...current,[field]:choice}))}
       onConfirm={()=>void resolveAndSaveLayout()}
       onCancel={()=>{setLayoutConflicts([]);setConflictChoices({});}}/>}
-    {checkpointMessage&&<p className="muted" role="status">{checkpointMessage}</p>}{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}{!externalSectionTabs&&<div className="customize-mode-toolbar" role="group" aria-label="Chọn nội dung tùy chỉnh">
-  <div className="customize-mode-tabs">
-    <button type="button" className={permissionMode?'mode-tab':'mode-tab active'} aria-pressed={!permissionMode} disabled={locked} onClick={()=>{
-      if(permissionMode){setPermissionSwitchRequest(current=>current+1);return;}
-      setPermissionMode(false);setLayoutError('');
-    }}>Hiển thị bảng</button>
-    {allowLayout&&permissions&&onSavePermissions&&<button type="button" className={permissionMode?'mode-tab active':'mode-tab'} aria-pressed={permissionMode} disabled={locked} onClick={()=>{setPermissionMode(true);setLayoutError('');}}>Quyền chỉnh sửa</button>}
-  </div>
-  <span className="muted">{permissionMode?'Cấp quyền sửa bằng thao tác trực tiếp trên bảng · Chưa lưu sẽ không có hiệu lực':'Hiện/ẩn, thay đổi vị trí, độ rộng cột và sửa thử nội dung trên bảng'}</span>
-</div>}
-{!permissionMode&&<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel focusColumnKey={requestedColumnFocus??focusColumnKey} catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
+    {checkpointMessage&&<p className="muted" role="status">{checkpointMessage}</p>}{recoveryMessage&&<p className="notice">{recoveryMessage}</p>}{<fieldset className="settings-saving" disabled={locked||!allowLayout}><ItemColumnPanel focusColumnKey={requestedColumnFocus??focusColumnKey} catalog={catalog} items={items} permissions={permissions} layoutDirty={dirty} savedGroupLabels={saveBaseline.groupLabels} onSaveLayout={async()=>{try{await persistSavedLayout(validateItemLayout(layout));setLayoutError('');setSaveFeedback('');}catch(cause){handleLayoutFailure(cause);throw cause;}}} onSaveCatalog={onPersistCatalog} onSavePermissions={onSavePermissions} onDirtyChange={setColumnExtrasDirty} layout={layout} validationMessage={widthError?layoutError:undefined} onChange={value=>{setSaveFeedback('');setLayoutError('');setLayoutConflicts([]);setConflictChoices({});setLayout(value);}}/></fieldset>}
 </>}
-    {(!customizing||permissionMode)&&<div className="item-data-region"
+    {!customizing&&<div className="item-data-region"
       data-preview-options={denseChrome?(inlineMode?'open':'closed'):undefined}
       style={{width:visibleWidth,maxWidth:'100%'}}>
     {/* B00–B03 and C01–C03 summarize all source items, regardless of F
         filters. Keep toolbarBase for filtered table rows / visible count. */}
-    {!customizing&&!permissionMode&&<>
+    {!customizing&&<>
       <ItemSummaryCards items={items}
         selection={summarySelection} onSelect={selectSummary}
         kindSelection={kindSelection} onSelectKind={selectKind}
@@ -1227,7 +1211,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         onClick={openGroupLabelEditor}>
         Đổi tên cột gộp
       </button>}
-      {!customizing&&!permissionMode&&statusPaletteStore&&onStatusPaletteChange&&
+      {!customizing&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
         role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo tiêu đề/đường phân cách để chỉnh bố cục · bấm Lưu bố cục để ghi dùng chung'}</span>}
@@ -1282,7 +1266,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     {customizing&&!anonymousViewer&&saveDataHint&&pendingData&&<p className="notice">{saveDataHint}</p>}
      {/* ColumnFilterCell remains accessible in editing and popup.
          Ordinary List uses compact AND toolbar, without a tall header row. */}
-    {!customizing&&!permissionMode&&<>
+    {!customizing&&<>
       <div className="list-filter-toolbar" role="search" aria-label="Bộ lọc Danh sách">
         <div className="inline-g01-search-group"><input className={'list-filter-search'+(toolbar.search.trim()?' is-filter-active':'')} data-filter-active={toolbar.search.trim()?'true':'false'} type="search"
           aria-label="Tìm kiếm không dấu" placeholder="Tìm kiếm không dấu…"
@@ -1347,13 +1331,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       <ActiveListFilters conditions={activeConditions} visibleCount={filtered.length}
         sourceCount={items.length} onRemove={removeOneCondition} onClearAll={clearAllListFilters}/>
     </>}
-    {permissionMode&&permissions&&onSavePermissions?<InlinePermissionsTable showBackButton={!externalSectionTabs} items={rows} columns={columns} permissions={permissions} onSave={onSavePermissions} onReload={onReloadPermissions} onDirtyChange={setPermissionDirty} switchRequest={permissionSwitchRequest} onBack={()=>{
-      setPermissionMode(false);setPermissionDirty(false);setLayoutError("");
-      if(exitAfterPermissions.current){
-        exitAfterPermissions.current=false;
-        if(dirty||columnExtrasDirty||Object.keys(drafts).length)setConfirmExit(true);else onClose();
-      }
-    }} disabled={locked}/>:<>{canEditListSettings&&!showAllSourceColumns&&hiddenQuickColumns.length>0&&<div className="inline-excel-hidden-bar" role="group" aria-label="Hiện lại cột đã ẩn">
+    {<>{canEditListSettings&&!showAllSourceColumns&&hiddenQuickColumns.length>0&&<div className="inline-excel-hidden-bar" role="group" aria-label="Hiện lại cột đã ẩn">
        {hiddenQuickColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenQuickColumns.length})</summary>
          <div>{hiddenQuickColumns.map(column=><button key={column.key} type="button" disabled={viewSaving}
            onClick={()=>changeInlineColumnVisibility(column.key,true)}>+ Hiện {column.label}</button>)}
@@ -1362,7 +1340,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
      </div>}<div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
-  sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls&&!permissionMode?cycleSort:undefined}
+  sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls?cycleSort:undefined}
    inlineEditing={headerInlineEditing} quickVisibility={headerQuickVisibility}
    saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1}
    hiddenColumns={hiddenQuickColumns.map(({key,label})=>({key,label}))}
@@ -1403,7 +1381,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           column.key,width,projectedExtras,compactOn,groupExtras));
         else if(canViewerArrange||canViewerResize)stageInlineLayout(base=>resizeProjectedWithAdjacent(base,keys,
           column.key,width,projectedExtras,compactOn,groupExtras));
-      }}/>}</ColumnHeader>)}</tr>{adminControls&&(customizing||permissionMode)&&<tr className="item-column-filter-row">
+      }}/>}</ColumnHeader>)}</tr>{adminControls&&customizing&&<tr className="item-column-filter-row">
   {displayedColumns.map(column=>compactPairs.some(pair=>pair.anchor===column.key&&
       (pair.variant==='contentDetails'||pair.variant==='partyTogether'))
     ?<CompactGroupFilterCell key={column.key} items={statusFilterItems}
