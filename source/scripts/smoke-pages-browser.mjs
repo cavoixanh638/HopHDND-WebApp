@@ -4299,6 +4299,14 @@ try{
   // persistence callback, remount from the saved synthetic snapshot and reset.
   await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  // The full 15-field settings roster is intentionally collapsed by default.
+  // Test the new default, then expand through the actual Admin button before
+  // interacting with controls that are hidden (and cannot receive focus).
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false'",
+    'Lượt 018 advanced column manager should be collapsed by default');
+  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='true' && document.querySelector('.column-manager-advanced')?.hidden===false",
+    'Lượt 018 advanced column manager failed to expand');
   await eventually("document.querySelector('.group-label-editor summary')!==null",
     'Lượt 018 admin group-name panel missing');
   await evaluate("document.querySelector('.group-label-editor').open=true");
@@ -4329,6 +4337,11 @@ try{
   await eventually("[...document.querySelectorAll('.report-grid-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
     'Lượt 018 popup did not inherit saved shared group title');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false'",
+    'Lượt 018 reloaded advanced manager unexpectedly expanded');
+  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
+  await eventually("document.querySelector('.column-manager-advanced')?.hidden===false",
+    'Lượt 018 reloaded advanced manager did not open');
   await eventually("document.querySelector('.group-label-editor summary')!==null",
     'Lượt 018 admin group-title reload missing');
   await evaluate("document.querySelector('.group-label-editor').open=true");
