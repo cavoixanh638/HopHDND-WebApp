@@ -6,6 +6,9 @@ on:
     branches: ["main"]
 permissions:
   contents: read
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   simple-admin:
     runs-on: ubuntu-latest
@@ -15,28 +18,43 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select PR scope; fail closed for unknown changes
+        id: qa_scope
+        run: node ../.github/scripts/ci-pr-scope.mjs --suite simple-admin
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+        if: steps.qa_scope.outputs.run != 'false'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
+        if: steps.qa_scope.outputs.run != 'false'
       - run: npm ci
+        if: steps.qa_scope.outputs.run != 'false'
       - run: npm ci --prefix parent-commit-service --no-audit --no-fund
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Rebuild production-candidate Rules without drift
         run: |
           npm run rules:spark
           git diff --exit-code -- firebase/database.spark.rules.json
+        if: steps.qa_scope.outputs.run != 'false'
       - run: npm run typecheck
+        if: steps.qa_scope.outputs.run != 'false'
       - run: npx vitest run tests/simple-admin-data.test.ts
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Existing Auth + RTDB Emulator baseline
         run: npm run test:spark
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Build Spark SPA, never deploy
         run: npm run build:spark
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Confirm no paid service or privileged key is required
         run: |
           test ! -f .env.production
           node -e "const fs=require('fs');const s=fs.readFileSync('src/data/simple-admin-data.ts','utf8');if(/SERVICE_ACCOUNT_JSON|BACKUP_HMAC_SECRET|MAINTENANCE_ARCHIVE_BUCKET|Cloudflare|R2/.test(s.replace(/\/\*[\s\S]*?\*\//g,'')))throw Error('Unexpected hosted backup dependency')"
+        if: steps.qa_scope.outputs.run != 'false'

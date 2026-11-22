@@ -6,6 +6,9 @@ on:
     branches: ["main"]
 permissions:
   contents: read
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   guest-save:
     runs-on: ubuntu-latest
@@ -15,27 +18,39 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select PR scope; fail closed for unknown changes
+        id: qa_scope
+        run: node ../.github/scripts/ci-pr-scope.mjs --suite guest-save
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+        if: steps.qa_scope.outputs.run != 'false'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Locked dependencies
         run: |
           npm ci
           npm ci --prefix parent-commit-service --no-audit --no-fund
+        if: steps.qa_scope.outputs.run != 'false'
       - name: TypeScript
         run: npm run typecheck
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Guest edit validation, status, picker and save UX regressions
         run: npx vitest run tests/guest-edit-ux-contract.test.ts tests/real-demo-visual-parity.test.ts tests/pr95-v5-l4-build-effective.test.ts
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Emulator real anonymous grant, lock and status save
         run: npm run test:spark
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Public Spark build; no deployment or Firebase writes
         run: npm run build:spark
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Verify GitHub Pages UI auto and sensitive SHA release gates (NO DEPLOY)
         working-directory: .
         run: |
@@ -45,3 +60,4 @@ jobs:
           grep -Fq 'node source/scripts/pages-release-policy.mjs' .github/workflows/publish-pages.yml
           node --test source/scripts/pages-release-policy.check.mjs
           echo "GUEST_CELL_EDIT_FIX_PASS_NO_DEPLOY"
+        if: steps.qa_scope.outputs.run != 'false'

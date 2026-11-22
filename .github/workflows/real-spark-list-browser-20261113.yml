@@ -6,6 +6,9 @@ on:
     branches: ["main"]
 permissions:
   contents: read
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   chromium-fixture:
     runs-on: ubuntu-latest
@@ -15,15 +18,22 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select PR scope; fail closed for unknown changes
+        id: qa_scope
+        run: node ../.github/scripts/ci-pr-scope.mjs --suite list-browser
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Install package and Playwright driver
         run: |
           npm ci
           npm ci --prefix cell-edit-service --no-audit --no-fund
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Install PDF page inspection tools and verify Chromium
         run: |
           command -v google-chrome
@@ -34,14 +44,17 @@ jobs:
           command -v pdfinfo
           command -v pdftotext
           command -v pdftoppm
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Build real ItemList synthetic QA fixture
         run: npm run build:compact:qa
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Chromium paste, search-column selector, A4 multipage print and PDF
         env:
           CHROME_PATH: /usr/bin/google-chrome
         run: node scripts/pr95-clipboard-print-browser.mjs
+        if: steps.qa_scope.outputs.run != 'false'
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && steps.qa_scope.outputs.run != 'false' }}
         with:
           name: list-a4-print-qa
           path: source/qa-results/print-a4/

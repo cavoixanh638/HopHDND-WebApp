@@ -6,6 +6,9 @@ on:
     branches: ["integration/20261112-spark-ui-69ceb"]
 permissions:
   contents: read
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   source-and-spark:
     runs-on: ubuntu-latest
