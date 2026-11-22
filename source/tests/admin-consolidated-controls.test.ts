@@ -49,24 +49,18 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(css).toContain('.column-manager-rename-button:focus-visible');
     expect(css).toContain('@media (hover:none),(pointer:coarse)');
   });
-  it('changing a column permission retains all row/cell exceptions by default',()=>{
+  it('column updates preserve historical row/cell values without showing legacy controls',()=>{
     const saved:CellPermissions={columns:{content:false,room:true},
       rows:{'sheet:row:12':false},cells:{'sheet:row:12':{content:true}}};
-    const next=composeColumnRightsDraft(saved,{content:true,room:true},false);
+    const next=composeColumnRightsDraft(saved,{content:true,room:true});
     expect(next).toEqual({columns:{content:true,room:true},
       rows:{'sheet:row:12':false},cells:{'sheet:row:12':{content:true}}});
     next.cells!['sheet:row:12'].content=false;
     expect(saved.cells!['sheet:row:12'].content).toBe(true);
     expect(saved.columns.content).toBe(false);
+    expect(panel).not.toContain('clearExceptions');
+    expect(panel).not.toContain('column-rights-warning');
+    expect(panel).toContain('Cho phép sửa toàn bộ các ô thuộc cột này.');
   });
-  it('deletes exceptions only with explicit opt-in, not on ordinary save',()=>{
-    const saved:CellPermissions={columns:{content:false},
-      rows:{'sheet:row:15':true},cells:{'sheet:row:15':{content:false}}};
-    const changed=composeColumnRightsDraft(saved,{content:true},true);
-    expect(changed).toEqual({columns:{content:true},rows:{},cells:{}});
-    expect(saved.rows).toEqual({'sheet:row:15':true});
-    expect(panel).toContain('clearExceptions?{}:');
-    expect(panel).not.toContain('if(rightsDirty&&exceptions&&!clearExceptions)');
-    expect(panel).toContain('Mặc định giữ nguyên các quyền riêng');
-  });
+
 });
