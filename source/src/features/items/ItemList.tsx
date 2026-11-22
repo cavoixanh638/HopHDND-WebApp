@@ -293,11 +293,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     onDirtyChange?.((customizing&&(dirty||permissionDirty||columnExtrasDirty))||inlineDirty);
   },[customizing,dirty,permissionDirty,columnExtrasDirty,inlineDirty,onDirtyChange]);
   useEffect(()=>{
-    if(!inlineDirty)return;
+    // Synthetic demo/Chromium QA intentionally navigates between fixtures:
+    // no persisted business layout exists there and an unload dialog would
+    // deadlock CDP Page.navigate. Protect only real connected layouts.
+    if(!inlineDirty||effectiveSourceKind==='demo')return;
     const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
     window.addEventListener('beforeunload',warn);
     return()=>window.removeEventListener('beforeunload',warn);
-  },[inlineDirty]);
+  },[inlineDirty,effectiveSourceKind]);
   const locked=busy||saving||viewSaving||!!unmatchedCheckpoint&&customizing;
   const pendingData=Object.keys(drafts).length>0;
   const cannotSaveData=readOnly&&pendingData;

@@ -25,6 +25,9 @@ describe('G00: one table with explicit visual draft Save/Cancel',()=>{
     expect(list).toContain('className="button ghost inline-layout-cancel"');
     expect(list).toContain('const canEdit = canEditDraft && !permissionMode && !inlineMode');
     expect(app).toContain('disabled={editingPage||editorUnsaved}');
+    // Browser smoke uses sourceKind=demo; do not block CDP fixture navigation
+    // with a beforeunload modal. Connected Firebase layouts still warn.
+    expect(list).toContain("if(!inlineDirty||effectiveSourceKind==='demo')return;");
     expect(smoke).toContain('G00_SINGLE_TABLE_ADVANCED_NO_DUPLICATE_SAVE_CANCEL_PASS');
   });
 });
