@@ -25,7 +25,7 @@ describe('G00 direct Admin header editing in Customize mode',()=>{
   it('keeps the old manager accessible by column and never hides Save',()=>{
     expect(panel).toContain('const [advancedOpen,setAdvancedOpen]=useState(()=>!!focusColumnKey)');
     expect(panel).toContain('id="column-manager-advanced-panel" className="column-manager-advanced" hidden={!advancedOpen}');
-    expect(panel.indexOf('column-manager-savebar')).toBeLessThan(panel.indexOf('column-manager-advanced-panel'));
+    expect(panel.indexOf('className="column-manager-savebar"')).toBeLessThan(panel.indexOf('<div id="column-manager-advanced-panel"'));
     expect(list).toContain('setRequestedColumnFocus(key)');
     expect(css).toContain('.column-manager-advanced[hidden]{display:none!important;}');
   });
