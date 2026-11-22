@@ -107,7 +107,7 @@ describe('Live Spark Admin paste — lease and revision boundary',()=>{
     expect(referenceListLayoutNeedsSync(oldShared)).toBe(true);
     const realList=readFileSync('src/features/items/ItemList.tsx','utf8');
     expect(realList).toContain('referenceListLayoutNeedsSync(activeLayout)');
-    expect(realList).toContain('setPreviewOptionsOpen(true);setReferencePresetConfirm(true);');
+    expect(realList).toContain('stageInlineLayout();setReferencePresetConfirm(true);');
   });
   it('only verified Admin gets the action; print and search use the actual List',()=>{
     const app=readFileSync('src/app/App.tsx','utf8');
@@ -117,8 +117,10 @@ describe('Live Spark Admin paste — lease and revision boundary',()=>{
     expect(app).toContain("!leaseManager");
     expect(list).toContain('const table=printTableRef.current;');
     expect(list).toContain('<table ref={printTableRef} className="data-table item-data-table"');
-    expect(list).toContain('{denseChrome&&<details className="admin-control-section"><summary>Tìm kiếm không dấu · Chỉ trên trình duyệt này</summary><fieldset className="admin-search-scope">');
-    expect(list).toContain('{denseChrome&&onBulkApply&&<div className="admin-bulk-paste-tools">');
+    expect(list).toContain('className="inline-g01-search-popover"');
+    expect(list).not.toContain('className="admin-search-scope"');
+    expect(list).toContain('className="button ghost admin-bulk-paste-trigger"');
+    expect(list).toContain('Lọc nâng cao');
     expect(list).toContain("denseChrome?selectedSearchColumns:undefined");
   });
 });
