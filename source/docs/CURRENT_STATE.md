@@ -1,4 +1,14 @@
-## 23/11/2026 — PR #231 đã merge, Rules production đã nghiệm thu, Pages chờ owner
+## 23/11/2026 — Phân quyền theo cột đã phát hành và nghiệm thu
+
+Owner run #128 lần đầu bị `STATUS_CAS_HOLD: candidate Rules SHA mismatch` vì biến approved Rules còn hash cũ. Chủ tài khoản đã xác thực email và lưu hash `1b397824d2f225f92353a96c3ac57f84fe22ec6ecab2f814d814ee205af6120b`; đã đọc lại giá trị trên GitHub. Chạy lại failed job của đúng owner run/SHA, không sửa mã hoặc nới guard: [attempt 2 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45094072798). Typecheck, 1158 unit PASS/170 SKIP, Chromium Save/Cancel, Spark tests 60+14 và direct-CAS security 37/37 PASS; guarded publish/push PASS.
+
+Source phát hành `29c6ab700e7dad807226daaf12b07cc86bf990f3`; build commit `bb16d3f98dde569dd111108578e10263320b1166`; [Pages deployment 45095362949 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45095362949). HTTP version.json xác nhận đúng source SHA, `status_cas=true`. Chrome admin thấy checkbox Cho sửa theo cột, ID/STT khóa và không còn menu phân quyền dòng/ô; thử nháp/hủy hiển thị đúng và không ghi quyền đang chạy. Trình duyệt khách tải 59 nội dung, không lỗi console. Cloud Rules vẫn đúng candidate, quyền cũ/V2 giữ nguyên; canary production và backup/restore từ pha trước được giữ làm bằng chứng.
+
+[Biên nhận phát hành cuối](checkpoints/PR231_PAGES_ACCEPTANCE_2026-11-23.md) ghi cả lỗi ban đầu và kết quả khắc phục, source/build/runs, UI acceptance và rollback. Không sửa hồ sơ thật, không xóa dữ liệu quyền cũ hoặc triển khai lại Rules trong pha sửa run.
+
+---
+
+## 23/11/2026 — PR #231 đã merge, Rules production đã nghiệm thu, Pages chờ owner (checkpoint trước phát hành)
 
 Chủ tài khoản đã phê duyệt exact Rules SHA256 `1b397824d2f225f92353a96c3ac57f84fe22ec6ecab2f814d814ee205af6120b`. Backup Rules/quyền mới, restore/compile localhost, explicit deploy đúng project/instance và Cloud canonical readback PASS. Canary thật cho hai khách Anonymous và phiên Google admin trong Chrome PASS; chỉ dữ liệu QA mới được tạo/sửa/thu dọn, quyền cũ không đổi, website trở lại 59 nội dung.
 
