@@ -125,13 +125,13 @@ export function partyTrackPhysicalWidth(widths:PartyTrackWidths,hasEditableLevel
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
-export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline',boolean>;
+export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline',boolean>&Partial<Record<'mergeTypeIntoContent'|'mergeDepartmentIntoContent',boolean>>;
 /** Stable identities independent of the currently visible column/anchor. */
 export const COMPACT_GROUP_LABEL_KEYS=['contentDetails','partyTogether','leadersTogether',
   'roomSpecialist','teamTogether'] as const;
 export type CompactGroupLabelKey=(typeof COMPACT_GROUP_LABEL_KEYS)[number];
 export type CompactGroupLabels=Partial<Record<CompactGroupLabelKey,string>>;
-export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false};
+export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,mergeTypeIntoContent:true,mergeDepartmentIntoContent:true};
 export const DEFAULT_LIST_TITLE='Danh sách các ND trình HĐND';
 export const SUMMARY_CARD_KEYS=['party','build','nq'] as const;
 export type SummaryCardVisibility=Record<(typeof SUMMARY_CARD_KEYS)[number],boolean>;
@@ -161,7 +161,12 @@ export interface ItemLayout {
   /** Administrator-owned titles; never rename source Excel fields. */
   groupLabels?:CompactGroupLabels;
   cellHighlights?:CellHighlightRule[];
+  /** Named shared visual snapshots, without business values. */
+  savedLayouts?:SavedLayoutPreset[];
+  activeLayoutId?:string;
 }
+export interface SavedLayoutPreset {id:string;name:string;layout:Omit<ItemLayout,'savedLayouts'|'activeLayoutId'>}
+export const MAX_SAVED_LAYOUTS=12;
 const hexColor=/^#[0-9a-fA-F]{6}$/;
 export function cellHighlightStyle(value:unknown,field:string,rules:readonly CellHighlightRule[]|undefined):
   {color:string;backgroundColor:string}|undefined {
@@ -223,7 +228,7 @@ export const defaultItemLayout=():ItemLayout=>({
     visible:true
   })),
 });
-export function validateItemLayout(value:unknown):ItemLayout{
+function validateItemLayoutBase(value:unknown):ItemLayout{
   if(!value||typeof value!=='object')throw new Error('Bố trí danh sách không hợp lệ.');
   const input=value as ItemLayout,defaults=defaultItemLayout();
   if(!Number.isInteger(input.tableWidth)||input.tableWidth<500||input.tableWidth>6000)
@@ -315,13 +320,13 @@ export function validateItemLayout(value:unknown):ItemLayout{
     throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
   // Older saved Firebase layouts predate four new grouping options. Missing
   // NEW flags default to false; invalid values remain rejected, not coerced.
-  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether','cvRoomInline']);
+  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether','cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent']);
   if((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[]).some(key=>
     typeof compactSource[key]!=='boolean'&&
     !(newOptions.has(key)&&compactSource[key]===undefined)))
     throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
   const compactDisplay=Object.fromEntries((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[])
-    .map(key=>[key,compactSource[key]??false])) as SharedCompactDisplay;
+    .map(key=>[key,compactSource[key]??EMPTY_COMPACT[key]??false])) as SharedCompactDisplay;
   const groupLabels=validateCompactGroupLabels(input.groupLabels);
   const partyGroupWidths=validatePartyGroupWidths(input.partyGroupWidths);
   // Do not materialize an old profile into persisted partyTrackWidths merely
@@ -332,6 +337,80 @@ export function validateItemLayout(value:unknown):ItemLayout{
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
   return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,
     ...(partyTrackWidths?{partyTrackWidths}:{}),groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
+}
+/** Only presentation is stored. Custom-column options and values remain authoritative. */
+function captureLayoutVisual(input:unknown):SavedLayoutPreset['layout'] {
+  const {columns,...visual}=validateItemLayoutBase(input);
+  return {...visual,columns:columns.map(({key,label,width,visible,origin,renamed})=>({
+    key,label,width,visible,...(origin?{origin}:{}),...(renamed?{renamed}:{})
+  }))};
+}
+function layoutPresetName(input:unknown):string {
+  if(typeof input!=='string'||!input.trim()||input.trim().length>60||/[\u0000-\u001f\u007f<>]/.test(input))
+    throw new Error('Tên giao diện phải từ 1 đến 60 ký tự hợp lệ.');
+  return input.trim().normalize('NFC');
+}
+export function validateItemLayout(value:unknown):ItemLayout {
+  const layout=validateItemLayoutBase(value);
+  const input=value as ItemLayout;
+  const raw=input.savedLayouts??[];
+  if(!Array.isArray(raw)||raw.length>MAX_SAVED_LAYOUTS)throw new Error('Tối đa '+MAX_SAVED_LAYOUTS+' giao diện đã lưu.');
+  const ids=new Set<string>(),names=new Set<string>();
+  const savedLayouts=raw.map(entry=>{
+    if(!entry||typeof entry.id!=='string'||!/^[-a-zA-Z0-9_]{8,90}$/.test(entry.id)||ids.has(entry.id))
+      throw new Error('Mã giao diện đã lưu không hợp lệ.');
+    const name=layoutPresetName(entry.name),normalized=name.toLocaleLowerCase('vi');
+    if(names.has(normalized))throw new Error('Tên giao diện đã tồn tại.');
+    ids.add(entry.id);names.add(normalized);
+    return {id:entry.id,name,layout:captureLayoutVisual(entry.layout)};
+  });
+  if(JSON.stringify(savedLayouts).length>80000)throw new Error('Các giao diện đã lưu vượt quá dung lượng cho phép.');
+  const activeLayoutId=input.activeLayoutId;
+  if(activeLayoutId!==undefined&&(typeof activeLayoutId!=='string'||!ids.has(activeLayoutId)))
+    throw new Error('Giao diện đang chọn không tồn tại.');
+  return {...layout,...(savedLayouts.length?{savedLayouts}:{}),...(activeLayoutId?{activeLayoutId}:{})};
+}
+export function saveNewLayoutPreset(input:ItemLayout,id:string,name:string):ItemLayout {
+  const current=validateItemLayout(input);
+  return validateItemLayout({...current,savedLayouts:[...(current.savedLayouts??[]),{
+    id,name,layout:captureLayoutVisual(current)
+  }],activeLayoutId:id});
+}
+export function updateActiveLayoutPreset(input:ItemLayout):ItemLayout {
+  const current=validateItemLayout(input);
+  if(!current.activeLayoutId)return current;
+  return validateItemLayout({...current,savedLayouts:current.savedLayouts!.map(p=>
+    p.id===current.activeLayoutId?{...p,layout:captureLayoutVisual(current)}:p)});
+}
+export function renameLayoutPreset(input:ItemLayout,id:string,name:string):ItemLayout {
+  const current=validateItemLayout(input);
+  if(!current.savedLayouts?.some(p=>p.id===id))throw new Error('Không tìm thấy giao diện đã lưu.');
+  return validateItemLayout({...current,savedLayouts:current.savedLayouts.map(p=>p.id===id?{...p,name}:p)});
+}
+/** Apply saved presentation over the current schema; never restore custom values,
+ * options, removed columns or old Excel data. New source columns keep current settings. */
+export function applyLayoutPreset(input:ItemLayout,id:string):ItemLayout {
+  const current=validateItemLayout(input),preset=current.savedLayouts?.find(p=>p.id===id);
+  if(!preset)throw new Error('Không tìm thấy giao diện đã lưu.');
+  const {columns:visualColumns,...visual}=preset.layout;
+  const byKey=new Map(current.columns.map(c=>[c.key,c])),used=new Set<string>();
+  const columns=visualColumns.flatMap(old=>{
+    const live=byKey.get(old.key);
+    if(!live)return [];
+    used.add(live.key);
+    const {renamed:_renamed,...unchanged}=live;
+    return [{...unchanged,label:old.label,width:old.width,visible:old.visible,
+      ...(old.renamed?{renamed:true}:{})}];
+  });
+  for(const live of current.columns)if(!used.has(live.key))columns.push(live);
+  return validateItemLayout({...current,...visual,columns,activeLayoutId:id,
+    cellHighlights:visual.cellHighlights?.filter(rule=>rule.field==='*'||byKey.has(rule.field))});
+}
+export function deleteLayoutPreset(input:ItemLayout,id:string):ItemLayout {
+  const current=validateItemLayout(input);
+  const {activeLayoutId,...rest}=current;
+  return validateItemLayout({...rest,savedLayouts:(current.savedLayouts??[]).filter(p=>p.id!==id),
+    ...(activeLayoutId&&activeLayoutId!==id?{activeLayoutId}:{})});
 }
 /** A personal view controls width, visibility and order only. Live shared schema
  * and independent values always come from the latest authoritative profile. */

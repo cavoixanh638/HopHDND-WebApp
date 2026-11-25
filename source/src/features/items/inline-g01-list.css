@@ -196,3 +196,9 @@
 @media(max-width:700px){.inline-layout-savebar{align-items:stretch}
 .inline-layout-save-actions{width:100%}.inline-layout-save-actions>.button{flex:1}}
 @media print{.inline-layout-savebar{display:none!important}}
+
+/* Shared layout presets stay reachable on both wide and mobile admin headings. */
+.admin-saved-layout-actions{display:flex;flex-wrap:wrap;align-items:center;gap:5px;max-width:100%;min-width:0}
+.admin-saved-layout-actions select{max-width:min(100%,260px);min-width:0;white-space:normal}
+.admin-saved-layout-actions .button{white-space:nowrap}
+@media(max-width:650px){.admin-saved-layout-actions{flex-basis:100%}.admin-saved-layout-actions select{flex:1 1 100%;max-width:100%}}

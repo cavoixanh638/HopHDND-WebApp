@@ -15,7 +15,7 @@ describe('G00: one table with explicit visual draft Save/Cancel',()=>{
     expect(list).toContain('const [inlineDraft,setInlineDraft]=useState<ItemLayout|null>(null)');
     expect(list).toContain('const stageInlineLayout=(transform?');
     expect(list).toContain('const saveInlineLayout=async()=>');
-    expect(list).toContain('const saved=await applyViewerLayout(()=>next,inlineEditBase.current??undefined)');
+    expect(list).toContain('const saved=await applyViewerLayout(()=>updateActiveLayoutPreset(next),inlineEditBase.current??undefined)');
     expect(list).toContain('stageInlineLayout(base=>setInlineColumnVisibility(base,key,visible))');
     expect(list).toContain('stageInlineLayout(base=>({...base,columns:reorderByKey');
   });

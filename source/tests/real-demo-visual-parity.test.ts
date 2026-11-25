@@ -63,8 +63,11 @@ describe('real App display parity with accepted isolated preview',()=>{
     expect(list).toContain('{denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"');
     expect(list).toContain('inlineMode&&adminControls&&(onPersistViewerLayout||isRamAdminList)');
     expect(list).not.toContain('previewOptionsOpen');
-    expect(list).toContain('stageInlineLayout(createReferenceListLayout)');
-    expect(list).toContain('referencePresetConfirm');
+    expect(list).not.toContain('stageInlineLayout(createReferenceListLayout)');
+    expect(list).not.toContain('referencePresetConfirm');
+    expect(list).toContain('className="admin-saved-layout-actions"');
+    expect(list).toContain('Lưu giao diện mới');
+    expect(list).toContain('Đổi tên mẫu');
     expect(css).toContain('.app-shell.list-visual-parity .admin-list-controls[hidden]');
     expect(css).not.toContain('permission:true');
   });

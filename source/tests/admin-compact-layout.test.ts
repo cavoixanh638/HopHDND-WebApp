@@ -4,10 +4,12 @@ import {mergeItemLayout,LayoutConflictError} from '../src/data/item-layout-merge
 import {compactTypeTone} from '../src/features/items/compact-columns';
 
 describe('Admin compact display is part of the saved shared layout',()=>{
- it('old layouts without compact preference migrate to all unmerged',()=>{
+ it('old layouts preserve document grouping while optional staff groups stay off',()=>{
    const layout=defaultItemLayout(),{compactDisplay:_discard,...old}=layout;
    const migrated=validateItemLayout(old);
-   expect(Object.values(migrated.compactDisplay??{}).every(flag=>!flag)).toBe(true);
+   expect(migrated.compactDisplay?.mergeTypeIntoContent).toBe(true);
+   expect(migrated.compactDisplay?.mergeDepartmentIntoContent).toBe(true);
+   expect(Object.entries(migrated.compactDisplay??{}).filter(([key])=>!key.startsWith('merge')).every(([,flag])=>!flag)).toBe(true);
  });
  it('admin merging a pair preserves unrelated remote edits',()=>{
    const base=defaultItemLayout();

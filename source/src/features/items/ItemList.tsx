@@ -65,7 +65,7 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
-import {createReferenceListLayout,referenceListLayoutNeedsSync} from '../../data/reference-list-layout';
+import {applyLayoutPreset,saveNewLayoutPreset,updateActiveLayoutPreset,renameLayoutPreset,deleteLayoutPreset,MAX_SAVED_LAYOUTS} from '../../data/item-preferences';
 import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placement';
 import {canHideInlineColumn,renameInlineColumn,setInlineColumnVisibility,setInlineSummaryVisibility} from './inline-g01-layout';
 import './inline-g01-list.css';
@@ -75,7 +75,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // Dense visual chrome is independent of RAM-only preview tools.
   const denseChrome=compactPreview||compactChrome;
   const adminControls=allowLayout&&!anonymousViewer;
-  const [referencePresetConfirm,setReferencePresetConfirm]=useState(false);
+  const [layoutNameMode,setLayoutNameMode]=useState<'new'|'rename'|null>(null);
+  const [newLayoutName,setNewLayoutName]=useState('');
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
     void leaseManager.acquire(item.recordId,field,'long').then(()=>setContentItem({item,field}))
@@ -799,15 +800,37 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     if(compactDetailsRef.current)compactDetailsRef.current.open=false;
     setCompactMenuOpen(false);setCompactMenuPlacement(null);
     setL03WidthEditorOpen(false);setL03WidthErrors({});
-    setReferencePresetConfirm(false);
+    setLayoutNameMode(null);setNewLayoutName('');
     pendingViewLayout.current=null;
   };
   const saveInlineLayout=async()=>{
     if(!canEditListSettings||!inlineMode||!inlineDraft||viewSavingRef.current)return;
     if(!inlineDirty){finishInlineLayout();return;}
     const next=inlineDraft;
-    const saved=await applyViewerLayout(()=>next,inlineEditBase.current??undefined);
+    const saved=await applyViewerLayout(()=>updateActiveLayoutPreset(next),inlineEditBase.current??undefined);
     if(saved)finishInlineLayout();
+  };
+  const chooseSavedLayout=async(id:string)=>{
+    if(!id||inlineDirty||viewSavingRef.current)return;
+    if(await applyViewerLayout(base=>applyLayoutPreset(base,id)))finishInlineLayout();
+  };
+  const saveNamedLayout=async()=>{
+    if(!canEditListSettings||viewSavingRef.current||!layoutNameMode)return;
+    if(layoutNameMode==='rename'){
+      const id=applied.activeLayoutId;
+      if(!id||inlineDirty)return;
+      if(await applyViewerLayout(base=>renameLayoutPreset(base,id,newLayoutName)))finishInlineLayout();
+      return;
+    }
+    const id=crypto.randomUUID();
+    const baseline=inlineMode?inlineEditBase.current??undefined:undefined;
+    if(await applyViewerLayout(base=>saveNewLayoutPreset(inlineMode&&inlineDraft?inlineDraft:base,id,newLayoutName),baseline))
+      finishInlineLayout();
+  };
+  const removeSavedLayout=async()=>{
+    const id=applied.activeLayoutId;
+    if(!id||inlineDirty||viewSavingRef.current||!window.confirm('Xóa mẫu giao diện đã chọn? Cách hiển thị hiện tại và dữ liệu hồ sơ vẫn được giữ.'))return;
+    if(await applyViewerLayout(base=>deleteLayoutPreset(base,id)))finishInlineLayout();
   };
   // Excel-style hide/show works in the normal Admin table.
   // Both ordinary View and 'Chỉnh giao diện' enter the same Save/Cancel flow.
@@ -1047,12 +1070,12 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               </label>)}</div>
             <small>Các cột nguồn vẫn được giữ nguyên khi ẩn hoặc gộp.</small>
           </div>}
-          <strong>Gộp cột người phụ trách</strong>
-          <small className="column-options-note">Hồ sơ và tiến độ 3 khâu luôn gộp khi xem. Các nhóm dưới đây có thể bật hoặc tắt.</small>
+          <strong>Gộp cột</strong>
+          <small className="column-options-note">Gộp Loại văn bản và Đơn vị chủ trì độc lập. Tiến độ 3 khâu luôn gộp.</small>
           {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
             (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
-            <input type="checkbox" checked={compactDisplay[option.key]}
-              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??false}
+              disabled={viewSaving||locked} onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
           <strong className="column-options-name-heading">Viết tắt tên</strong>
@@ -1147,12 +1170,21 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             setListTitleDraft(null);setSearchScopeOpen(false);}}>
           {inlineMode?'Đang chỉnh giao diện':'Chỉnh giao diện'}
         </button>}
-        {compactChrome&&canEditListSettings&&referenceListLayoutNeedsSync(activeLayout)&&
-          <button type="button" className="button admin-reference-sync-shortcut"
-            title="Chỉ cập nhật cấu hình Danh sách; giữ nguyên dữ liệu, quyền và lịch sử"
-            onClick={()=>{stageInlineLayout();setReferencePresetConfirm(true);}}>
-            Khôi phục bố cục chuẩn
-          </button>}
+        {canEditListSettings&&<div className="admin-saved-layout-actions" role="group" aria-label="Giao diện đã lưu">
+          <select aria-label="Chọn giao diện đã lưu" className="button" value={applied.activeLayoutId??''}
+            disabled={inlineDirty||viewSaving||!!layoutNameMode} onChange={event=>void chooseSavedLayout(event.currentTarget.value)}>
+            <option value="" disabled>Giao diện hiện tại (chưa đặt tên)</option>
+            {(applied.savedLayouts??[]).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <button type="button" className="button ghost" disabled={viewSaving||(applied.savedLayouts?.length??0)>=MAX_SAVED_LAYOUTS}
+            onClick={()=>{setNewLayoutName('');setLayoutNameMode('new');}}>Lưu giao diện mới</button>
+          {applied.activeLayoutId&&<>
+            <button type="button" className="button ghost" disabled={inlineDirty||viewSaving||!!layoutNameMode}
+              onClick={()=>{setNewLayoutName(applied.savedLayouts?.find(p=>p.id===applied.activeLayoutId)?.name??'');setLayoutNameMode('rename');}}>Đổi tên mẫu</button>
+            <button type="button" className="button ghost" disabled={inlineDirty||viewSaving||!!layoutNameMode}
+              onClick={()=>void removeSavedLayout()}>Xóa mẫu</button>
+          </>}
+        </div>}
         {denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"
           aria-label="In hoặc lưu PDF A4 ngang" title="Chỉ tiêu đề và bảng đang hiển thị"
           onClick={()=>{
@@ -1163,10 +1195,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
           }}>In / PDF A4</button>}
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
+      {layoutNameMode&&canEditListSettings&&<form className="inline-layout-savebar" aria-label={layoutNameMode==='rename'?'Đổi tên mẫu':'Lưu giao diện mới'} onSubmit={event=>{event.preventDefault();void saveNamedLayout();}}>
+        <label className="field">Tên giao diện<input aria-label="Tên giao diện" value={newLayoutName} maxLength={60} required disabled={viewSaving} onChange={event=>setNewLayoutName(event.currentTarget.value)}/></label>
+        <small>{onPersistViewerLayout?'Lưu cấu hình dùng chung qua Firebase.':'Bản demo: chỉ giữ trong RAM.'} Không lưu dữ liệu hồ sơ vào mẫu.</small>
+        <button type="submit" className="button primary" disabled={viewSaving||!newLayoutName.trim()||(layoutNameMode==='rename'&&inlineDirty)}>{layoutNameMode==='rename'?'Lưu tên mới':'Lưu mẫu'}</button>
+        <button type="button" className="button ghost" disabled={viewSaving} onClick={()=>setLayoutNameMode(null)}>Hủy</button>
+      </form>}
       {inlineMode&&adminControls&&<div className="inline-layout-savebar"
         role="group" aria-label="Lưu hoặc hủy thay đổi giao diện Danh sách">
         <span><strong>Đang chỉnh trực tiếp trên bảng</strong>
-          <small>{inlineDirty?'Có thay đổi bố cục chưa lưu':'Chưa có thay đổi bố cục'} · Không sửa dữ liệu hồ sơ</small>
+          <small>{inlineDirty?'Có thay đổi bố cục chưa lưu':'Chưa có thay đổi bố cục'} · {applied.activeLayoutId?'Lưu vào mẫu đang chọn hoặc lưu giao diện mới':'Không sửa dữ liệu hồ sơ'}</small>
         </span>
         <div className="inline-layout-save-actions">
           <button type="button" className="button primary inline-layout-save"
@@ -1180,24 +1218,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       {inlineMode&&adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
         className="admin-list-controls" id="admin-layout-controls"
         aria-label="Thiết lập hiển thị khi chỉnh giao diện">
-        {compactChrome&&referencePresetConfirm&&<div className="admin-reference-preset" aria-label="Khôi phục bố cục chuẩn">
-          <div className="admin-reference-preset-confirm" role="group"
-            aria-label="Xác nhận áp dụng bố cục mẫu">
-            <strong>Áp dụng thứ tự cột, độ rộng và chế độ gộp như bản demo?</strong>
-            <span>Chỉ thay cấu hình hiển thị chung. Không sửa dữ liệu Excel, phân quyền,
-              ghi chú hoặc lịch sử. Tên cột đã đổi và các cột tự tạo được giữ lại.</span>
-            <div className="admin-reference-preset-actions">
-              <button type="button" className="button primary"
-                disabled={!canEditListSettings||personalViewActive}
-                onClick={()=>{stageInlineLayout(createReferenceListLayout);
-                  setReferencePresetConfirm(false);setShowAllSourceColumns(false);
-                }}>Áp dụng vào nháp</button>
-              <button type="button" className="button ghost"
-                onClick={()=>setReferencePresetConfirm(false)}>Hủy</button>
-            </div>
-          </div>
-          <small>Chỉ lưu khi quản trị xác nhận và Firebase phản hồi thành công.</small>
-        </div>}
         <details className="admin-control-section"><summary>Hiện/ẩn thẻ tổng hợp</summary><fieldset className="admin-summary-visibility" disabled={!canEditListSettings||viewSaving}>
           <legend>Hiện/ẩn thẻ tổng hợp</legend>
           <span className="admin-summary-fixed" title="C00 luôn hiển thị">C00 · Tổng số (luôn hiện)</span>
