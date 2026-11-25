@@ -6,6 +6,9 @@ on:
     branches: ["main"]
 permissions:
   contents: read
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   original-excel-parser:
     runs-on: ubuntu-latest
@@ -15,15 +18,25 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select PR scope; fail closed for unknown changes
+        id: qa_scope
+        run: node ../.github/scripts/ci-pr-scope.mjs --suite original-excel
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+        if: steps.qa_scope.outputs.run != 'false'
       - run: npm ci
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Validate TypeScript
         run: npm run typecheck
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Validate synthetic original source workbook and strict template contracts
         run: npx vitest run tests/business-excel-original-hdnd.test.ts tests/business-excel.test.ts
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Validate Spark public build
         run: npm run build:spark
+        if: steps.qa_scope.outputs.run != 'false'

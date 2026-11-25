@@ -6,6 +6,9 @@ on:
     branches: ["main"]
 permissions:
   contents: read
+concurrency:
+  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   real-spark-list:
     runs-on: ubuntu-latest
@@ -15,27 +18,39 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select PR scope; fail closed for unknown changes
+        id: qa_scope
+        run: node ../.github/scripts/ci-pr-scope.mjs --suite list-ui-parity
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+        if: steps.qa_scope.outputs.run != 'false'
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Locked dependencies
         run: |
           npm ci
           npm ci --prefix parent-commit-service --no-audit --no-fund
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Typecheck
         run: npm run typecheck
+        if: steps.qa_scope.outputs.run != 'false'
       - name: A4 print, clipboard, Admin lease and UI scope contracts
         run: npx vitest run tests/live-spark-ui-parity.test.ts tests/bulk-paste.test.ts tests/list-print.test.ts tests/pr95-independent-ui.test.tsx tests/pr95-v6-l3-layout.test.ts
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Existing Auth and RTDB Emulator regression
         run: npm run test:spark
+        if: steps.qa_scope.outputs.run != 'false'
       - name: Build public Spark Pages
         run: npm run build:spark
+        if: steps.qa_scope.outputs.run != 'false'
       - name: No local privileged endpoint in public bundle
         run: |
           test -s dist-spark/index.html
@@ -44,3 +59,4 @@ jobs:
             exit 1
           fi
           echo "REAL_LIST_SPARK_PARITY_PASS (NO DEPLOY)"
+        if: steps.qa_scope.outputs.run != 'false'
