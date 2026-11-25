@@ -2495,6 +2495,21 @@ try{
   })()`);
   if(!desktopGroups.ok)throw Error('U01/U02/team desktop regression: '+JSON.stringify(desktopGroups));
   console.log('COMPACT_U01_U02_DESKTOP_PASS',JSON.stringify(desktopGroups));
+  await evaluate("document.querySelector('.inline-g01-search-trigger').click()");
+  await eventually("!!document.querySelector('.inline-g01-search-popover')",'Admin search scope failed to open');
+  const searchGeometry=await evaluate(`(()=>{
+    const trigger=document.querySelector('.inline-g01-search-trigger');
+    const panel=document.querySelector('.inline-g01-search-popover');
+    const t=trigger.getBoundingClientRect(),p=panel.getBoundingClientRect();
+    const gap=panel.dataset.popoverSide==='above'?t.top-p.bottom:p.top-t.bottom;
+    const expectedRight=Math.min(innerWidth-12,Math.max(t.right,p.width+12));
+    return {ok:Math.abs(p.right-expectedRight)<3&&gap>=0&&gap<=14&&p.left>=0&&p.right<=innerWidth,
+      gap,left:p.left,right:p.right,expectedRight};
+  })()`);
+  if(!searchGeometry.ok)throw Error('Search scope must anchor to Cot tim: '+JSON.stringify(searchGeometry));
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))");
+  await eventually("!document.querySelector('.inline-g01-search-popover')",'Escape did not close admin search scope');
+  console.log('ADMIN_SEARCH_SCOPE_ANCHORED_PASS',JSON.stringify(searchGeometry));
 
   const l03ReadonlyTypography=await verifyL03Typography('readonly');
   // Admin saved-wide-layout reproduction: when the six-column sum exceeds
@@ -2637,8 +2652,8 @@ try{
   const compactMenuDesktop=await evaluate(`(()=>{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
-    const labels=[...panel?.querySelectorAll('label')??[]];
-    return {ok:!!panel&&labels.length===6&&
+    const labels=[...panel?.querySelectorAll(':scope > label, .compact-more-options label')??[]];
+    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===6&&
       panel.querySelectorAll('.compact-more-options').length===1&&
       panel.querySelectorAll(':scope > label').length===4&&
       rect.left>=0&&rect.right<=innerWidth&&rect.height<580&&
@@ -2646,6 +2661,19 @@ try{
       count:labels.length,rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
   if(!compactMenuDesktop.ok)throw Error('Staff menu geometry/options regression: '+JSON.stringify(compactMenuDesktop));
+  const toggledNote=await evaluate(`(()=>{
+    const box=document.querySelector('.column-options-checklist input[data-column-choice=note]');
+    if(!box||box.disabled||!box.checked)return false;box.click();return true;
+  })()`);
+  if(!toggledNote)throw Error('Unified column menu cannot hide Note');
+  await eventually("!document.querySelector('th[data-column-key=note]') && !!document.querySelector('.inline-layout-cancel')",'Column visibility did not stage into the existing draft');
+  await evaluate("document.querySelector('.column-options-checklist input[data-column-choice=note]').click()");
+  await eventually("!!document.querySelector('th[data-column-key=note]')",'Unified menu did not restore Note');
+  await evaluate("document.querySelector('.inline-layout-cancel').click()");
+  await eventually("!document.querySelector('.inline-layout-cancel')",'Visibility draft cancel did not restore view');
+  await evaluate("document.querySelector('.compact-columns-menu').open=true");
+  await eventually("!!document.querySelector('.compact-columns-options-floating')",'Unified menu failed to reopen after cancel');
+  console.log('ADMIN_COLUMN_OPTIONS_HIDE_RESTORE_CANCEL_PASS');
   const groupShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-desktop-pass.png',Buffer.from(groupShot.data,'base64'));
 
@@ -2704,7 +2732,7 @@ try{
     const viewport=document.querySelector('.item-table-scroll');
     const rect=panel?.getBoundingClientRect();
     const html=document.scrollingElement;
-    const labels=[...panel?.querySelectorAll('label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label, .compact-more-options label')??[]];
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
@@ -3259,10 +3287,11 @@ try{
       localMenu:!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu'),
       localSaved:localStorage.getItem(key),
       sourceSaved:localStorage.getItem('hdnd.qa.group-labels-synthetic'),
-      sortable:!!document.querySelector('.item-heading-row .column-sort-button')};
+      sortable:!!document.querySelector('.item-heading-row .column-sort-button'),
+      adminSearchScope:!!document.querySelector('.inline-g01-search-trigger,.inline-g01-search-popover')};
   })()`);
   if(guestInitial.columns!==6||guestInitial.hasInline||guestInitial.localMenu||
-    guestInitial.localSaved!==null||guestInitial.sortable)
+    guestInitial.localSaved!==null||guestInitial.sortable||guestInitial.adminSearchScope)
     throw Error('V3 guest must inherit shared U04=false without personal controls: '+JSON.stringify(guestInitial));
   const guestShot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-compact-guest-pass.png',Buffer.from(guestShot.data,'base64'));

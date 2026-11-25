@@ -1,3 +1,5 @@
+> **Hiện hành 25/11/2026:** PR #231 đã triển khai và nghiệm thu. Xem [CURRENT_STATE](CURRENT_STATE.md), [biên nhận Cloud](checkpoints/PR231_PRODUCTION_RULES_2026-11-23.md), [biên nhận Pages](checkpoints/PR231_PAGES_ACCEPTANCE_2026-11-23.md), [preflight](checkpoints/PR231_COLUMN_ONLY_CLOUD_PREFLIGHT_2026-11-22.md). Các trạng thái HOLD trước ngày phát hành trong tài liệu cũ chỉ là lịch sử.
+
 > **Thử nghiệm host LAN 27/10/2026:** máy thứ hai đã truy cập được demo qua LAN theo xác nhận của chủ dự án, nhưng chưa đo ổn định một giờ và demo không phải HopHDND thật. Đã lưu [biên bản + quy trình mở lại sau này](operations/LAN_HOST_PILOT_2026-10-27.md). **Ưu tiên hiện hành trở lại hoàn thiện UI trên Firebase PR #72**, không triển khai host.
 
 > **Quyết định mới nhất 26/10/2026:** chỉ phát triển Firebase PR #71/#72; [tạm dừng Supabase, lưu nguyên trạng làm phương án dự phòng](decisions/FIREBASE_ONLY_SUPABASE_PAUSED_2026-10-26.md). Không tích hợp/deploy PR #77 hay đồng bộ hai nguồn.

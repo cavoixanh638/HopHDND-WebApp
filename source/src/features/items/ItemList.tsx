@@ -74,6 +74,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   useEffect(()=>mountSharedEditTooltip(),[]);
   // Dense visual chrome is independent of RAM-only preview tools.
   const denseChrome=compactPreview||compactChrome;
+  const adminControls=allowLayout&&!anonymousViewer;
   const [referencePresetConfirm,setReferencePresetConfirm]=useState(false);
   const openContentForEdit=(item:Item,field:'content')=>{
     if(!leaseManager){setContentItem({item,field});return;}
@@ -120,7 +121,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const searchStorageKey=(compactPreview?'hdnd-preview-search-columns:':'hdnd-list-search-columns:')+sourceKey;
   const searchChoices=[...SEARCHABLE_ITEM_FIELDS,'*'];
   const [selectedSearchColumns,setSelectedSearchColumns]=useState<string[]>(()=>{
-    if(typeof window==='undefined'||!denseChrome)return searchChoices;
+    if(typeof window==='undefined'||!denseChrome||!adminControls)return searchChoices;
     try{
       const saved=JSON.parse(window.localStorage.getItem(searchStorageKey)??'null');
       if(Array.isArray(saved)&&saved.length&&saved.every((x:unknown)=>typeof x==='string')&&
@@ -130,10 +131,43 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     return searchChoices;
   });
   useEffect(()=>{
-    if(!denseChrome||typeof window==='undefined')return;
+    if(!adminControls||!denseChrome||typeof window==='undefined')return;
     try{window.localStorage.setItem(searchStorageKey,JSON.stringify(selectedSearchColumns));}
     catch{/* browser storage denied, state still works */}
-  },[denseChrome,searchStorageKey,selectedSearchColumns]);
+  },[adminControls,denseChrome,searchStorageKey,selectedSearchColumns]);
+  // Do not inherit a narrowed admin search scope after a role transition.
+  useEffect(()=>{
+    if(!adminControls){setSearchScopeOpen(false);setToolbar(old=>old.field==='all'?old:{...old,field:'all'});}
+  },[adminControls]);
+  const searchTriggerRef=useRef<HTMLButtonElement>(null);
+  const searchPanelRef=useRef<HTMLFieldSetElement>(null);
+  const [searchPlacement,setSearchPlacement]=useState<CompactMenuPlacement|null>(null);
+  const closeSearchScope=(restoreFocus=false)=>{
+    setSearchScopeOpen(false);setSearchPlacement(null);
+    if(restoreFocus)searchTriggerRef.current?.focus({preventScroll:true});
+  };
+  useEffect(()=>{
+    if(!adminControls||!searchScopeOpen||customizing||typeof window==='undefined')return;
+    let frame=0;
+    const position=()=>{
+      const anchor=searchTriggerRef.current;
+      if(!anchor)return;
+      const next=placeCompactMenu(anchor.getBoundingClientRect(),window.innerWidth,window.innerHeight);
+      setSearchPlacement(previous=>previous&&Object.keys(next).every(key=>previous[key as keyof CompactMenuPlacement]===next[key as keyof CompactMenuPlacement])?previous:next);
+    };
+    const schedule=()=>{window.cancelAnimationFrame(frame);frame=window.requestAnimationFrame(position);};
+    const onPointer=(event:PointerEvent)=>{
+      const node=event.target;
+      if(node instanceof Node&&!searchTriggerRef.current?.contains(node)&&!searchPanelRef.current?.contains(node))closeSearchScope();
+    };
+    const onKey=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeSearchScope(true);}
+    };
+    position();window.addEventListener('resize',schedule);window.addEventListener('scroll',schedule,true);
+    document.addEventListener('pointerdown',onPointer,true);document.addEventListener('keydown',onKey,true);
+    return()=>{window.cancelAnimationFrame(frame);window.removeEventListener('resize',schedule);window.removeEventListener('scroll',schedule,true);document.removeEventListener('pointerdown',onPointer,true);document.removeEventListener('keydown',onKey,true);};
+  },[adminControls,searchScopeOpen,customizing]);
+  useEffect(()=>{if(searchScopeOpen&&searchPlacement&&adminControls)searchPanelRef.current?.focus({preventScroll:true});},[searchScopeOpen,!!searchPlacement,adminControls]);
   const [titleValidationError,setTitleValidationError]=useState('');
   const [l03WidthEditorOpen,setL03WidthEditorOpen]=useState(false);
   const [l03WidthsDraft,setL03WidthsDraft]=useState({readonly:{label:'',status:''},editable:{label:'',level:'',status:''}});
@@ -165,8 +199,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const activeLayout = customizing ? layout : inlineMode&&inlineDraft ? inlineDraft : applied;
   const inlineDirty=inlineMode&&!!inlineDraft&&!!inlineEditBase.current&&
     JSON.stringify(inlineDraft)!==JSON.stringify(inlineEditBase.current);
-  // Only admin writes the shared Firebase layout; all other viewers get local preferences.
-  const adminControls=allowLayout&&!anonymousViewer;
+  // Only admin writes shared layout; other viewers inherit it.
   const shareCompact=adminControls&&!!onPersistViewerLayout&&!personalViewActive;
   const compactDisplay=!adminControls||customizing||shareCompact
     ?activeLayout.compactDisplay??DEFAULT_COMPACT_DISPLAY
@@ -432,16 +465,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   },[items,columnFilters,activeLayout.columns,compactOn,compactDisplay,showAllSourceColumns,filterIndex]);
 
   const toolbarBase=useMemo(()=>customizing?columnFiltered:
-    filterToolbarRows(columnFiltered,toolbar,(item,key)=>{
+    filterToolbarRows(columnFiltered,adminControls?toolbar:{...toolbar,field:'all'},(item,key)=>{
       if(key==='*')return activeLayout.columns.filter(col=>col.origin==='custom')
         .map(col=>col.values?.[customRowKey(item)]??'').join(' ')+' '+
         ['partyLevel','progressParty','progressBuild','progressCouncil']
           .map(key=>statusDisplayValue(key,effectiveItemField(item,key))).join(' ');
       return activeLayout.columns.find(col=>col.key===key&&col.origin==='custom')
         ?.values?.[customRowKey(item)]??'';
-    },denseChrome?selectedSearchColumns:undefined),
+    },adminControls&&denseChrome?selectedSearchColumns:undefined),
     [columnFiltered,toolbar,customizing,activeLayout.columns,codeCounts,
-      denseChrome,selectedSearchColumns]);
+      adminControls,denseChrome,selectedSearchColumns]);
   const filtered=useMemo(()=>customizing?columnFiltered:
     filterByChips(toolbarBase,kindSelection,summarySelection),
     [columnFiltered,toolbarBase,kindSelection,summarySelection,customizing]);
@@ -763,6 +796,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
     setTitleEditorOpen(false);setListTitleDraft(null);listTitleBaseline.current=null;
     setViewLayoutConflicts([]);setViewLayoutChoices({});
+    if(compactDetailsRef.current)compactDetailsRef.current.open=false;
     setCompactMenuOpen(false);setCompactMenuPlacement(null);
     setL03WidthEditorOpen(false);setL03WidthErrors({});
     setReferencePresetConfirm(false);
@@ -980,8 +1014,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           setCompactMenuOpen(opened);
           if(!opened)setCompactMenuPlacement(null);
         }}>
-        <summary ref={compactSummaryRef} aria-label="Tùy chọn gộp cột"
-          aria-controls="hdnd-compact-columns-popup">Tùy chọn người phụ trách <span aria-hidden="true">▾</span></summary>
+        <summary ref={compactSummaryRef} aria-label="Tùy chọn cột"
+          aria-controls="hdnd-compact-columns-popup">Tùy chọn cột <span aria-hidden="true">▾</span></summary>
       </details>
       {compactMenuOpen&&compactMenuPlacement&&typeof document!=='undefined'&&createPortal(
         <div id="hdnd-compact-columns-popup" ref={compactPanelRef} tabIndex={-1}
@@ -994,7 +1028,23 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             width:compactMenuPlacement.width,
             maxHeight:compactMenuPlacement.maxHeight,
           }}>
-          <strong>Hồ sơ và tiến độ 3 khâu luôn gộp khi xem</strong>
+          <strong className="column-options-title">Tùy chọn cột</strong>
+          {canEditListSettings&&<div className="column-options-visibility" role="group" aria-label="Ẩn hoặc hiện cột dữ liệu">
+            <div className="column-options-section-heading"><strong>Ẩn / hiện cột</strong>
+              <button type="button" className="button ghost" disabled={viewSaving||!hiddenQuickColumns.length}
+                onClick={showAllInlineColumns}>Hiện tất cả</button></div>
+            <div className="column-options-checklist">{activeLayout.columns.filter(column=>!column.removed&&column.key!=='stt').map(column=>
+              <label key={column.key} title={column.key==='displayCode'?'ID luôn hiển thị':column.label}>
+                <input type="checkbox" data-column-choice={column.key} checked={column.visible}
+                  aria-label={'Hiện cột '+column.label}
+                  disabled={viewSaving||column.key==='displayCode'||(column.visible&&(!canHideInlineColumn(activeLayout,column.key)||displayedColumns.length<=1))}
+                  onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}/>
+                <span>{column.label}{column.key==='displayCode'?' (cố định)':''}</span>
+              </label>)}</div>
+            <small>Các cột nguồn vẫn được giữ nguyên khi ẩn hoặc gộp.</small>
+          </div>}
+          <strong>Gộp cột người phụ trách</strong>
+          <small className="column-options-note">Hồ sơ và tiến độ 3 khâu luôn gộp khi xem. Các nhóm dưới đây có thể bật hoặc tắt.</small>
           {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
             (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
             <input type="checkbox" checked={compactDisplay[option.key]}
@@ -1009,7 +1059,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               <span>{option.label}<small>{option.detail}</small></span>
             </label>)}
           </details>
-          <p>{shareCompact?'Quản trị: lưu bố cục dùng chung qua Firebase.':'Tùy chọn cá nhân trên trình duyệt · không ghi Firebase.'}</p>
+          <p>{shareCompact?'Ẩn/hiện và gộp chỉ tạo nháp; chọn Lưu bố cục hoặc Hủy thay đổi trên bảng.':'Ẩn/hiện theo bố cục; tùy chọn gộp cá nhân trên trình duyệt.'}</p>
+           <button type="button" className="button ghost column-options-close" onClick={()=>{if(compactDetailsRef.current)compactDetailsRef.current.open=false;setCompactMenuOpen(false);setCompactMenuPlacement(null);compactSummaryRef.current?.focus();}}>Đóng</button>
           {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
           {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{
             setPersonalCompact(null);setCompactStorageWarning(clearPersonalCompactDisplay(viewerCompactScope)?'':
@@ -1272,9 +1323,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           aria-label="Tìm kiếm không dấu" placeholder="Tìm kiếm không dấu…"
           value={toolbar.search}
           onChange={e=>setToolbar(old=>({...old,search:e.currentTarget.value}))}/>
-          <button type="button" className="inline-g01-search-trigger" aria-label="Chọn cột tìm kiếm không dấu"
-            aria-expanded={searchScopeOpen} onClick={()=>setSearchScopeOpen(open=>!open)}>Cột tìm ▾</button>
-          {searchScopeOpen&&<fieldset className="inline-g01-search-popover"><legend>Phạm vi tìm kiếm trên trình duyệt này</legend>
+          {adminControls&&<button ref={searchTriggerRef} type="button" className="inline-g01-search-trigger" aria-label="Chọn cột tìm kiếm không dấu"
+            aria-controls="hdnd-search-scope-panel" aria-expanded={searchScopeOpen}
+            onClick={()=>{if(searchScopeOpen)closeSearchScope();else{setSearchPlacement(null);setSearchScopeOpen(true);}}}>Cột tìm ▾</button>}
+          {adminControls&&searchScopeOpen&&searchPlacement&&typeof document!=='undefined'&&createPortal(
+          <fieldset ref={searchPanelRef} id="hdnd-search-scope-panel" tabIndex={-1} className="inline-g01-search-popover"
+            data-popover-side={searchPlacement.side}
+            style={{left:searchPlacement.left,width:searchPlacement.width,maxHeight:searchPlacement.maxHeight,
+              top:searchPlacement.side==='below'?searchPlacement.top:undefined,
+              bottom:searchPlacement.side==='above'?window.innerHeight-searchPlacement.top-searchPlacement.maxHeight:undefined}}>
+            <legend>Phạm vi tìm kiếm của quản trị</legend>
             <label>Trường tìm kiếm <select aria-label="Chọn trường tìm kiếm nhanh" value={toolbar.field}
                 onChange={event=>setToolbar(old=>({...old,field:event.currentTarget.value}))}>
                 {SEARCH_FIELDS.map(field=><option key={field.key} value={field.key}>{field.label}</option>)}
@@ -1290,8 +1348,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               {key==='*'?'Cột tùy chỉnh':EXCEL_SOURCE_COLUMNS.find(c=>c.key===key)?.label??key}
             </label>)}</div>
             <button type="button" onClick={()=>setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
-            <button type="button" onClick={()=>setSearchScopeOpen(false)}>Đóng</button>
-          </fieldset>}</div>
+            <button type="button" onClick={()=>closeSearchScope(true)}>Đóng</button>
+          </fieldset>,document.body)}</div>
         <select className={'list-filter-organisation'+(toolbar.department?' is-filter-active':'')} data-filter-active={toolbar.department?'true':'false'} aria-label="Lọc Sở, ngành"
           value={toolbar.department}
           onChange={e=>setToolbar(old=>({...old,department:e.currentTarget.value}))}>
