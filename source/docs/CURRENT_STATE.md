@@ -1,3 +1,11 @@
+## 25/11/2026 — Chốt hồ sơ commit mốc phát hành PR #231 ngày 23/11
+
+Đã đối chiếu GitHub: PR #231 **MERGED**, Issue #232 **CLOSED/completed** từ `2026-11-23T01:45:43Z` (08:45:43 UTC+07). [Báo cáo kết thúc trên Issue](https://github.com/cavoixanh638/HopHDND-WebApp/issues/232#issuecomment-7089394592) và [PR](https://github.com/cavoixanh638/HopHDND-WebApp/pull/231#issuecomment-7089395974) lưu kết quả cuối. Mốc source `29c6ab700e7dad807226daaf12b07cc86bf990f3`, artifact Pages `bb16d3f98dde569dd111108578e10263320b1166`; biên nhận nghiệm thu đã lưu tại commit `49de25a6bb607c41e8ce4a21f84473d5970fe087`.
+
+Commit tài liệu ngày 25/11 chốt hồ sơ của lần phát hành/nghiệm thu **23/11**, không phải lần triển khai hoặc nghiệm thu production mới. [Danh mục các mốc commit](checkpoints/PR231_PAGES_ACCEPTANCE_2026-11-23.md#mốc-commit-và-đóng-hồ-sơ) phân biệt preflight HOLD, Rules đã triển khai nhưng Pages HOLD, và Pages đã phát hành/nghiệm thu PASS. Các bằng chứng CI/Cloud/website ngày 23/11 được giữ nguyên; không chạy lại các phép ghi production.
+
+---
+
 ## 23/11/2026 — Phân quyền theo cột đã phát hành và nghiệm thu
 
 Owner run #128 lần đầu bị `STATUS_CAS_HOLD: candidate Rules SHA mismatch` vì biến approved Rules còn hash cũ. Chủ tài khoản đã xác thực email và lưu hash `1b397824d2f225f92353a96c3ac57f84fe22ec6ecab2f814d814ee205af6120b`; đã đọc lại giá trị trên GitHub. Chạy lại failed job của đúng owner run/SHA, không sửa mã hoặc nới guard: [attempt 2 SUCCESS](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45094072798). Typecheck, 1158 unit PASS/170 SKIP, Chromium Save/Cancel, Spark tests 60+14 và direct-CAS security 37/37 PASS; guarded publish/push PASS.

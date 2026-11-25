@@ -2,6 +2,21 @@
 
 Nguồn điều phối: [Issue #232](https://github.com/cavoixanh638/HopHDND-WebApp/issues/232), [PR #231](https://github.com/cavoixanh638/HopHDND-WebApp/pull/231). Các receipt Rules/private backup/canary và giới hạn phạm vi tại [biên nhận Rules](PR231_PRODUCTION_RULES_2026-11-23.md); preflight và 11 CI exact feature HEAD tại [preflight](PR231_COLUMN_ONLY_CLOUD_PREFLIGHT_2026-11-22.md). Tài liệu này bổ sung kết quả phát hành thực, không xóa các checkpoint HOLD trước đó.
 
+## Mốc commit và đóng hồ sơ
+
+Cập nhật hồ sơ ngày **25/11/2026 (UTC+07)** theo yêu cầu lưu commit có mô tả mốc rõ ràng. Ngày phát hành/nghiệm thu của bằng chứng bên dưới vẫn là **23/11/2026**; lần cập nhật tài liệu này không chạy lại nghiệm thu website/Firebase hay triển khai production.
+
+| Mốc | Commit / bằng chứng | Ý nghĩa |
+| --- | --- | --- |
+| Preflight 22/11, trước phê duyệt triển khai | `68df7bdbd70d54db5fa650454450c864ea5e2d6c` | Backup Rules/quyền và restore localhost PASS; production release HOLD |
+| Rules đã triển khai và canary PASS, Pages còn HOLD | `8a2b88415e37e546655e072d4f5d985de41128c8` | Không coi Rules deploy là website đã phát hành |
+| Source đã merge để phát hành | `29c6ab700e7dad807226daaf12b07cc86bf990f3` | Mã phân quyền chỉ theo cột, feature HEAD kiểm thử `d8744b2932d8de3f6557b3fcef3768f7119fc6b7` |
+| Artifact Pages đã phát hành | `bb16d3f98dde569dd111108578e10263320b1166` | Bản build từ source đã duyệt; publisher và actual Pages deployment SUCCESS |
+| Biên nhận cuối sau sửa run #128 | `49de25a6bb607c41e8ce4a21f84473d5970fe087` | Pages, version, UI admin/khách và invariants Cloud đã được đối chiếu ngày 23/11 |
+| Đóng Issue sau báo cáo cuối | `2026-11-23T01:45:43Z` (08:45:43 UTC+07) | Issue #232 CLOSED/completed; PR #231 MERGED |
+
+[Báo cáo kết thúc trên Issue #232](https://github.com/cavoixanh638/HopHDND-WebApp/issues/232#issuecomment-7089394592) và [PR #231](https://github.com/cavoixanh638/HopHDND-WebApp/pull/231#issuecomment-7089395974) chứa source/artifact SHA, Actions URL, PASS/SKIP/NOT_RUN và giới hạn backup. Trạng thái CLOSED/completed và MERGED được đọc lại từ GitHub khi chốt hồ sơ ngày 25/11. Các mục HOLD trong checkpoint cũ là lịch sử theo từng mốc, không phải trạng thái phát hành cuối.
+
 ## Lỗi run #128 và cách sửa
 
 [Run #45094072798](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45094072798), owner `cavoixanh638` thực hiện workflow_dispatch trên main source `29c6ab700e7dad807226daaf12b07cc86bf990f3` lúc `2026-11-23T01:21:02Z` (08:21 UTC+07).
