@@ -1,3 +1,9 @@
+## 25/11/2026 — Hotfix Tùy chọn cột bị ẩn trong giao diện thật
+
+PR #237 và #236 đã phát hành: source `0076f106c4f374f59f38033066c26851b54da579`, artifact `4126541155332d3a932b5c42fde5d9169ec82769`, [publisher](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45637903245) và [Pages](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45638602552) SUCCESS. Tuy nhiên người dùng xác nhận nút Tùy chọn cột không thấy ở chế độ xem admin thật. Nguyên nhân: nút đặt trong card-header bị CSS list-visual-parity ẩn khi data-preview-options=closed; các fixture cũ kiểm tra tồn tại DOM và programmatic open, không tái hiện đủ CSS sản xuất. Hotfix chuyển một nút duy nhất sang hàng tiêu đề luôn hiện, fallback toolbar nếu không có hàng tiêu đề admin; không thay thao tác, quyền, Rules hoặc dữ liệu. Thêm fixture production-chrome và kiểm thử pointer trên desktop/mobile + guest, không dùng menu.open để thay cho click thực. Chỉ chốt release khi exact CI và Pages thành công, xác minh nguồn đang phát hành. Không suy PASS từ tài liệu này.
+
+---
+
 ## 25/11/2026 — Chính sách phát hành tự động mở rộng (đợt sau PR #236)
 
 Theo yêu cầu chủ dự án, mở rộng auto-publish cho các mô-đun hiển thị/tìm kiếm/lọc/báo cáo đã rà soát và bảo trì lịch chạy CI an toàn. Tối ưu timeout và concurrency PR của các workflow QA chỉ đọc được tự động; thay lệnh kiểm thử, bỏ kiểm tra, quyền, script chọn phạm vi, workflow phát hành hoặc preflight vẫn phải review. Mã mới hoặc thay đổi không nhận diện được vẫn HOLD. Không bỏ kiểm thử đầy đủ trước publish, không thay Rules, auth, quyền cột, Firebase data, Secrets hay branch protection. Đọc [hướng dẫn và điều kiện nghiệm thu](checkpoints/G00_PAGES_AUTO_ORDINARY_2026-11-25.md).
