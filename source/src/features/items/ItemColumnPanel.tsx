@@ -48,9 +48,8 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   const [renaming,setRenaming]=useState<string|null>(null);
   const [draftName,setDraftName]=useState('');
   const skipRenameBlur=useRef(false);
-  // Keep advanced controls available, but do not put the 15-field roster
-  // above the actual table on every visit to Customize mode.
-  const [advancedOpen,setAdvancedOpen]=useState(()=>!!focusColumnKey);
+  // Customize is a dedicated screen, so the column roster is visible on entry.
+  const [advancedOpen,setAdvancedOpen]=useState(true);
   useEffect(()=>{
     if(focusColumnKey){setSelected(focusColumnKey);setAdvancedOpen(true);}
   },[focusColumnKey]);
@@ -110,6 +109,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
   const [saving,setSaving]=useState(false);
   useEffect(()=>{onDirtyChange?.(catalogDirty||rightsDirty);},[catalogDirty,rightsDirty,onDirtyChange]);
   const canSave=layoutDirty||catalogDirty||rightsDirty;
+  const showSavebar=advancedOpen||canSave||saving;
   const saveAll=async()=>{
     if(!canSave||saving)return;
     setSaving(true);setSaveError('');setSaveSuccess('');
@@ -205,12 +205,12 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
       </button>
       <span className="column-count">{active.length} cột · Thêm/xóa cột, kiểu nhập, danh sách chọn và quyền sửa. Chỉnh độ rộng, vị trí, ẩn/hiện ở Danh sách dữ liệu → Chỉnh giao diện.</span>
     </div>
-    <div className="column-manager-body">
+    <div className="column-manager-body" hidden={!showSavebar&&!validationMessage&&!saveError&&!saveSuccess}>
       {validationMessage&&<div className="layout-inline-error" role="alert">
         <strong>Chưa lưu được:</strong> {validationMessage}
       </div>}
       {saveError&&<p className="error-text" role="alert">{saveError}</p>}
-      <div className="column-manager-savebar" role="group" aria-label="Lưu thiết lập danh sách">
+      {showSavebar&&<div className="column-manager-savebar" role="group" aria-label="Lưu thiết lập danh sách">
         <div className="column-manager-save-summary"><strong>Thiết lập cột</strong>
           <span className="muted">{canSave?'Có thay đổi chưa lưu':'Không có thay đổi chưa lưu'}</span>
         </div>
@@ -218,7 +218,7 @@ export function ItemColumnPanel({layout,catalog,items=[],permissions,onChange,la
           disabled={!canSave||saving} onClick={()=>void saveAll()}>
           {saving?'Đang lưu…':'Lưu thay đổi'}
         </button>
-      </div>
+      </div>}
       {saveSuccess&&<p className="column-save-success" role="status">{saveSuccess}</p>}
       <div id="column-manager-advanced-panel" className="column-manager-advanced" hidden={!advancedOpen}>
       <details className="cell-highlights-editor group-label-editor">

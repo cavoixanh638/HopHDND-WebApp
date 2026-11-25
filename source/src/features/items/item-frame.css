@@ -1940,9 +1940,8 @@
   }
 }
 
-/* G00 2026-11-22: direct table editing is primary; full field/permission
-   roster is a reversible advanced disclosure. Save bar stays visible to avoid
-   silently losing draft layout, catalog or permissions changes. */
+/* The dedicated editor starts open. Collapsing it keeps pending saves and
+   feedback accessible without leaving an empty body on a clean screen. */
 .app-shell.settings-page .column-manager-heading{
   display:flex;align-items:center;gap:7px 13px;flex-wrap:wrap;
 }
@@ -1958,7 +1957,7 @@
 .column-manager-advanced-toggle:focus-visible{
   outline:2px solid #286b9a;outline-offset:2px;
 }
-.column-manager-advanced[hidden]{display:none!important;}
+.column-manager-body[hidden],.column-manager-advanced[hidden]{display:none;}
 .column-manager-advanced{display:grid;gap:12px;min-width:0;}
 @media (prefers-reduced-motion:reduce){
   .column-manager-advanced-toggle{transition:none;}

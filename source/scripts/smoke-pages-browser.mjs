@@ -4324,11 +4324,12 @@ try{
   // persistence callback, remount from the saved synthetic snapshot and reset.
   await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
-  // The full 15-field settings roster is intentionally collapsed by default.
-  // Test the new default, then expand through the actual Admin button before
-  // interacting with controls that are hidden (and cannot receive focus).
-  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false'",
-    'Lượt 018 advanced column manager should be collapsed by default');
+  // The dedicated editor opens with the roster visible and secondary settings folded.
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='true' && document.querySelector('.column-manager-grid')?.getBoundingClientRect().height>0 && document.querySelector('.column-save-button')?.disabled && document.querySelector('.group-label-editor')?.open===false",
+    'Column manager should open with a visible roster and no pending save');
+  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false' && !document.querySelector('.column-manager-savebar') && document.querySelector('.column-manager-body')?.getBoundingClientRect().height===0",
+    'The clean collapsed column manager should only show its heading');
   await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
   await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='true' && document.querySelector('.column-manager-advanced')?.hidden===false",
     'Lượt 018 advanced column manager failed to expand');
@@ -4352,9 +4353,14 @@ try{
   await send('Input.insertText',{text:'Tên ba khâu sau lưu'});
   await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
     'Lượt 018 shared Save not enabled after title edit');
+  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
+  await eventually("document.querySelector('.column-manager-advanced')?.hidden && document.querySelector('.column-save-button:not(:disabled)')?.getBoundingClientRect().height>0",
+    'Collapsing with a draft should keep Save available');
   await evaluate("document.querySelector('.column-save-button').click()");
   await eventually("!!JSON.parse(localStorage.getItem('hdnd.qa.group-labels-synthetic')||'{}').groupLabels?.partyTogether",
     'Lượt 018 synthetic CAS save did not persist group title');
+  await eventually("!document.querySelector('.column-manager-savebar') && document.querySelector('.column-save-success')?.textContent.includes('Đã lưu')",
+    'Saving a collapsed draft should hide the save bar and confirm the save');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1'});
   await eventually("[...document.querySelectorAll('.item-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
     'Lượt 018 shared group-title reload not shown');
@@ -4362,11 +4368,8 @@ try{
   await eventually("[...document.querySelectorAll('.report-grid-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
     'Lượt 018 popup did not inherit saved shared group title');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
-  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false'",
-    'Lượt 018 reloaded advanced manager unexpectedly expanded');
-  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
   await eventually("document.querySelector('.column-manager-advanced')?.hidden===false",
-    'Lượt 018 reloaded advanced manager did not open');
+    'Lượt 018 reloaded advanced manager should open by default');
   await eventually("document.querySelector('.group-label-editor summary')!==null",
     'Lượt 018 admin group-title reload missing');
   await evaluate("document.querySelector('.group-label-editor').open=true");
