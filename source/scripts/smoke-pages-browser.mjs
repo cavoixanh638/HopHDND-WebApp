@@ -3879,11 +3879,15 @@ try{
   await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
+  const staffMinimum=async()=>Number(await evaluate("document.querySelector('col[data-protected-column=room]')?.dataset.contentMinimum"));
+  const fallbackStaffMinimum=await staffMinimum();
+  if(!Number.isFinite(fallbackStaffMinimum)||fallbackStaffMinimum<130||fallbackStaffMinimum>fallbackBefore.staff)
+    throw Error('Invalid measured staff minimum '+fallbackStaffMinimum);
   // The responsive projection changes how much room the staff group can
   // donate. Drag far enough to exhaust its actual current capacity plus the
   // 6px compact-ID fallback, not an obsolete hard-coded 160px baseline.
   const fallbackTravel=Math.max(160,
-    fallbackBefore.staff-130+(fallbackBefore.id-46)+8);
+    fallbackBefore.staff-fallbackStaffMinimum+(fallbackBefore.id-46)+8);
   const fallbackEdge=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
     el.scrollIntoView({block:'center',inline:'nearest'});
@@ -3897,8 +3901,8 @@ try{
     'L019 fallback failed to use last ID after adjacent reached minimum');
   const fallbackAfter=await widthSnapshot();
   assertSameTotal(fallbackBefore,fallbackAfter,'L019 adjacent exhausted => last fallback');
-  if(fallbackAfter.content!==fallbackBefore.content+(fallbackBefore.staff-130)+(fallbackBefore.id-46)||
-    fallbackAfter.staff!==130||fallbackAfter.party!==fallbackBefore.party||fallbackAfter.id!==46)
+  if(fallbackAfter.content!==fallbackBefore.content+(fallbackBefore.staff-fallbackStaffMinimum)+(fallbackBefore.id-46)||
+    fallbackAfter.staff!==fallbackStaffMinimum||fallbackAfter.party!==fallbackBefore.party||fallbackAfter.id!==46)
     throw Error('L019 fallback exceeded min or skipped adjacent: '+
       JSON.stringify({fallbackBefore,fallbackAfter}));
   const l019BeforeShot=await send('Page.captureScreenshot',{format:'png'});
@@ -4033,11 +4037,14 @@ try{
     textGeometry.departmentY===null||
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
-  // Grouped Staff has 70px mandatory extra width (min physical 130px).
+  // Staff must retain both its original physical floor and the measured text floor.
   // A 250px pointer move is CLAMPED to the actual remaining slack in Staff
   // then Note after responsive fit. Neither saved min nor total may be broken.
   const wideBefore=await widthSnapshot();
-  const wideStaffSlack=Math.max(0,wideBefore.staff-130);
+  const wideStaffMinimum=await staffMinimum();
+  if(!Number.isFinite(wideStaffMinimum)||wideStaffMinimum<130||wideStaffMinimum>wideBefore.staff)
+    throw Error('Invalid wide protected staff minimum '+wideStaffMinimum);
+  const wideStaffSlack=Math.max(0,wideBefore.staff-wideStaffMinimum);
   const wideNoteSlack=Math.max(0,wideBefore.widths.at(-1)-60);
   const wideDragBudget=Math.min(250,wideStaffSlack+wideNoteSlack);
   const wideEdge=await evaluate(`(()=>{
