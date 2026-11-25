@@ -1006,6 +1006,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const canJoinCvRoom=compactDisplay.teamTogether&&compactPairs.some(p=>
     p.variant==='teamTogether'&&p.memberFields.includes('room')&&p.memberFields.includes('specialist'));
+  // The real Pages List hides its secondary card-header in default view.
+  // Keep the column options in the always-visible title row (or filter toolbar
+  // when shared layout is unavailable), never inside that hidden header.
+  const columnMenuInHeading=adminControls&&(!!onPersistViewerLayout||isRamAdminList);
   const compactMenu=adminControls&&compactOn&&!customizing&&(shareCompact||allowPersonalCompact)&&
     (<>
       <details className="compact-columns-menu" ref={compactDetailsRef}
@@ -1015,7 +1019,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           if(!opened)setCompactMenuPlacement(null);
         }}>
         <summary ref={compactSummaryRef} aria-label="Tùy chọn cột"
-          aria-controls="hdnd-compact-columns-popup">Tùy chọn cột <span aria-hidden="true">▾</span></summary>
+          aria-controls="hdnd-compact-columns-popup" aria-expanded={compactMenuOpen}>Tùy chọn cột <span aria-hidden="true">▾</span></summary>
       </details>
       {compactMenuOpen&&compactMenuPlacement&&typeof document!=='undefined'&&createPortal(
         <div id="hdnd-compact-columns-popup" ref={compactPanelRef} tabIndex={-1}
@@ -1112,7 +1116,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           })}</ul>
         </details>
       </section>}
-      {adminControls&&(onPersistViewerLayout||isRamAdminList)?<div className="admin-list-heading">
+      {columnMenuInHeading?<div className="admin-list-heading">
         <div className="inline-g01-title-group">
           {titleEditorOpen&&inlineReady?<form id="admin-list-title-editor" className="inline-g01-title-editor"
             onSubmit={event=>{event.preventDefault();
@@ -1135,6 +1139,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           {inlineReady&&!titleEditorOpen&&<button ref={titleInlineTrigger} type="button" className="inline-g01-title-trigger"
             onClick={beginTitleInline} aria-label="Sửa tên danh sách tại chỗ" title="Sửa tên danh sách">✎</button>}
         </div>
+        {compactMenu}
         {canEditListSettings&&<button type="button" className="button ghost inline-g01-mode-toggle"
           aria-pressed={inlineMode} disabled={inlineMode}
           onClick={()=>{stageInlineLayout();setShowAllSourceColumns(false);
@@ -1253,7 +1258,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
-      {compactMenu}
       {inlineMode&&!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
         className="button ghost group-label-shortcut"
         disabled={!canViewerArrange}
@@ -1349,6 +1353,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <button type="button" onClick={()=>setSelectedSearchColumns(searchChoices)}>Chọn tất cả</button>
             <button type="button" onClick={()=>closeSearchScope(true)}>Đóng</button>
           </fieldset>,document.body)}</div>
+        {!columnMenuInHeading&&compactMenu}
         <select className={'list-filter-organisation'+(toolbar.department?' is-filter-active':'')} data-filter-active={toolbar.department?'true':'false'} aria-label="Lọc Sở, ngành"
           value={toolbar.department}
           onChange={e=>setToolbar(old=>({...old,department:e.currentTarget.value}))}>

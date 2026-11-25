@@ -4602,6 +4602,80 @@ try{
     throw Error('R06 desktop list-fit changed while enough room: '+JSON.stringify(r06Desktop));
   console.log('R06_APP_SHELL_MOBILE_TABLE_REACHABLE_PASS',JSON.stringify({r06Screens,r06Desktop}));
 
+
+  // Exact live default-view CSS parity: the production List hides .card-header
+  // when collapsed. Use a real pointer click, not menu.open=true or .click()
+  // on a hidden DOM node. Verify both desktop widths and small screens.
+  const productionColumnChecks=[];
+  const pointerClick=async(selector)=>{
+    const hit=await evaluate(`(()=>{
+      const node=document.querySelector(${JSON.stringify(selector)});
+      if(!node)return {ok:false,why:'missing'};
+      node.scrollIntoView({block:'nearest',inline:'nearest'});
+      const r=node.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+      const at=document.elementFromPoint(x,y);
+      return {ok:r.width>0&&r.height>0&&x>=0&&x<innerWidth&&y>=0&&y<innerHeight&&
+        !!at&&(at===node||node.contains(at)),x,y,rect:{left:r.left,top:r.top,width:r.width,height:r.height}};
+    })()`);
+    if(!hit.ok)throw Error('Production visible pointer target failed '+selector+' '+JSON.stringify(hit));
+    await send('Input.dispatchMouseEvent',{type:'mousePressed',x:hit.x,y:hit.y,button:'left',clickCount:1});
+    await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:hit.x,y:hit.y,button:'left',clickCount:1});
+    return hit.rect;
+  };
+  for(const [width,height] of [[1600,900],[1280,800],[390,844]]){
+    await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+    await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+      '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&production-chrome=1&review-staff=1'});
+    await eventually("!!document.querySelector('.list-visual-parity .item-data-region[data-preview-options=closed] .admin-list-heading')",
+      'Production default admin List did not mount');
+    const defaultView=await evaluate(`(()=>{
+      const region=document.querySelector('.item-data-region');
+      const old=region.querySelector(':scope > .card-header');
+      const button=region.querySelector('.admin-list-heading .compact-columns-menu > summary');
+      return {ok:!!old&&getComputedStyle(old).display==='none'&&!!button&&
+        button.getClientRects().length>0&&region.querySelectorAll('.compact-columns-menu').length===1&&
+        !region.querySelector('.inline-layout-savebar'),oldHeader:old?getComputedStyle(old).display:null,
+        title:button?.textContent?.trim()};
+    })()`);
+    if(!defaultView.ok)throw Error('PRODUCTION_COLUMN_OPTIONS_NOT_VISIBLE '+JSON.stringify({width,defaultView}));
+    const triggerRect=await pointerClick('.admin-list-heading .compact-columns-menu > summary');
+    await eventually("!!document.querySelector('.compact-columns-options-floating')",
+      'Production column popup did not open from visible button');
+    const popup=await evaluate(`(()=>{
+      const panel=document.querySelector('.compact-columns-options-floating'),r=panel.getBoundingClientRect();
+      const names=[...panel.querySelectorAll('input[data-compact-choice]')];
+      return {ok:r.left>=0&&r.right<=innerWidth+.5&&r.top>=0&&r.bottom<=innerHeight+.5&&
+        !!panel.querySelector('.column-options-checklist input[data-column-choice]')&&
+        panel.textContent.includes('Gộp cột người phụ trách')&&names.length===2&&
+        names.every(x=>!x.closest('details')&&x.getClientRects().length>0)&&
+        !document.querySelector('.inline-layout-savebar'),rect:{left:r.left,top:r.top,width:r.width,height:r.height}};
+    })()`);
+    if(!popup.ok)throw Error('Production popup sections or geometry invalid '+JSON.stringify({width,popup}));
+    if(width===1600){
+      const shot=await send('Page.captureScreenshot',{format:'png'});
+      writeFileSync('hophdnd-production-column-options-visible.png',Buffer.from(shot.data,'base64'));
+      const checkbox='.compact-columns-options-floating input[data-compact-choice=shortSpecialist]';
+      await pointerClick(checkbox);
+      await eventually("!!document.querySelector('.inline-layout-cancel') && document.querySelector('.compact-columns-options-floating input[data-compact-choice=shortSpecialist]')?.checked===false",
+        'Visible name checkbox did not stage shared layout draft');
+      await evaluate("document.querySelector('.column-options-close').click()");
+      await pointerClick('.inline-layout-cancel');
+      await eventually("!document.querySelector('.inline-layout-savebar')",'Cancel did not restore default admin view');
+      await pointerClick('.admin-list-heading .compact-columns-menu > summary');
+      await eventually("document.querySelector('.compact-columns-options-floating input[data-compact-choice=shortSpecialist]')?.checked===true",
+        'Visible default menu did not restore abbreviated name choice');
+    }
+    await evaluate("document.querySelector('.column-options-close').click()");
+    await eventually("!document.querySelector('.compact-columns-options-floating')",'Column popup did not close');
+    productionColumnChecks.push({width,height,triggerRect,popup:popup.rect});
+  }
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&production-chrome=1&guest=1&edit=1'});
+  await eventually("!!document.querySelector('.list-visual-parity .item-data-table')",'Production guest List did not mount');
+  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating')"))
+    throw Error('Guest received admin-only column or search menu in production chrome');
+  console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
+
   // Desktop List must NOT trap expanded admin options inside its locked
   // viewport. Real ItemList + real CSS, only loopback synthetic source data.
   // The collapsed desktop stays one screen; expanding L03 controls makes the

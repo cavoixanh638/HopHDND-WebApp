@@ -24,7 +24,7 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).not.toContain('<summary>Lọc khác ');
     expect(list).not.toContain('<label>Chọn trường tìm kiếm\n              <select aria-label="Chọn trường tìm kiếm"');
   });
-  it('puts summary/L03 and compact controls behind editing, Excel paste alongside filter bar',()=>{
+  it('keeps summary/L03 behind editing but column options visible in the ordinary List',()=>{
     expect(list).toContain('inlineMode&&adminControls&&(onPersistViewerLayout||isRamAdminList)');
     expect(list).toContain('aria-label="Thiết lập hiển thị khi chỉnh giao diện"');
     expect(list).toContain('stageInlineLayout(base=>setInlineSummaryVisibility(base,key,checked))');
@@ -38,6 +38,18 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).toContain('data-column-choice={column.key}');
     expect(list).toContain('onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}');
     expect(list).toContain('const compactMenu=adminControls&&compactOn&&!customizing');
+    // Regression: the production CSS hides the old .card-header when
+    // data-preview-options=closed. A DOM existence check alone missed it.
+    const heading=list.slice(list.indexOf('{columnMenuInHeading?<div className="admin-list-heading">'),
+      list.indexOf('</div>:<h2 className="item-list-page-title">'));
+    expect(heading).toContain('{compactMenu}');
+    const hiddenHeader=list.slice(list.indexOf('{adminControls&&<div className="card-header">'),
+      list.indexOf('{!customizing&&(onPersistViewerLayout||isRamAdminList)&&(saveFeedback||layoutError)'));
+    expect(hiddenHeader).not.toContain('{compactMenu}');
+    expect(list).toContain('{!columnMenuInHeading&&compactMenu}');
+    const productionCss=readFileSync(new URL('../src/features/items/real-list-visual-parity.css',import.meta.url),'utf8');
+    expect(productionCss).toContain('[data-preview-options="closed"] > .card-header');
+    expect(productionCss).toContain('display:none!important');
     expect(list).toContain('stageInlineLayout(previous=>({...previous,compactDisplay:next}))');
     expect(list).toContain('if(inlineMode){\n      // Group titles belong');
     expect(list).toContain('className="button ghost admin-bulk-paste-trigger"');
