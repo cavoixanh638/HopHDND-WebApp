@@ -20,29 +20,32 @@ export interface L03InlineWidthEditor {
   /** Lets layout editing preview both geometries WITHOUT enabling field editing. */
   previewMode?:L03WidthMode;
   widths:PartyTrackWidths;
+  minimums?:PartyTrackWidths;
   onWidthsCommit:(next:PartyTrackWidths)=>void|boolean|Promise<void|boolean>;
 }
 
 type BoundaryRange={minDelta:number;maxDelta:number};
 export function l03BoundaryRange(widths:PartyTrackWidths,mode:L03WidthMode,
-  boundary:number):BoundaryRange {
+  boundary:number,minimums?:PartyTrackWidths):BoundaryRange {
   const names=RAILS[mode];
   if(!Number.isInteger(boundary)||boundary<0||boundary>=names.length-1)
     throw new RangeError('L03 boundary does not exist');
   const values=widths[mode] as unknown as Record<string,number>;
   const limits=PARTY_TRACK_WIDTH_LIMITS[mode] as Record<string,{min:number;max:number}>;
   const left=names[boundary],right=names[boundary+1];
+  const floor=(name:string)=>Math.max(limits[name].min,
+    (minimums?.[mode] as Record<string,number>|undefined)?.[name]??0);
   return {
-    minDelta:Math.max(limits[left].min-values[left],values[right]-limits[right].max),
-    maxDelta:Math.min(limits[left].max-values[left],values[right]-limits[right].min)
+    minDelta:Math.max(floor(left)-values[left],values[right]-Math.max(values[right],limits[right].max)),
+    maxDelta:Math.min(Math.max(values[left],limits[left].max)-values[left],values[right]-floor(right))
   };
 }
 
 /** Adjacent-only transfer: sum of rails, physical L03 parent width, and all
  * neighbouring table columns remain EXACTLY unchanged. Never rewrite limits. */
 export function l03ResizeBoundary(widths:PartyTrackWidths,mode:L03WidthMode,
-  boundary:number,delta:number):PartyTrackWidths {
-  const range=l03BoundaryRange(widths,mode,boundary);
+  boundary:number,delta:number,minimums?:PartyTrackWidths):PartyTrackWidths {
+  const range=l03BoundaryRange(widths,mode,boundary,minimums);
   if(!Number.isFinite(delta))return widths;
   const applied=Math.max(range.minDelta,Math.min(range.maxDelta,Math.round(delta)));
   if(applied===0)return widths;
@@ -121,7 +124,7 @@ export function L03InlineWidthControl({actualMode,editor,children}:Props){
       current.boundary!==boundary)return;
     event.preventDefault();event.stopPropagation();
     const next=l03ResizeBoundary(current.start,current.mode,boundary,
-      event.clientX-(current.startX??event.clientX));
+      event.clientX-(current.startX??event.clientX),editor?.minimums);
     if(!same(next,current.last)){current.last=next;setDraft(next);}
   };
   const onPointerEnd=(event:PointerEvent<HTMLSpanElement>)=>{
@@ -161,7 +164,7 @@ export function L03InlineWidthControl({actualMode,editor,children}:Props){
     const current=running?.last??editor.widths;
     const step=event.altKey||event.shiftKey?10:1;
     const next=l03ResizeBoundary(current,mode,boundary,
-      (event.key==='ArrowRight'?1:-1)*step);
+      (event.key==='ArrowRight'?1:-1)*step,editor.minimums);
     setError('');
     gesture.current={kind:'keyboard',mode,boundary,baseline:signature,
       start,last:next};
@@ -183,7 +186,7 @@ export function L03InlineWidthControl({actualMode,editor,children}:Props){
       {names.slice(0,-1).map((left,index)=>{
         const right=names[index+1];
         const leftWidth=values[left],rightWidth=values[right];
-        const range=l03BoundaryRange(widths,mode,index);
+        const range=l03BoundaryRange(widths,mode,index,editor?.minimums);
         const offset=names.slice(0,index+1).reduce((sum,name)=>sum+values[name],0)+
           L03_RAIL_GAP_PX*index+L03_RAIL_GAP_PX/2;
         const labels=PARTY_TRACK_NAMES[mode] as Record<string,string>;

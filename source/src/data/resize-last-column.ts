@@ -49,10 +49,10 @@ export const projectedGroupWidth=(sourceWidth:number,extraWidth:number)=>
 export const projectedPhysicalWidth=(sourceWidth:number,key:string,extras:Extras={},idCompact=true)=>
   idCompact&&key==='displayCode'?projectedIdWidth(sourceWidth):
   projectedGroupWidth(sourceWidth,extraFor(key,extras));
-export const projectedPhysicalLimits=(key:string,extras:Extras={},idCompact=true)=>{
+export const projectedPhysicalLimits=(key:string,extras:Extras={},idCompact=true,contentMinimums:Extras={})=>{
   if(idCompact&&key==='displayCode')return {min:projectedIdWidth(60),max:projectedIdWidth(1600)};
   const extra=extraFor(key,extras);
-  return {min:60+extra,max:1600};
+  return {min:Math.min(1600,Math.max(60+extra,contentMinimums[key]??0)),max:1600};
 };
 
 /** Same constraints used by the DOM drag preview AND the eventual CAS commit.
@@ -130,14 +130,14 @@ export function planAdjacentTransfer(current:number,desired:number,limits:{min:n
  */
 export function resizeProjectedWithAdjacent(layout:ItemLayout,keys:readonly string[],
   target:string,desiredWidth:number,extras:Extras={},idCompact=true,
-  groupExtras:Extras={}):ItemLayout{
+  groupExtras:Extras={},contentMinimums:Extras={}):ItemLayout{
   const index=keys.indexOf(target);
   if(index<0||index>=keys.length-1||!Number.isFinite(desiredWidth))return layout;
   const keyNext=keys[index+1],keyLast=keys.at(-1)!;
   const get=(key:string)=>layout.columns.find(c=>c.key===key);
   if(!get(target)||!get(keyNext)||!get(keyLast))return layout;
   const old=(key:string)=>projectedPhysicalWidth(get(key)!.width,key,extras,idCompact);
-  const bounds=(key:string)=>projectedPhysicalLimits(key,groupExtras,idCompact);
+  const bounds=(key:string)=>projectedPhysicalLimits(key,groupExtras,idCompact,contentMinimums);
   const limits=bounds(target);
   const beside={width:old(keyNext),...bounds(keyNext)};
   const tail=keyNext===keyLast?undefined:{width:old(keyLast),...bounds(keyLast)};
@@ -168,7 +168,7 @@ export function resizeProjectedWithAdjacent(layout:ItemLayout,keys:readonly stri
 /** Preview bounds use the physical rendered widths, not the saved raw widths
  * plus auto-fit growth. Pass base group extras for accurate 60..1600 limits. */
 export function projectedAdjacentBounds(layout:ItemLayout,keys:readonly string[],
-  target:string,extras:Extras={},idCompact=true,groupExtras:Extras={}):
+  target:string,extras:Extras={},idCompact=true,groupExtras:Extras={},contentMinimums:Extras={}):
   {min:number;max:number}|null {
   const index=keys.indexOf(target);
   if(index<0||index>=keys.length-1)return null;
@@ -177,8 +177,8 @@ export function projectedAdjacentBounds(layout:ItemLayout,keys:readonly string[]
   if(!get(target)||!get(next)||!get(last))return null;
   const physical=(key:string)=>projectedPhysicalWidth(get(key)!.width,key,extras,idCompact);
   const plan=planAdjacentTransfer(physical(target),physical(target),
-    projectedPhysicalLimits(target,groupExtras,idCompact),
-    {width:physical(next),...projectedPhysicalLimits(next,groupExtras,idCompact)},
-    next===last?undefined:{width:physical(last),...projectedPhysicalLimits(last,groupExtras,idCompact)});
+    projectedPhysicalLimits(target,groupExtras,idCompact,contentMinimums),
+    {width:physical(next),...projectedPhysicalLimits(next,groupExtras,idCompact,contentMinimums)},
+    next===last?undefined:{width:physical(last),...projectedPhysicalLimits(last,groupExtras,idCompact,contentMinimums)});
   return {min:plan.min,max:plan.max};
 }

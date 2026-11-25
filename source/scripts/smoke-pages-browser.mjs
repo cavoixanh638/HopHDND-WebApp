@@ -4110,7 +4110,7 @@ try{
       'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
     const l03Viewport=await evaluate("document.querySelector('.item-table-scroll')?.clientWidth");
-    if(before.party!==276||Math.abs(before.total-l03Viewport)>1||
+    if(before.party<276||Math.abs(before.total-l03Viewport)>1||
       (l03LegacyWidths.length&&JSON.stringify(before.widths)!==
         JSON.stringify(l03LegacyWidths[0].before.widths))||
       await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
@@ -4725,31 +4725,93 @@ try{
     }
     await evaluate("document.querySelector('.column-options-close').click()");
     await eventually("!document.querySelector('.compact-columns-options-floating')",'Column popup did not close');
+    const layoutTrigger='.saved-layout-trigger';
+    const layoutPanel='.saved-layout-popup';
+    const sameTone=await evaluate(`(()=>{
+      const a=document.querySelector('.admin-list-heading .compact-columns-menu > summary');
+      const b=document.querySelector('.saved-layout-trigger');
+      if(!a||!b)return false;
+      const as=getComputedStyle(a),bs=getComputedStyle(b),ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();
+      return as.backgroundColor===bs.backgroundColor&&as.borderTopColor===bs.borderTopColor&&
+        as.fontSize===bs.fontSize&&Math.abs(ar.height-br.height)<=2&&
+        (innerWidth<1000||Math.abs(ar.top+ar.height/2-br.top-br.height/2)<=2);
+    })()`);
+    if(!sameTone)throw Error('Saved layout trigger must match column options tone and alignment');
+    await pointerClick(layoutTrigger);
+    await eventually("!!document.querySelector('.saved-layout-popup .saved-layout-add')",'Saved layout popup missing');
+    const layoutRect=await evaluate(`(()=>{
+      const r=document.querySelector('.saved-layout-popup').getBoundingClientRect();
+      return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};
+    })()`);
+    if(layoutRect.left<0||layoutRect.right>width+1||layoutRect.top<0||layoutRect.bottom>height+1)
+      throw Error('Saved layout popup overflow: '+JSON.stringify(layoutRect));
     if(width===1600){
-      const select='select[aria-label="Chọn giao diện đã lưu"]';
       const nameForm='form[aria-label="Lưu giao diện mới"]';
       const renameForm='form[aria-label="Đổi tên mẫu"]';
-      const openNew=()=>evaluate("Array.from(document.querySelectorAll('.admin-saved-layout-actions button')).find(b=>b.textContent.trim()==='Lưu giao diện mới').click()");
+      const selected=()=>evaluate("document.querySelector('.saved-layout-choice[aria-pressed=true]')?.textContent?.trim()");
+      const openMenu=async()=>{if(!await evaluate("!!document.querySelector('.saved-layout-popup')"))await pointerClick(layoutTrigger);
+        await eventually("!!document.querySelector('.saved-layout-popup')",'Saved layout menu did not open');};
+      const openNew=async()=>{await openMenu();await pointerClick('.saved-layout-add');};
       const enterName=async(form,name)=>{
         await eventually("!!document.querySelector("+JSON.stringify(form+" input")+")",'Named layout form did not open');
-        await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(form+' input')});i.focus()})()`);
+        await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(form+' input')});i.focus();i.select()})()`);
         await send('Input.insertText',{text:name});
         await evaluate(`document.querySelector(${JSON.stringify(form+' button[type=submit]')}).click()`);
         await eventually("!document.querySelector("+JSON.stringify(form)+")",'Named layout did not commit');
       };
       await openNew();await enterName(nameForm,'QA gộp');
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA gộp'",'New layout not selected');
-      const original=await evaluate("document.querySelector("+JSON.stringify(select)+").value");
-      await evaluate("Array.from(document.querySelectorAll('.admin-saved-layout-actions button')).find(b=>b.textContent.trim()==='Đổi tên mẫu').click()");
-      await eventually("!!document.querySelector("+JSON.stringify(renameForm+" input")+")",'Rename form did not open');
-      await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(renameForm+' input')});i.focus();i.select()})()`);
+      await openMenu();
+      if(!(await selected())?.includes('QA gộp'))throw Error('New layout not ticked');
+      const original=await evaluate("document.querySelector('.saved-layout-choice[aria-pressed=true]').closest('[data-layout-id]').dataset.layoutId");
+      await pointerClick('.saved-layout-row[data-layout-id="'+original+'"] button[title="Đổi tên mẫu"]');
       await enterName(renameForm,'QA đổi tên');
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA đổi tên'",'Rename not saved');
+      await openMenu();
+      if(!(await selected())?.includes('QA đổi tên'))throw Error('Rename not saved');
       await openNew();await enterName(nameForm,'QA mẫu hai');
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.options.length===3",'Both presets must remain');
-      await evaluate(`(()=>{const s=document.querySelector(${JSON.stringify(select)});s.value=${JSON.stringify(original)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`);
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA đổi tên'",'Named layout not reselected');
+      await openMenu();
+      if(await evaluate("document.querySelectorAll('.saved-layout-choice').length")!==2)throw Error('Both presets must remain');
+      await pointerClick('.saved-layout-row[data-layout-id="'+original+'"] .saved-layout-choice');
+      await eventually("!document.querySelector('.saved-layout-popup')",'Named layout did not close after select');
+      await openMenu();
+      if(!(await selected())?.includes('QA đổi tên'))throw Error('Named layout not reselected');
       console.log('SHARED_LAYOUT_PRESET_BROWSER_PASS');
+    }
+    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await eventually("!document.querySelector('.saved-layout-popup')",'Escape must dismiss layout menu');
+    if(width===1600){
+      // Actual font controls, not just a synthetic CSS variable override.
+      const fontAudit=String.raw`(()=>{
+        const table=document.querySelector('.item-data-table');
+        const groups=[...table.querySelectorAll('.compact-pair-lines,.compact-stages[data-rev2=true]')];
+        const cells=[...table.querySelectorAll('tbody td[data-col-key]')];
+        const textTargets=[...table.querySelectorAll('.compact-pair-lines .compact-highlight-member,.compact-staff-inline-values,.compact-stage-title,.compact-stage-state,.compact-stage-level[data-level-editor=true]')];
+        const texts=textTargets.map(el=>{
+          const range=document.createRange(),walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+          const rects=[];
+          for(let n=walker.nextNode();n;n=walker.nextNode()){
+            if(!n.textContent.trim()||n.parentElement.closest('.warning-text,.error-text,[role=alert],[role=status]'))continue;
+            range.selectNodeContents(n);rects.push(...[...range.getClientRects()].filter(r=>r.width>0));
+          }
+          const box=el.getBoundingClientRect(),td=el.closest('td').getBoundingClientRect();
+          return {text:el.textContent.trim(),wrap:rects.length>0&&Math.max(...rects.map(r=>r.top))-Math.min(...rects.map(r=>r.top))>5,
+            outside:rects.some(r=>r.left<td.left-2||r.right>td.right+2),font:getComputedStyle(el).fontSize,
+            overflow:el.scrollWidth>el.clientWidth+2};
+        });
+        return {groups:groups.length,fonts:[...new Set(cells.map(c=>getComputedStyle(c).fontSize))],
+          textFonts:[...new Set(texts.map(t=>t.font))],failures:texts.filter(t=>t.wrap||t.outside||t.overflow)};
+      })()`;
+      for(let i=0;i<7;i++){
+        await evaluate("document.querySelector('.list-font-controls button[aria-label=\"Tăng cỡ chữ bảng\"]').click()");
+        await new Promise(resolve=>setTimeout(resolve,60));
+      }
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='20px'",'A+ did not reach 20px');
+      const large=await evaluate(fontAudit);
+      if(!large.groups||large.fonts.some(f=>f!=='20px')||large.textFonts.some(f=>f!=='20px')||large.failures.length)
+        throw Error('Font 20px protected one-line contract failed: '+JSON.stringify(large));
+      await pointerClick('.inline-layout-cancel');
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px'",'Font Cancel did not restore previous size');
+      console.log('LIST_FONT_AND_NOWRAP_20PX_PASS',JSON.stringify({groups:large.groups,fonts:large.fonts,textFonts:large.textFonts}));
     }
     productionColumnChecks.push({width,height,triggerRect,popup:popup.rect});
   }
@@ -4762,7 +4824,7 @@ try{
   await eventually("!!document.querySelector('.list-visual-parity .item-data-table tbody .compact-pair-lines')",
     'Production guest grouped readonly List did not mount');
   await verifyStaffRails('production-guest-readonly');
-  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.admin-saved-layout-actions')"))
+  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.saved-layout-menu')"))
     throw Error('Guest received admin-only column or search menu in production chrome');
   console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
 

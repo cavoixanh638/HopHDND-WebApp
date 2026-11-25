@@ -153,6 +153,8 @@ export interface ItemLayout {
   listTitle?:string;
   summaryCards?:SummaryCardVisibility;
   columns:ItemColumn[];tableWidth:number;frameWidth?:'auto'|number;
+  /** Optional List-only font size (px). Legacy layouts inherit the shared report font. */
+  tableFontSize?:number;
   compactDisplay?:SharedCompactDisplay;
   /** Shared L03 widths for level-readonly (2 tracks) and editable (3 tracks). */
   partyGroupWidths?:PartyGroupWidths;
@@ -167,6 +169,13 @@ export interface ItemLayout {
 }
 export interface SavedLayoutPreset {id:string;name:string;layout:Omit<ItemLayout,'savedLayouts'|'activeLayoutId'>}
 export const MAX_SAVED_LAYOUTS=12;
+export const MIN_LIST_FONT_SIZE=11,MAX_LIST_FONT_SIZE=20;
+export function validateListFontSize(value:unknown):number|undefined{
+  if(value===undefined)return undefined;
+  if(typeof value!=='number'||!Number.isSafeInteger(value)||value<MIN_LIST_FONT_SIZE||value>MAX_LIST_FONT_SIZE)
+    throw new Error('Cỡ chữ bảng phải từ 11 đến 20 px.');
+  return value;
+}
 const hexColor=/^#[0-9a-fA-F]{6}$/;
 export function cellHighlightStyle(value:unknown,field:string,rules:readonly CellHighlightRule[]|undefined):
   {color:string;backgroundColor:string}|undefined {
@@ -335,7 +344,8 @@ function validateItemLayoutBase(value:unknown):ItemLayout{
     validatePartyTrackWidths(input.partyTrackWidths);
   if(!columns.some(column=>column.visible&&!column.removed))
     throw new Error('Cần ít nhất một cột dữ liệu hiển thị.');
-  return {columns,tableWidth:input.tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,
+  const tableFontSize=validateListFontSize(input.tableFontSize);
+  return {columns,tableWidth:input.tableWidth,frameWidth,...(tableFontSize===undefined?{}:{tableFontSize}),cellHighlights,compactDisplay,partyGroupWidths,
     ...(partyTrackWidths?{partyTrackWidths}:{}),groupLabels,listTitle:validateListTitle(input.listTitle),summaryCards:validateSummaryCards(input.summaryCards)};
 }
 /** Only presentation is stored. Custom-column options and values remain authoritative. */
@@ -403,7 +413,7 @@ export function applyLayoutPreset(input:ItemLayout,id:string):ItemLayout {
       ...(old.renamed?{renamed:true}:{})}];
   });
   for(const live of current.columns)if(!used.has(live.key))columns.push(live);
-  return validateItemLayout({...current,...visual,columns,activeLayoutId:id,
+  return validateItemLayout({...current,...visual,columns,activeLayoutId:id,tableFontSize:visual.tableFontSize,
     cellHighlights:visual.cellHighlights?.filter(rule=>rule.field==='*'||byKey.has(rule.field))});
 }
 export function deleteLayoutPreset(input:ItemLayout,id:string):ItemLayout {
