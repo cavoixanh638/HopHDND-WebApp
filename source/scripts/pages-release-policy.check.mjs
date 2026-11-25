@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {classifyCommits,isAutoUiPath,isPagesArtifactCommit,
   isBootstrapPolicyCommit,isSafePresentationSource,
-  isVettedSingleTableUi,isScopedAutopublishMigration,reviewedUiTransition}
+  isVettedSingleTableUi,isScopedAutopublishMigration,reviewedUiTransition,
+  isReviewedCiOptimization,reviewedCiOptimization,isSafeOrdinaryFeatureChange,isSafeQaSchedulingChange}
   from './pages-release-policy.mjs';
 
 const baseline='cc81aee8114a969892f6a812f03ca37e44a6d5b7';
@@ -289,4 +290,92 @@ test('first automatic release includes vetted #226 + exact single migration only
   const safe=commit(head,['source/src/features/items/inline-g01-list.css']);
   assert.deepEqual(classifyCommits({commits:[safe],baseline:reviewedUiTransition.uiCommit,
     head,approved:''}),{allowed:true,mode:'auto',blocked:[]});
+});
+
+test('ordinary search/filter/report presentation can publish without owner when imports remain unchanged',()=>{
+  const path='source/src/features/items/SearchHighlight.tsx';
+  const before="import {searchMatchRanges} from '../../domain/search';\nexport function SearchHighlight(){return null;}";
+  const after=before.replace('return null','return <mark>text</mark>');
+  assert.equal(isAutoUiPath(path),true);
+  assert.equal(isSafeOrdinaryFeatureChange(path,before,after),true);
+  assert.deepEqual(decide([commit(head,[path,'docs/ci/notes.md'],{sourceChanges:{[path]:{before,after}}})]),
+    {allowed:true,mode:'auto',blocked:[]});
+  for(const bad of [
+    after+"\nimport {writeRecord} from '../../data/firebase-repository';",
+    after.replace('return <mark>','fetch("https://example.invalid");return <mark>'),
+    after+"\nlocalStorage.setItem('a','b');",
+    after+"\nexport * from '../../data/firebase-repository';",
+    after+"\nimport('../../data/firebase-repository');",
+    '',undefined,
+  ]){
+    assert.equal(isSafeOrdinaryFeatureChange(path,before,bad),false);
+    assert.deepEqual(decide([commit(head,[path],{sourceChanges:{[path]:{before,after:bad}}})]),
+      {allowed:false,mode:'hold',blocked:[path]});
+  }
+  assert.deepEqual(decide([commit(head,[path])]),{allowed:false,mode:'hold',blocked:[path]});
+});
+test('all added ordinary feature modules currently meet the read/presentation boundary',()=>{
+  for(const path of ["source/src/domain/search.ts","source/src/features/items/ActiveListFilters.tsx","source/src/features/items/ColumnFilterCell.tsx","source/src/features/items/CompactGroupFilterCell.tsx","source/src/features/items/RoomSpecialistFilterCell.tsx","source/src/features/items/SearchHighlight.tsx","source/src/features/items/compact-menu-placement.ts","source/src/features/items/filter-scroll.ts","source/src/features/items/list-toolbar-filters.ts","source/src/features/items/list-print.ts","source/src/features/reports/ReportTable.tsx","source/src/features/reports/inline-g04-popup-width.ts","source/src/features/reports/inline-g04-popup-handles.tsx"]){
+    const source=readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    assert.equal(isSafeOrdinaryFeatureChange(path,source,source),true,path);
+  }
+});
+test('CI metadata-only optimization auto-publishes without changing actual checks or permissions',()=>{
+  const path='.github/workflows/verify-source.yml';
+  const before="name: Source checks\non: pull_request\npermissions:\n  contents: read\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    timeout-minutes: 20\n    steps:\n      - run: npm test\n";
+  const concurrency=[
+    'concurrency:',
+    '  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+    "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+  ].join('\n')+'\n';
+  const after=before.replace('jobs:',concurrency+'jobs:').replace('timeout-minutes: 20','timeout-minutes: 30');
+  assert.equal(isSafeQaSchedulingChange(path,before,after),true);
+  assert.deepEqual(decide([commit(head,[path],{sourceChanges:{[path]:{before,after}}})]),
+    {allowed:true,mode:'auto',blocked:[]});
+  for(const bad of [
+    after.replace('npm test','echo skipped'),
+    after.replace('contents: read','contents: write'),
+    after.replace('timeout-minutes: 30','timeout-minutes: 0'),
+    after.replace('timeout-minutes: 30','timeout-minutes: 999'),
+    after.replace("github.event_name == 'pull_request'","true"),
+    after.replace('on: pull_request','on: push'),
+    after.replace('      - run: npm test','      - if: false\n        run: npm test'),
+    '',undefined,
+  ]){
+    assert.equal(isSafeQaSchedulingChange(path,before,bad),false);
+    assert.deepEqual(decide([commit(head,[path],{sourceChanges:{[path]:{before,after:bad}}})]),
+      {allowed:false,mode:'hold',blocked:[path]});
+  }
+  assert.equal(isSafeQaSchedulingChange('.github/workflows/publish-pages.yml',before,after),false);
+  assert.equal(isSafeQaSchedulingChange('.github/workflows/spark-pages-release-preflight.yml',before,after),false);
+  assert.equal(isSafeQaSchedulingChange('.github/workflows/unknown.yml',before,after),false);
+});
+test('reviewed PR230 receipt applies only to exact historical commit and cannot self-approve the policy migration',()=>{
+  const exact={sha:reviewedCiOptimization.sha,parent:reviewedCiOptimization.parent,files:[".github/scripts/ci-pr-scope.mjs",".github/scripts/ci-pr-scope.test.mjs",".github/workflows/excel-schema-fingerprint-20261113.yml",".github/workflows/firebase-operational-qa.yml",".github/workflows/guest-cell-save-ux-20261113.yml",".github/workflows/original-hdnd-excel-parser-20261113.yml",".github/workflows/pr188-two-browser.yml",".github/workflows/qa-pr-scope-guard.yml",".github/workflows/real-spark-list-browser-20261113.yml",".github/workflows/real-spark-list-ui-parity-20261113.yml",".github/workflows/simple-admin-file-backup-ci.yml",".github/workflows/spark-direct-status-cas.yml",".github/workflows/spark-pages-release-preflight.yml",".github/workflows/verify-firebase-staging.yml",".github/workflows/verify-source.yml","docs/ci/PR_SCOPE_OPTIMIZATION_2026-11-22.md"]};
+  const baseline=reviewedCiOptimization.baseline;
+  assert.equal(isReviewedCiOptimization(exact,baseline),true);
+  assert.deepEqual(decide([exact,commit(head,['source/src/features/items/ItemList.tsx'])],{baseline}),
+    {allowed:true,mode:'auto',blocked:[]});
+  for(const bad of [
+    {...exact,sha:head},
+    {...exact,parent:head},
+    {...exact,files:[...exact.files,'source/firebase/database.spark.rules.json']},
+    {...exact,files:exact.files.slice(1)},
+  ])assert.equal(isReviewedCiOptimization(bad,baseline),false);
+  assert.equal(isReviewedCiOptimization(exact,head),false);
+  const migration='source/scripts/pages-release-policy.mjs';
+  assert.deepEqual(decide([exact,commit(head,[migration])],{baseline}),
+    {allowed:false,mode:'hold',blocked:[migration]});
+  const sensitive='source/src/data/firebase-repository.ts';
+  assert.deepEqual(decide([exact,commit(head,[sensitive,'source/src/features/items/ItemList.tsx'])],{baseline}),
+    {allowed:false,mode:'hold',blocked:[sensitive]});
+});
+test('unknown code, write-capable view, test selector and production guards never become auto on file name alone',()=>{
+  for(const path of [
+    'source/src/features/reports/ReportDetailGrid.tsx','source/src/features/items/ItemColumnPanel.tsx',
+    'source/src/app/App.tsx','source/src/state/use-firebase.ts','source/src/data/firebase-repository.ts',
+    'source/shared/field-definitions.ts','source/src/features/items/UnknownNewFeature.tsx',
+    '.github/scripts/ci-pr-scope.mjs','source/scripts/pages-release-approval.mjs',
+    '.github/workflows/publish-pages.yml','source/firebase/database.spark.rules.json',
+  ])assert.deepEqual(decide([commit(head,[path])]),{allowed:false,mode:'hold',blocked:[path]});
 });

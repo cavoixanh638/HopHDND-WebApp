@@ -1,3 +1,11 @@
+## 25/11/2026 — Chính sách phát hành tự động mở rộng (đợt sau PR #236)
+
+Theo yêu cầu chủ dự án, mở rộng auto-publish cho các mô-đun hiển thị/tìm kiếm/lọc/báo cáo đã rà soát và bảo trì lịch chạy CI an toàn. Tối ưu timeout và concurrency PR của các workflow QA chỉ đọc được tự động; thay lệnh kiểm thử, bỏ kiểm tra, quyền, script chọn phạm vi, workflow phát hành hoặc preflight vẫn phải review. Mã mới hoặc thay đổi không nhận diện được vẫn HOLD. Không bỏ kiểm thử đầy đủ trước publish, không thay Rules, auth, quyền cột, Firebase data, Secrets hay branch protection. Đọc [hướng dẫn và điều kiện nghiệm thu](checkpoints/G00_PAGES_AUTO_ORDINARY_2026-11-25.md).
+
+PR #236 bổ sung hai checkbox viết tắt tên đã merge source `d7fd6744d75a563faf2cbf46cb16937dd178501d`, 10/10 CI PASS; [publisher tự động](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45634317325) HOLD do thay đổi CI chưa được phát hành. Chính sách mới nhận diện exact commit #230 đã nghiệm thu, nhưng **không tự phê duyệt chính thay đổi chính sách**. Khi PR chính sách đạt CI, merge và owner Run workflow một lần để kích hoạt baseline mới. Chỉ ghi production PASS khi publisher/Pages SUCCESS và version.json khớp SHA. Các phát hành UI thông thường sau baseline mới sẽ không phải bấm thủ công. Không ghi nhận website mới đã phát hành trước biên nhận.
+
+---
+
 ## 25/11/2026 — Trạng thái hiện hành trước đợt chỉnh toolbar
 
 **PR #231: DONE** từ 23/11/2026. Firebase Spark Rules chỉ xét quyền cột; backup Rules/quyền hẹp, restore trên localhost, deploy/readback và canary guest/admin PASS theo [biên nhận production](checkpoints/PR231_PRODUCTION_RULES_2026-11-23.md). Merge source `29c6ab700e7dad807226daaf12b07cc86bf990f3`; [owner publisher attempt 2](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45094072798) và [Pages deployment](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45095362949) SUCCESS. 1158 unit PASS, 170 SKIP; 37/37 direct-CAS/security; [nghiệm thu cuối](checkpoints/PR231_PAGES_ACCEPTANCE_2026-11-23.md), [Issue #232](https://github.com/cavoixanh638/HopHDND-WebApp/issues/232) closed completed. Mã cũ ở [Chức năng cũ không dùng](chuc-nang-cu-khong-dung/README.md); không xóa dữ liệu rows/cells cũ. Không thực hiện lại deploy Rules vì đổi toolbar.

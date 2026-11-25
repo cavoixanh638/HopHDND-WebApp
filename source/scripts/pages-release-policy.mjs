@@ -1,7 +1,7 @@
 /**
  * GitHub Pages is a PUBLIC frontend artifact. A Spark cutover confirmation
- * remains mandatory; exact-SHA approval is needed for anything outside a
- * strictly enumerated set of presentation/QA files.
+ * remains mandatory; exact-SHA approval is needed for changes outside
+ * audited presentation, ordinary UI features and safe QA scheduling.
  *
  * Diff the ENTIRE first-parent history since the actually published
  * version.json.source_sha, not only HEAD^: a reviewed UI commit must never
@@ -80,6 +80,124 @@ export function isScopedAutopublishMigration(commit,baseline){
     sameFileSet(commit.files,transitionFiles);
 }
 
+
+/**
+ * 25/11/2026: allow ordinary, audited read/presentation modules and
+ * non-semantic scheduling maintenance of existing QA workflows.
+ * Never grant blanket approval to workflows, authentication, persistence,
+ * security tests/commands, release policy, packages or unknown source.
+ * Compare EACH commit, not merely final files, to retain historical HOLD.
+ */
+const ordinaryPresentationModules=new Set([
+  'source/src/domain/search.ts',
+  'source/src/features/items/ActiveListFilters.tsx',
+  'source/src/features/items/ColumnFilterCell.tsx',
+  'source/src/features/items/CompactGroupFilterCell.tsx',
+  'source/src/features/items/RoomSpecialistFilterCell.tsx',
+  'source/src/features/items/SearchHighlight.tsx',
+  'source/src/features/items/compact-menu-placement.ts',
+  'source/src/features/items/filter-scroll.ts',
+  'source/src/features/items/list-toolbar-filters.ts',
+  'source/src/features/items/list-print.ts',
+  'source/src/features/reports/ReportTable.tsx',
+  'source/src/features/reports/inline-g04-popup-width.ts',
+  'source/src/features/reports/inline-g04-popup-handles.tsx',
+]);
+const qaSchedulingWorkflows=new Set([
+  '.github/workflows/excel-schema-fingerprint-20261113.yml',
+  '.github/workflows/firebase-operational-qa.yml',
+  '.github/workflows/guest-cell-save-ux-20261113.yml',
+  '.github/workflows/original-hdnd-excel-parser-20261113.yml',
+  '.github/workflows/pr188-two-browser.yml',
+  '.github/workflows/qa-pr-scope-guard.yml',
+  '.github/workflows/real-spark-list-browser-20261113.yml',
+  '.github/workflows/real-spark-list-ui-parity-20261113.yml',
+  '.github/workflows/simple-admin-file-backup-ci.yml',
+  '.github/workflows/spark-direct-status-cas.yml',
+  '.github/workflows/verify-firebase-staging.yml',
+  '.github/workflows/verify-source.yml',
+]);
+
+// The exact already-integrated PR #230 was reviewed at 12/12 workflows,
+// with 14/14 scope tests and a separate eight-job docs-only acceptance.
+// This is a historical receipt for the immutable optimization commit ONLY;
+// it does not approve this policy migration, another CI edit, or later SHA.
+export const reviewedCiOptimization=Object.freeze({
+  baseline:'7c5edf4cea9024687c95d5526b8cdba7c7028508',
+  sha:'4565cbf8d4cad1d9c4cf852223795b04e737cbd1',
+  parent:'d308bbfcff73070d737b27bed32cca899d5a1ad1',
+});
+const reviewedCiFiles=new Set([
+  '.github/scripts/ci-pr-scope.mjs',
+  '.github/scripts/ci-pr-scope.test.mjs',
+  '.github/workflows/excel-schema-fingerprint-20261113.yml',
+  '.github/workflows/firebase-operational-qa.yml',
+  '.github/workflows/guest-cell-save-ux-20261113.yml',
+  '.github/workflows/original-hdnd-excel-parser-20261113.yml',
+  '.github/workflows/pr188-two-browser.yml',
+  '.github/workflows/qa-pr-scope-guard.yml',
+  '.github/workflows/real-spark-list-browser-20261113.yml',
+  '.github/workflows/real-spark-list-ui-parity-20261113.yml',
+  '.github/workflows/simple-admin-file-backup-ci.yml',
+  '.github/workflows/spark-direct-status-cas.yml',
+  '.github/workflows/spark-pages-release-preflight.yml',
+  '.github/workflows/verify-firebase-staging.yml',
+  '.github/workflows/verify-source.yml',
+  'docs/ci/PR_SCOPE_OPTIMIZATION_2026-11-22.md',
+]);
+export function isReviewedCiOptimization(commit,baseline){
+  return baseline===reviewedCiOptimization.baseline&&
+    commit.sha===reviewedCiOptimization.sha&&
+    commit.parent===reviewedCiOptimization.parent&&
+    sameFileSet(commit.files,reviewedCiFiles);
+}
+
+// No new imports, re-exports, direct network, persistence or execution APIs
+// for the additional audited display/search/print/report modules. This is
+// a conservative change boundary, not a substitute for the full release QA.
+const privilegedFeatureApis=/\b(?:fetch|WebSocket|XMLHttpRequest|EventSource|localStorage|sessionStorage|indexedDB|globalThis|process|Function|eval|require|importScripts|firebase|writeDatabase|setDoc|updateDoc|deleteDoc|runTransaction|savePermissions|sendBeacon|postMessage)\b|dangerouslySetInnerHTML|import\s*\(/;
+function staticImports(source){
+  const starters=[...source.matchAll(/^[ \t]*import\b/gm)];
+  const imports=[...source.matchAll(/^[ \t]*import[ \t]+(?:[^'";]*?\bfrom\s*)?['"][^'"\r\n]+['"][ \t]*;?/gm)];
+  if(starters.length!==imports.length)return null;
+  return imports.map(m=>m[0].replace(/\s+/g,' ').trim()).sort().join('\n');
+}
+export function isSafeOrdinaryFeatureChange(path,before,after){
+  if(!ordinaryPresentationModules.has(path)||
+     typeof before!=='string'||!before.trim()||typeof after!=='string'||!after.trim())return false;
+  if(privilegedFeatureApis.test(after)||/^[ \t]*export\s+(?:\*|\{[^}]*\})\s+from\b/m.test(after))return false;
+  const oldImports=staticImports(before),newImports=staticImports(after);
+  return oldImports!==null&&newImports!==null&&oldImports===newImports;
+}
+
+// Only the existing, audited read-only QA workflows may auto-release after
+// an exact safe PR-only concurrency block or a bounded job timeout edit.
+// Job commands, actions, checkout, cache, triggers, permissions, conditions,
+// scope selectors, environment, credentials and release workflow stay equal.
+const prConcurrencyBlock=[
+  'concurrency:',
+  '  group: pr-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+  "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+].join('\n')+'\n';
+function normalizeQaScheduling(source){
+  if(typeof source!=='string'||!source.trim())return null;
+  let s=source.replace(/\r\n/g,'\n');
+  if(!/^permissions:\n  contents: read$/m.test(s))return null;
+  if(s.split(prConcurrencyBlock).length>2)return null;
+  s=s.replace(prConcurrencyBlock,'');
+  // Match only job-level (four spaces) numeric timeouts; step scripts
+  // and multiline run blocks have deeper indentation. Out-of-range and
+  // expression-valued timeouts remain guarded.
+  s=s.replace(/^    timeout-minutes: ([1-9][0-9]{0,2})\n/gm,
+    (line,value)=>Number(value)<=360?'':line);
+  return s;
+}
+export function isSafeQaSchedulingChange(path,before,after){
+  if(!qaSchedulingWorkflows.has(path))return false;
+  const a=normalizeQaScheduling(before),b=normalizeQaScheduling(after);
+  return a!==null&&b!==null&&a===b;
+}
+
 const uiModules=new Set([
   'source/src/features/items/ItemList.tsx',
   'source/src/features/items/CompactGroupedValue.tsx',
@@ -103,7 +221,8 @@ export function isAutoUiPath(path){
     /^source\/src\/qa\/[a-zA-Z0-9_./-]+\.(ts|tsx|css)$/.test(path)||
     /^source\/tests\/[a-zA-Z0-9_./-]+$/.test(path)||
     /^source\/docs\/[a-zA-Z0-9_./-]+$/.test(path)||
-    path==='README.md'||uiModules.has(path);
+    /^docs\/[a-zA-Z0-9_./-]+\.md$/.test(path)||
+    path==='README.md'||uiModules.has(path)||ordinaryPresentationModules.has(path);
 }
 // Two presentation-only modules are auto-publishable only when their exact
 // HEAD contents remain DOM/pure-geometry code, with no runtime imports from
@@ -168,10 +287,18 @@ export function classifyCommits({commits,baseline,head,approved,sourceContents={
   for(const commit of commits){
     if(isPagesArtifactCommit(commit))continue;
     if(isBootstrapPolicyCommit(commit,baseline,head)||isVettedSingleTableUi(commit,baseline)||
-       isScopedAutopublishMigration(commit,baseline)){sourceChanged=true;continue;}
+       isScopedAutopublishMigration(commit,baseline)||
+       isReviewedCiOptimization(commit,baseline)){sourceChanged=true;continue;}
     for(const file of commit.files??[]){
       sourceChanged=true;
+      const change=commit.sourceChanges?.[file];
+      if(qaSchedulingWorkflows.has(file)){
+        if(!isSafeQaSchedulingChange(file,change?.before,change?.after))blocked.push(file);
+        continue;
+      }
       if(!isAutoUiPath(file)||
+         (ordinaryPresentationModules.has(file)&&
+          !isSafeOrdinaryFeatureChange(file,change?.before,change?.after))||
          (restrictedUiSources.has(file)&&
           !isSafePresentationSource(file,sourceContents[file])))blocked.push(file);
     }
@@ -216,8 +343,18 @@ function readCommitChanges(baseline,head){
     if(!shaPattern.test(parent??''))throw Error('PAGES_RELEASE_HOLD: no first parent');
     const files=git(['diff','--no-renames','--name-only',parent,sha])
       .split('\n').filter(Boolean);
+    const sourceChanges={};
+    for(const file of files){
+      if(!ordinaryPresentationModules.has(file)&&!qaSchedulingWorkflows.has(file))continue;
+      // Use immutable before/after blobs for this commit. Missing or deleted
+      // paths stay HOLD; no reading from a mutable checkout.
+      try{
+        sourceChanges[file]={before:git(['show',parent+':'+file]),
+          after:git(['show',sha+':'+file])};
+      }catch{sourceChanges[file]={before:null,after:null};}
+    }
     return {sha,parent,author:metadata[1],email:metadata[2],
-      message:metadata[3],files};
+      message:metadata[3],files,sourceChanges};
   });
 }
 export function getReleaseDecision({baseline,head,approved}){
