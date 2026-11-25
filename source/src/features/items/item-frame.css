@@ -605,7 +605,7 @@
 /* L04 screen and print use the same two-rail idea: a shared fixed label
  * track, followed by the value. Unlike min-width on independent flex items,
  * this remains aligned when the owner's font size increases. */
-.compact-pair-lines>div{display:grid;grid-template-columns:max(46px,3.6em) minmax(0,1fr);
+.compact-pair-lines>div{display:grid;grid-template-columns:max(46px,calc(4em + 8px)) minmax(0,1fr);
   align-items:center;gap:5px;min-width:0;line-height:1.35}
 .compact-pair-tag{font-size:10px;font-weight:750;color:#688579;
   background:#edf3ef;border-radius:4px;padding:2px 4px;box-sizing:border-box;
