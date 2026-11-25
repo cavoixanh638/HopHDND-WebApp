@@ -32,6 +32,9 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     // The single column shortcut handles visibility and group choices via the existing draft.
     expect(list).toContain('aria-label="Tùy chọn cột"');
     expect(list).toContain('className="column-options-checklist"');
+    expect(list).toContain('<strong className="column-options-name-heading">Viết tắt tên</strong>');
+    expect(list).toContain('data-compact-choice={option.key}');
+    expect(list).not.toContain('<details className="compact-more-options">');
     expect(list).toContain('data-column-choice={column.key}');
     expect(list).toContain('onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}');
     expect(list).toContain('const compactMenu=adminControls&&compactOn&&!customizing');

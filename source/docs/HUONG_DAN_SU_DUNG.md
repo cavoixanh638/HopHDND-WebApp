@@ -1,6 +1,6 @@
 > **Chính sách hiện hành (PR #231 đã phát hành ngày 23/11/2026):** Chỉ cấp quyền sửa **theo cột** qua **⚙ → Chỉnh sửa → Danh sách dữ liệu → Quản lý cột nâng cao → Cho sửa**. Không còn tab Phân quyền chỉnh sửa hay quyền riêng theo dòng/ô. [Biên nhận triển khai Rules và nghiệm thu](checkpoints/PR231_PAGES_ACCEPTANCE_2026-11-23.md); mã và test cũ tại [Chức năng cũ không dùng](chuc-nang-cu-khong-dung/README.md). Tài liệu các PR cũ phía dưới là lịch sử.
 
-**Thanh công cụ danh sách (thay đổi 25/11, xem trạng thái phát hành ở CURRENT_STATE):** Admin mở **Cột tìm** để giới hạn trường tìm trên trình duyệt; khách vẫn tìm mọi trường. Mở **Tùy chọn cột** phía trên bảng để tick ẩn/hiện hoặc chọn nhóm gộp người phụ trách, sau đó chọn **Lưu bố cục** hoặc **Hủy thay đổi**. ID cố định; gộp không xóa trường nguồn. Quyền sửa cột vẫn ở Quản lý cột nâng cao.
+**Thanh công cụ danh sách (thay đổi 25/11, xem trạng thái phát hành ở CURRENT_STATE):** Admin mở **Cột tìm** để giới hạn trường tìm trên trình duyệt; khách vẫn tìm mọi trường. Mở **Tùy chọn cột** phía trên bảng để tick ẩn/hiện, chọn nhóm gộp người phụ trách hoặc bật/tắt trực tiếp **Viết tắt tên chuyên viên** và **Viết tắt tên lãnh đạo**, sau đó chọn **Lưu bố cục** hoặc **Hủy thay đổi**. ID cố định; gộp và viết tắt chỉ thay đổi cách hiển thị, không xóa hoặc thay đổi tên gốc; vẫn tìm kiếm theo tên đầy đủ. Quyền sửa cột vẫn ở Quản lý cột nâng cao.
 
 ## Khách xem và sửa ô được cấp quyền (cấu hình đề xuất PR #92, chưa phát hành)
 

@@ -1051,15 +1051,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
-          <details className="compact-more-options">
-            <summary>Viết tắt tên</summary>
-            {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
-              <input type="checkbox" checked={compactDisplay[option.key]}
-                onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-              <span>{option.label}<small>{option.detail}</small></span>
-            </label>)}
-          </details>
-          <p>{shareCompact?'Ẩn/hiện và gộp chỉ tạo nháp; chọn Lưu bố cục hoặc Hủy thay đổi trên bảng.':'Ẩn/hiện theo bố cục; tùy chọn gộp cá nhân trên trình duyệt.'}</p>
+          <strong className="column-options-name-heading">Viết tắt tên</strong>
+          {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
+            <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]}
+              disabled={viewSaving||locked}
+              onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <span>{option.label}<small>{option.detail}</small></span>
+          </label>)}
+          <p>{shareCompact?'Ẩn/hiện, gộp và viết tắt tên chỉ tạo nháp; chọn Lưu bố cục hoặc Hủy thay đổi trên bảng.':'Ẩn/hiện theo bố cục; tùy chọn gộp và viết tắt tên cá nhân trên trình duyệt.'}</p>
            <button type="button" className="button ghost column-options-close" onClick={()=>{if(compactDetailsRef.current)compactDetailsRef.current.open=false;setCompactMenuOpen(false);setCompactMenuPlacement(null);compactSummaryRef.current?.focus();}}>Đóng</button>
           {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
           {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{

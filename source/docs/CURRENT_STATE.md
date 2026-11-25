@@ -4,7 +4,7 @@
 
 Tiếp nối PR #233: source Pages ở thời điểm đối chiếu `7145e96d933d1e735fb5e8fe6149ef898614a041`, artifact `d10dbe6ba1ea91796998d11b658b6075dcff10c9`. Trang quản lý cột nâng cao mở mặc định. PR #231 receipt vẫn là biên nhận bảo mật đúng; không coi các checkpoint HOLD lịch sử là trạng thái hiện tại.
 
-Đợt chỉnh toolbar 25/11: admin có **Cột tìm** sát trigger và **Tùy chọn cột** ẩn/hiện/gộp; khách tìm mọi trường, không nhận cấu hình search admin. Thay đổi bố cục dùng chung qua nháp, Lưu bố cục/Hủy; không sửa quyền, Rules, dữ liệu. Kết quả phát hành đợt toolbar xác nhận riêng bằng exact SHA và version marker; không suy PASS từ tài liệu này.
+Đợt toolbar PR #234 đã phát hành: source `7c5edf4cea9024687c95d5526b8cdba7c7028508`, [publisher](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45617405813) và [Pages](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45618098536) SUCCESS. Admin có **Cột tìm** sát trigger và **Tùy chọn cột** ẩn/hiện/gộp; khách tìm mọi trường. PR #230/#235 đã merge tối ưu CI (12/12 workflow, 14/14 scope tests; 8 job docs-only NOT_APPLICABLE). Đợt bổ sung 25/11 tối đưa hai checkbox **Viết tắt tên chuyên viên/lãnh đạo** ra trực tiếp trong Tùy chọn cột. Thay đổi bố cục dùng chung qua nháp, Lưu bố cục/Hủy; không sửa tên gốc, quyền, Rules, dữ liệu. Cần kiểm thử và xác nhận phát hành mới bằng exact SHA; từ sau PR #230, cổng Pages yêu cầu owner-dispatch một lần để cập nhật baseline có thay đổi CI. Không suy PASS production từ tài liệu này.
 
 ---
 
