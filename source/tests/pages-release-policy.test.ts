@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
-describe('GitHub Pages release policy: UI auto, Firebase/data fail closed',()=>{
+describe('GitHub Pages release policy: ordinary UI and safe QA auto, Firebase/data fail closed',()=>{
   it('passes standalone Node policy regression matrix before allowing a UI release',()=>{
     const cwd=fileURLToPath(new URL('../',import.meta.url));
     const output=execFileSync(process.execPath,
