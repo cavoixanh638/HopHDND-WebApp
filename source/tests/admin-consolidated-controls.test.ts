@@ -11,6 +11,12 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
   it('has just one column-search selector, outside layout tools',()=>{
     expect(list).toContain('className="inline-g01-search-popover"');
     expect(list).toContain('className="inline-g01-search-choices"');
+    expect(list).toContain('{adminControls&&<button ref={searchTriggerRef}');
+    expect(list).toContain('adminControls&&searchScopeOpen&&searchPlacement');
+    expect(list).toContain('placeCompactMenu(anchor.getBoundingClientRect()');
+    expect(list).toContain("adminControls?toolbar:{...toolbar,field:'all'}");
+    expect(list).toContain('adminControls&&denseChrome?selectedSearchColumns:undefined');
+    expect(list).toContain('if(!adminControls||!denseChrome||typeof window');
     expect(list).not.toContain('className="admin-search-scope"');
     expect(list).not.toContain('previewOptionsOpen');
     expect(list).not.toContain('admin-preview-options-toggle');
@@ -23,7 +29,11 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).toContain('aria-label="Thiết lập hiển thị khi chỉnh giao diện"');
     expect(list).toContain('stageInlineLayout(base=>setInlineSummaryVisibility(base,key,checked))');
     expect(list).toContain('stageInlineLayout(base=>({...base,partyTrackWidths:widths}))');
-    // Staff shortcut is a direct entry to the same Save/Cancel visual draft.
+    // The single column shortcut handles visibility and group choices via the existing draft.
+    expect(list).toContain('aria-label="Tùy chọn cột"');
+    expect(list).toContain('className="column-options-checklist"');
+    expect(list).toContain('data-column-choice={column.key}');
+    expect(list).toContain('onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}');
     expect(list).toContain('const compactMenu=adminControls&&compactOn&&!customizing');
     expect(list).toContain('stageInlineLayout(previous=>({...previous,compactDisplay:next}))');
     expect(list).toContain('if(inlineMode){\n      // Group titles belong');
