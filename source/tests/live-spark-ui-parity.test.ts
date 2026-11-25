@@ -106,8 +106,11 @@ describe('Live Spark Admin paste — lease and revision boundary',()=>{
         shortSpecialist:false,contentDetails:false}};
     expect(referenceListLayoutNeedsSync(oldShared)).toBe(true);
     const realList=readFileSync('src/features/items/ItemList.tsx','utf8');
-    expect(realList).toContain('referenceListLayoutNeedsSync(activeLayout)');
-    expect(realList).toContain('stageInlineLayout();setReferencePresetConfirm(true);');
+    expect(realList).not.toContain('referenceListLayoutNeedsSync(activeLayout)');
+    expect(realList).not.toContain('setReferencePresetConfirm');
+    expect(realList).toContain('applyViewerLayout(base=>applyLayoutPreset(base,id))');
+    expect(realList).toContain('applyViewerLayout(base=>renameLayoutPreset(base,id,newLayoutName))');
+    expect(realList).toContain('applyViewerLayout(base=>saveNewLayoutPreset(');
   });
   it('only verified Admin gets the action; print and search use the actual List',()=>{
     const app=readFileSync('src/app/App.tsx','utf8');
