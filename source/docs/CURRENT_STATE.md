@@ -1,3 +1,11 @@
+## 22/11/2026 — Chỉ phân quyền theo cột (PR chờ kiểm thử/duyệt)
+
+Theo quyết định chủ dự án, bỏ tab/mục menu **Phân quyền chỉnh sửa** và giao diện cấp quyền theo dòng/ô. Checkbox **Cho sửa** theo cột tiếp tục nằm trong quản lý cột nâng cao. `mayEdit` chỉ xét `columns`; candidate Spark Rules cho primary/V2/direct-CAS được tạo lại theo cột. Toàn bộ UI/test cũ lưu nguyên văn tại [Chức năng cũ không dùng](chuc-nang-cu-khong-dung/README.md); dữ liệu `rows/cells` chưa xóa khỏi Firebase phục vụ đối chiếu và khôi phục. 
+
+**RELEASE HOLD:** Chỉ là nhánh PR. Chưa merge, chưa publish Pages, chưa deploy Firebase Rules, chưa sửa dữ liệu production. Nếu server đang dùng Rules cũ, quyền dòng/ô lưu trước đây **có thể vẫn có hiệu lực trên server**; phải triển khai Rules mới qua quy trình bảo mật và nghiệm thu mới xác nhận được quyền cột là nguồn cấp phép duy nhất.
+
+---
+
 ## 15/11/2026 — PR #190: both security blockers repaired; final release gate pending
 
 Both independent review findings are repaired in the candidate. Older audit slot payloads and maintenance epoch metadata are preserved at a non-deleted parent, with the 50-slot rollover and Google Admin maintenance restore rights retained. Each lease-free status draft pins its original OPEN legacy maintenance epoch; Rules require that epoch in the new audit event at server commit. Missing/recovered old epochs, stale maintenance drafts and queued offline CAS are rejected. Current epoch is checked again before committed/idempotent acknowledgements. Coherent server-only reads never attach a new epoch to cached old rows; workspace epoch transitions retain drafts and operationIds, block replay and fence delayed callbacks.

@@ -138,25 +138,23 @@ describe('drag-only widths and compact column manager',()=>{
     });
     expect(button(tree,'Lưu thay đổi').props.disabled).toBe(false);
   });
-  it('checks permission per Excel column and requires explicit legacy row/cell reset on save',async()=>{
+  it('saves a column grant without offering the archived row/cell override editor',async()=>{
     const items=createDemoItems(1),catalog=catalogFromItems(items),layout=defaultItemLayout();
-    const permissions={columns:{progressParty:false},rows:{legacy:true},cells:{}};
+    const permissions={columns:{progressParty:false},rows:{legacy:true},cells:{legacy:{content:false}}};
     const onSavePermissions=vi.fn().mockResolvedValue(undefined);
+    const props={layout,onChange:vi.fn(),catalog,items,permissions,onSavePermissions};
     hook.begin();
-    let tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,permissions,onSavePermissions});
+    let tree=ItemColumnPanel(props);
     const grant=all(tree).find(n=>n.type==='input'&&n.props['aria-label']==='Cho phép sửa cột Tiến độ xin ý kiến Thành ủy');
     expect(grant).toBeDefined();grant.props.onChange({currentTarget:{checked:true}});
-    hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,permissions,onSavePermissions});
-    let save=button(tree,'Lưu thay đổi');expect(save.props.disabled).toBe(false);
+    hook.begin();tree=ItemColumnPanel(props);
+    expect(all(tree).find(n=>n.type==='label'&&n.props.className==='column-rights-warning')).toBeUndefined();
+    const save=button(tree,'Lưu thay đổi');expect(save.props.disabled).toBe(false);
     save.props.onClick();
-    expect(onSavePermissions).not.toHaveBeenCalled();
-    const legacy=all(tree).find(n=>n.type==='label'&&n.props.className==='column-rights-warning');
-    expect(legacy).toBeDefined();
-    all(legacy).find(n=>n.type==='input').props.onChange({currentTarget:{checked:true}});
-    hook.begin();tree=ItemColumnPanel({layout,onChange:vi.fn(),catalog,items,permissions,onSavePermissions});
-    save=button(tree,'Lưu thay đổi');save.props.onClick();
-    await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledOnce());
-    expect(onSavePermissions.mock.calls[0][0]).toEqual({columns:{progressParty:true},rows:{},cells:{}});
+    await vi.waitFor(()=>expect(onSavePermissions).toHaveBeenCalledTimes(1));
+    expect(onSavePermissions.mock.calls[0][0]).toEqual({
+      columns:{progressParty:true},rows:{legacy:true},cells:{legacy:{content:false}}
+    });
     expect(onSavePermissions.mock.calls[0][1]).toEqual(permissions);
   });
 

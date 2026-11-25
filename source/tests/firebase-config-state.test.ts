@@ -96,7 +96,7 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(state.canEdit('sheet:42:row:3','note')).toBe(true);
     expect(state.canEdit('sheet:42:row:3','content')).toBe(false);
     emit('hdnd/permissions',{columns:{note:true},cells:{'sheet:42:row:3':{note:false}}});
-    expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
+    expect(render().canEdit('sheet:42:row:3','note')).toBe(true); // retired cell deny ignored; column still grants
     emit('hdnd/control',{revision:2,editingLocked:true});
     expect(render().canEdit('sheet:42:row:3','note')).toBe(false);
     expect(render().isAdmin).toBe(false);
@@ -233,19 +233,28 @@ describe('Firebase config controller remains independent of business data',()=>{
     expect(h.transaction).not.toHaveBeenCalled();
     expect(h.get).toHaveBeenCalledWith('hdnd/permissions');
   });
-  it('saves normalized row and cell permissions against their original baseline',async()=>{
-    login(true);emit('hdnd/permissions',{columns:{note:true}});const state=render();
-    const next={columns:{note:true},rows:{'sheet:42:row:3':false}};
-    h.get.mockImplementation(async(path:string)=>({val:()=>path==='hdnd/datasetV2/active'?null:{columns:{note:true}}}));
+  it('saves only column grants; historical row/cell values remain untouched and immutable',async()=>{
+    const original={columns:{note:true},rows:{'sheet:42:row:3':true},
+      cells:{'sheet:42:row:3':{note:false}}};
+    login(true);emit('hdnd/permissions',original);const state=render();
+    const next={...original,columns:{note:false}};
+    h.get.mockImplementation(async(path:string)=>({val:()=>
+      path==='hdnd/datasetV2/active'?null:original}));
     h.transaction.mockResolvedValue({committed:true,snapshot:{val:()=>next}});
-    await state.savePermissions(next);
-    const [path,update]=h.transaction.mock.calls[0];expect(path).toBe('hdnd/permissions');expect(update({columns:{note:true}})?.rows).toEqual({'sheet:42:row:3':false});expect(update({columns:{note:false}})).toBeUndefined();
+    await state.savePermissions(next,original);
+    const [path,update]=h.transaction.mock.calls[0];
+    expect(path).toBe('hdnd/permissions');
+    expect(update(original)).toEqual(next);
+    expect(update({columns:{note:false},rows:original.rows,cells:original.cells})).toBeUndefined();
+    await expect(state.savePermissions({...next,rows:{'sheet:42:row:3':false}},original))
+      .rejects.toThrow('đã ngừng hỗ trợ');
+    expect(h.transaction).toHaveBeenCalledTimes(1);
   });
 });
-describe('cell, row and column policy',()=>{
-  it('uses cell > row > column > deny, while identity fields remain locked even for admin',()=>{
+describe('column-only policy with inactive historical row/cell records',()=>{
+  it('uses only columns and keeps identity fields locked even for admin',()=>{
     const permission={columns:{note:true,content:false},rows:{r1:false,r2:true},cells:{r1:{content:true},r2:{note:false}}};
-    expect(mayEdit(permission,'r1','note')).toBe(false);expect(mayEdit(permission,'r1','content')).toBe(true);expect(mayEdit(permission,'r2','content')).toBe(true);expect(mayEdit(permission,'r2','note')).toBe(false);expect(mayEdit(permission,'r3','note')).toBe(true);expect(mayEdit({columns:{}},'r3','note')).toBe(false);expect(mayEdit(permission,'r1','stt' as never,true)).toBe(false);
+    expect(mayEdit(permission,'r1','note')).toBe(true);expect(mayEdit(permission,'r1','content')).toBe(false);expect(mayEdit(permission,'r2','content')).toBe(false);expect(mayEdit(permission,'r2','note')).toBe(true);expect(mayEdit(permission,'r3','note')).toBe(true);expect(mayEdit({columns:{}},'r3','note')).toBe(false);expect(mayEdit(permission,'r1','stt' as never,true)).toBe(false);
     expect(firebaseAdmin(user(true) as never)).toBe(true);expect(firebaseAdmin({...user(true),emailVerified:false} as never)).toBe(false);expect(firebaseAdmin({...user(true),providerData:[{providerId:'password'}]} as never)).toBe(false);
   });
 });

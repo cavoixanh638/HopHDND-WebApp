@@ -3342,7 +3342,7 @@ try{
     'V2 R01 advanced full-status selector did not mount');
   const advancedFields=await evaluate(`[...document.querySelectorAll('.list-filter-other-panel select')]
     .map(x=>x.getAttribute('aria-label'))`);
-  if(!advanced.ok||!['Chọn trường tìm kiếm','Lọc Cấp Thành ủy cho ý kiến',
+  if(!advanced.ok||!['Lọc Cấp Thành ủy cho ý kiến',
      'Lọc Tiến độ Thành ủy chi tiết','Lọc Tiến độ xây dựng NQ chi tiết',
      'Lọc Tiến độ ban hành NQ/BC chi tiết','Lọc Chuyên viên',
      'Lọc Lãnh đạo VP','Lọc Lãnh đạo UBND'].every(x=>advancedFields.includes(x)))
@@ -4279,8 +4279,11 @@ try{
   // R12: an admin must see a DIRECT header-rename entry in the normal
   // list, not only a collapsed subpanel several screens into customization.
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
+  await eventually("!!document.querySelector('.inline-g01-mode-toggle:not(:disabled)')",
+    'R12 List layout editor entry missing');
+  await evaluate("document.querySelector('.inline-g01-mode-toggle').click()");
   await eventually("!!document.querySelector('.group-label-shortcut:not(:disabled)')",
-    'R12 admin list header rename shortcut missing');
+    'R12 layout-editor header rename shortcut missing');
   await evaluate("document.querySelector('.group-label-shortcut').click()");
   // A native dialog mounts its form before React's showModal() effect runs.
   // Focus must wait for the dialog's real open state; closed dialogs are inert.
@@ -4296,7 +4299,12 @@ try{
     'R12 header rename input lost controlled state');
   await evaluate("document.querySelector('.group-label-quick-editor button[type=submit]').click()");
   await eventually("document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim()==='Tiến độ công việc 3 bước'",
-    'R12 shared CAS rename did not update live table title');
+    'R12 group title draft did not update live preview');
+  await eventually("!!document.querySelector('.inline-layout-save:not(:disabled)')",
+    'R12 group title draft did not request explicit save');
+  await evaluate("document.querySelector('.inline-layout-save').click()");
+  await eventually("!document.querySelector('.inline-layout-savebar')",
+    'R12 grouped title Save did not exit layout-edit mode');
   const quickRename=await evaluate(`({
     heading:document.querySelector('th[data-column-key=partyLevel] .column-heading-label')?.textContent.trim(),
     modalOpen:!!document.querySelector('.group-label-quick-editor'),
@@ -4316,11 +4324,12 @@ try{
   // persistence callback, remount from the saved synthetic snapshot and reset.
   await evaluate("localStorage.removeItem('hdnd.qa.group-labels-synthetic')");
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
-  // The full 15-field settings roster is intentionally collapsed by default.
-  // Test the new default, then expand through the actual Admin button before
-  // interacting with controls that are hidden (and cannot receive focus).
-  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false'",
-    'Lượt 018 advanced column manager should be collapsed by default');
+  // The dedicated editor opens with the roster visible and secondary settings folded.
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='true' && document.querySelector('.column-manager-grid')?.getBoundingClientRect().height>0 && document.querySelector('.column-save-button')?.disabled && document.querySelector('.group-label-editor')?.open===false",
+    'Column manager should open with a visible roster and no pending save');
+  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
+  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false' && !document.querySelector('.column-manager-savebar') && document.querySelector('.column-manager-body')?.getBoundingClientRect().height===0",
+    'The clean collapsed column manager should only show its heading');
   await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
   await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='true' && document.querySelector('.column-manager-advanced')?.hidden===false",
     'Lượt 018 advanced column manager failed to expand');
@@ -4344,9 +4353,14 @@ try{
   await send('Input.insertText',{text:'Tên ba khâu sau lưu'});
   await eventually("document.querySelector('.column-save-button:not(:disabled)')!==null",
     'Lượt 018 shared Save not enabled after title edit');
+  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
+  await eventually("document.querySelector('.column-manager-advanced')?.hidden && document.querySelector('.column-save-button:not(:disabled)')?.getBoundingClientRect().height>0",
+    'Collapsing with a draft should keep Save available');
   await evaluate("document.querySelector('.column-save-button').click()");
   await eventually("!!JSON.parse(localStorage.getItem('hdnd.qa.group-labels-synthetic')||'{}').groupLabels?.partyTogether",
     'Lượt 018 synthetic CAS save did not persist group title');
+  await eventually("!document.querySelector('.column-manager-savebar') && document.querySelector('.column-save-success')?.textContent.includes('Đã lưu')",
+    'Saving a collapsed draft should hide the save bar and confirm the save');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?use-saved-layout=1'});
   await eventually("[...document.querySelectorAll('.item-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
     'Lượt 018 shared group-title reload not shown');
@@ -4354,11 +4368,8 @@ try{
   await eventually("[...document.querySelectorAll('.report-grid-heading-row th')].some(c=>c.textContent.includes('Tên ba khâu sau lưu'))",
     'Lượt 018 popup did not inherit saved shared group title');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?layout-admin=1'});
-  await eventually("document.querySelector('.column-manager-advanced-toggle')?.getAttribute('aria-expanded')==='false'",
-    'Lượt 018 reloaded advanced manager unexpectedly expanded');
-  await evaluate("document.querySelector('.column-manager-advanced-toggle').click()");
   await eventually("document.querySelector('.column-manager-advanced')?.hidden===false",
-    'Lượt 018 reloaded advanced manager did not open');
+    'Lượt 018 reloaded advanced manager should open by default');
   await eventually("document.querySelector('.group-label-editor summary')!==null",
     'Lượt 018 admin group-title reload missing');
   await evaluate("document.querySelector('.group-label-editor').open=true");
@@ -4522,16 +4533,16 @@ try{
     {width:1600,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&r05=1'});
-  await eventually("!!document.querySelector('.app-shell.list-fit-page .admin-preview-options-toggle')",
-    'Dense admin preview options missing');
+  await eventually("!!document.querySelector('.app-shell.list-fit-page .inline-g01-mode-toggle:not(:disabled)')",
+    'Dense admin layout edit button missing');
   const adminClosedScroll=await evaluate(`(()=>{
     const shell=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
     return {overflow:getComputedStyle(shell).overflowY,max:doc.scrollHeight-doc.clientHeight,
-      hidden:!!document.querySelector('.admin-list-controls[hidden]')};
+      hidden:!document.querySelector('.admin-list-controls')};
   })()`);
   if(!adminClosedScroll.hidden||adminClosedScroll.max>3||adminClosedScroll.overflow!=='hidden')
     throw Error('ADMIN_OPTIONS_COLLAPSED_ONE_SCREEN_FAIL '+JSON.stringify(adminClosedScroll));
-  await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
+  await evaluate("document.querySelector('.inline-g01-mode-toggle').click()");
   await eventually("!!document.querySelector('.admin-list-controls:not([hidden])')",
     'Dense admin options did not expand');
   await evaluate("document.querySelector('.admin-control-section-l03 > summary')?.click()");
@@ -4581,9 +4592,9 @@ try{
     throw Error('ADMIN_PAGE_AND_INNER_TABLE_SCROLL_NOT_INDEPENDENT '+JSON.stringify(pageAndTable));
   console.log('ADMIN_OPTIONS_DOCUMENT_AND_TABLE_SCROLL_PASS',JSON.stringify({
     collapsed:adminClosedScroll,expanded:adminOpenScroll,l03Reach,pageAndTable}));
-  await evaluate("document.querySelector('.admin-preview-options-toggle').click()");
-  await eventually("!!document.querySelector('.admin-list-controls[hidden]')",
-    'Dense admin options did not collapse');
+  await evaluate("document.querySelector('.inline-layout-cancel').click()");
+  await eventually("!document.querySelector('.admin-list-controls')",
+    'Dense layout options did not close on Cancel');
   const restored=await evaluate(`(()=>{
     const root=document.querySelector('.app-shell.list-fit-page'),doc=document.scrollingElement;
     return {overflow:getComputedStyle(root).overflowY,

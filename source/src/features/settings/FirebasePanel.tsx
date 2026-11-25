@@ -87,11 +87,11 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
         }}>Thu hồi</button>
       </li>)}</ul>
     </section>}
-    {isAdmin&&<section className="notice" aria-label="Phân quyền theo cột dòng ô">
-      <h3>Bước 2 · Chọn nội dung và ô được phép sửa</h3>
-      <p>UID nhân viên được duyệt không tự có quyền sửa tất cả nội dung. Quyền cột, dòng và từng ô được quản lý riêng; khách ẩn danh chỉ sửa các ô mở công khai.</p>
+    {isAdmin&&<section className="notice" aria-label="Phân quyền theo cột">
+      <h3>Bước 2 · Chọn cột được phép sửa</h3>
+      <p>UID nhân viên được duyệt không tự có quyền sửa mọi nội dung. Quản trị cấp quyền theo từng cột; khách và nhân viên chỉ được sửa các cột được mở quyền, theo các điều kiện bảo vệ hiện hành.</p>
       <button type="button" className="button primary" disabled={busy||working}
-        onClick={onOpenItemsCustomize}>Mở phân quyền cột, dòng và ô</button>
+        onClick={onOpenItemsCustomize}>Mở quản lý quyền theo cột</button>
     </section>}
     {isAdmin&&firebaseDatabase&&<details className="account-diagnostics"><summary>Kiểm tra kỹ thuật Firebase · Nâng cao</summary><section className="notice" aria-label="Kiểm tra vận hành Firebase">
       <h3>Kiểm tra vận hành Firebase</h3>
@@ -106,7 +106,7 @@ export function FirebasePanel({firebaseDatabase,userLabel,isAdmin,userUid,editor
           {' '}· Nguồn dữ liệu: <strong>{liveCheck.source==='primary'?'Firebase chính':liveCheck.source==='database'?'Firebase mirror':liveCheck.source==='excel'?'Google Sheets/Excel':'Chưa xác định'}</strong></p>
         <p>Hồ sơ Firebase chính: <strong>{liveCheck.primaryCount}</strong>
           {' '}· Cấu hình: {liveCheck.profilePresent?'Có':'Chưa có'}
-          {' '}· Phân quyền ô: {liveCheck.permissionsPresent?'Có':'Chưa có'}
+          {' '}· Phân quyền cột: {liveCheck.permissionsPresent?'Có':'Chưa có'}
           {' '}· Tài khoản nhân viên được cấp: {liveCheck.editorAccounts}</p>
         <p>Khóa chỉnh sửa: {liveCheck.editingLocked?'Đang bật':'Không bật'}
           {' '}· Chế độ chốt dữ liệu: {liveCheck.freezeMode}</p>

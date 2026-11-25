@@ -16,16 +16,16 @@ describe('PR95 L4 full preview: baseline domain and RAM role rules',()=>{
     }
     expect(rows.filter(isActive).length).toBeLessThan(rows.length);
   });
-  it('admin and guest share a single in-memory grant hierarchy, deny overrides allow',()=>{
+  it('admin bypasses edit grant; guests use only whole-column permissions',()=>{
     const id=rows[0].recordId;
-    const p:CellPermissions={columns:{note:true},rows:{[id]:false},cells:{[id]:{note:true,content:false}}};
+    const p:CellPermissions={columns:{note:true},rows:{[id]:false},
+      cells:{[id]:{note:false,content:true}}};
     expect(previewCanEdit('admin',p,id,'note')).toBe(true);
     expect(previewCanEdit('admin',p,id,'content')).toBe(true);
     expect(previewCanEdit('guest',p,id,'note')).toBe(true);
     expect(previewCanEdit('guest',p,id,'content')).toBe(false);
     expect(previewCanEdit('guest',p,rows[1].recordId,'note')).toBe(true);
-    expect(previewCanEdit('guest',p,rows[1].recordId,'content')).toBe(false);
-    const revoke={...p,cells:{[id]:{note:false}}};
+    const revoke={...p,columns:{note:false}};
     expect(previewCanEdit('guest',revoke,id,'note')).toBe(false);
   });
   it('memory permission saves use baseline CAS and a deep copy, never mutating caller',()=>{

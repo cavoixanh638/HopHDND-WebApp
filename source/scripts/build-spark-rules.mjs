@@ -156,5 +156,50 @@ h.sparkSessions={
     ownerUid:{'.validate':'newData.isString()'},admin:{'.validate':'newData.isBoolean()'},createdAt:{'.validate':'newData.isNumber()'},expiresAt:{'.validate':'newData.isNumber()'},$other:{'.validate':false}
   }
 };
+
+// Column-only permissions (22/11/2026): remove legacy row/cell-override
+// authorizers from the GENERATED candidate. The reviewed spark-base input
+// remains unchanged as an archival source; no production Rules are deployed.
+// Match only the exact historical ternary shape and fail closed on any drift.
+function retireDetailedEditGrants(node){
+  const marker=/\((?:root\.child\('hdnd\/permissions\/cells'\)|root\.child\('hdnd\/permissions'\)\.child\('cells'\)|root\.child\('hdnd\/datasetV2\/permissions'\)\.child\(\$generation\)\.child\('cells'\))\.child\(\$id\)\.child\((?:\$field|'[A-Za-z0-9]+')\)\.exists\(\) \?/g;
+  let count=0;
+  function rewrite(text){
+    let updated=text;
+    for(const found of [...updated.matchAll(marker)].reverse()){
+      const start=found.index;
+      let depth=0,end=-1;
+      for(let index=start;index<updated.length;index++){
+        if(updated[index]==='(')depth++;
+        else if(updated[index]===')'&&--depth===0){end=index;break;}
+      }
+      if(end<0)throw Error('Incomplete legacy permission ternary');
+      const expression=updated.slice(start,end+1);
+      const pivot=expression.lastIndexOf(' : ');
+      const columnGrant=expression.slice(pivot+3,-2).trim();
+      if(pivot<0||
+        !/^root\.child\([\s\S]+\.val\(\) === true$/.test(columnGrant)||
+        (!expression.includes(".child('rows')")&&!expression.includes('permissions/rows')))
+        throw Error('Legacy permission grant format changed; fail closed');
+      updated=updated.slice(0,start)+'('+columnGrant+')'+updated.slice(end+1);
+      count++;
+    }
+    if(updated.includes('permissions/cells')||
+      updated.includes(".child('cells')")&&updated.includes('permissions'))
+      throw Error('Generated rule still references deprecated row/cell grants');
+    return updated;
+  }
+  function visit(current){
+    for(const [key,value] of Object.entries(current)){
+      if(typeof value==='string')current[key]=rewrite(value);
+      else if(value&&typeof value==='object')visit(value);
+    }
+  }
+  visit(node);
+  if(count!==42)throw Error('Expected 42 retired grant expressions, saw '+count);
+  return count;
+}
+retireDetailedEditGrants(rules.rules.hdnd);
+
 fs.writeFileSync('firebase/database.spark.rules.json',JSON.stringify(rules,null,2)+'\n');
 console.log('SPARK_RULES_BUILT',fs.statSync('firebase/database.spark.rules.json').size);

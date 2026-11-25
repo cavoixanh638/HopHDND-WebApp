@@ -1940,9 +1940,8 @@
   }
 }
 
-/* G00 2026-11-22: direct table editing is primary; full field/permission
-   roster is a reversible advanced disclosure. Save bar stays visible to avoid
-   silently losing draft layout, catalog or permissions changes. */
+/* The dedicated editor starts open. Collapsing it keeps pending saves and
+   feedback accessible without leaving an empty body on a clean screen. */
 .app-shell.settings-page .column-manager-heading{
   display:flex;align-items:center;gap:7px 13px;flex-wrap:wrap;
 }
@@ -1958,8 +1957,46 @@
 .column-manager-advanced-toggle:focus-visible{
   outline:2px solid #286b9a;outline-offset:2px;
 }
-.column-manager-advanced[hidden]{display:none!important;}
+.column-manager-body[hidden],.column-manager-advanced[hidden]{display:none;}
 .column-manager-advanced{display:grid;gap:12px;min-width:0;}
 @media (prefers-reduced-motion:reduce){
   .column-manager-advanced-toggle{transition:none;}
+}
+
+/* G00: fast inline column edits. Pencil appears on hover and keyboard focus;
+   touch devices keep it visible. Every edit stays in the existing Save draft. */
+.column-manager .column-manager-label{display:flex;align-items:center;gap:5px;min-width:0;}
+.column-manager .column-manager-name{min-width:0;overflow-wrap:anywhere;}
+.column-manager .column-manager-rename-button{
+  flex:none;min-width:24px;min-height:26px;padding:2px 4px;
+  background:transparent;border:1px solid transparent;border-radius:5px;
+  color:#245b4c;opacity:0;pointer-events:none;cursor:pointer;
+}
+.column-manager .column-manager-label:hover .column-manager-rename-button,
+.column-manager .column-manager-label:focus-within .column-manager-rename-button,
+.column-manager .column-manager-rename-button:focus-visible{
+  opacity:1;pointer-events:auto;border-color:#b7d4c5;background:#f3faf5;
+}
+.column-manager .column-manager-rename-input{min-width:0;width:100%;
+  border:1px solid #93bba7;background:#fff;border-radius:5px;
+  padding:5px 6px;font:inherit;font-weight:600;box-sizing:border-box;}
+.column-manager .column-manager-type-select{width:100%;min-width:0;
+  min-height:30px;border:1px solid #bdd5c9;border-radius:6px;
+  padding:4px 5px;background:#fff;color:#294d41;font-size:12px;}
+.column-manager .column-manager-type-select:disabled{
+  color:#74867c;border-color:#dfe8e2;background:#f8faf8;opacity:.88;
+}
+.column-manager .column-manager-advanced-action{font-size:11px!important;}
+@media (hover:none),(pointer:coarse){
+  .column-manager .column-manager-rename-button{
+    opacity:1;pointer-events:auto;border-color:#d5e5da;
+  }
+}
+@media (max-width:620px){
+  .column-manager .column-manager-type-select{
+    grid-column:2;grid-row:2;display:block;font-size:11px;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .column-manager .column-manager-rename-button{transition:none;}
 }

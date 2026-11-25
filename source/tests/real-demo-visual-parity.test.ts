@@ -57,10 +57,12 @@ describe('real App display parity with accepted isolated preview',()=>{
     expect(app).toContain("list-fit-page list-visual-parity");
     expect(list).toContain("const denseChrome=compactPreview||compactChrome;");
     expect(app).toContain("onBulkApply={adminTools&&isFirebase&&selectedSource==='primary'&&firebase!.isAdmin?stageAdminBulkDraft:undefined}");
-    expect(list).toContain('{denseChrome&&onBulkApply&&');
+    expect(list).toContain('adminControls&&denseChrome&&onBulkApply&&<button');
+    expect(list).toContain('className="button ghost admin-bulk-paste-trigger"');
     expect(list).toContain("live={sourceKind==='firebase'}");
     expect(list).toContain('{denseChrome&&<button type="button" className="button ghost admin-list-print-trigger"');
-    expect(list).toContain('hidden={denseChrome&&!previewOptionsOpen}');
+    expect(list).toContain('inlineMode&&adminControls&&(onPersistViewerLayout||isRamAdminList)');
+    expect(list).not.toContain('previewOptionsOpen');
     expect(list).toContain('stageInlineLayout(createReferenceListLayout)');
     expect(list).toContain('referencePresetConfirm');
     expect(css).toContain('.app-shell.list-visual-parity .admin-list-controls[hidden]');
