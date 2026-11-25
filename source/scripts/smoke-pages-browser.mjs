@@ -1008,7 +1008,12 @@ try{
     if(!result.ok)throw Error('L04 label/value rail alignment failed '+mode+' '+JSON.stringify(result));
     console.log('L04_STAFF_RAIL_ALIGNMENT_PASS '+mode+' '+JSON.stringify(result));
   };
-  await verifyStaffRails('real-guest');
+  // Default authenticated guest fixture can legitimately have no staff group.
+  // Measure it only when grouped; the explicit guest production-chrome fixture
+  // below MUST contain the four real grouped fields and pass on every font size.
+  if(await evaluate("!!document.querySelector('.item-data-table tbody .compact-pair-lines')"))
+    await verifyStaffRails('real-guest');
+  else console.log('L04_REAL_GUEST_UNGROUPED_NOT_APPLICABLE');
 
   // Test three adjacent NQ records with and without a user-assigned row
   // palette. Zebra + 2px separation may NOT erase the saved mint background,
@@ -4752,6 +4757,11 @@ try{
     '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&production-chrome=1&guest=1&edit=1'});
   await eventually("!!document.querySelector('.list-visual-parity .item-data-table')",'Production guest List did not mount');
   await verifyStaffRails('production-guest-editable');
+  await send('Page.navigate',{url:'http://127.0.0.1:'+port+
+    '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&production-chrome=1&guest=1'});
+  await eventually("!!document.querySelector('.list-visual-parity .item-data-table tbody .compact-pair-lines')",
+    'Production guest grouped readonly List did not mount');
+  await verifyStaffRails('production-guest-readonly');
   if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.admin-saved-layout-actions')"))
     throw Error('Guest received admin-only column or search menu in production chrome');
   console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
