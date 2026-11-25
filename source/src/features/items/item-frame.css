@@ -602,9 +602,20 @@
 .compact-type-suffix .cell-picker-trigger{display:inline-flex;width:auto!important;
   min-height:24px;padding:2px 5px;font-size:11px}
 .compact-pair-lines{display:grid;gap:5px;min-width:0;text-align:left}
-.compact-pair-lines>div{display:flex;align-items:center;gap:5px;min-width:0;line-height:1.35}
+/* L04 screen and print use the same two-rail idea: a shared fixed label
+ * track, followed by the value. Unlike min-width on independent flex items,
+ * this remains aligned when the owner's font size increases. */
+.compact-pair-lines>div{display:grid;grid-template-columns:max(46px,calc(4em + 8px)) minmax(0,1fr);
+  align-items:center;gap:5px;min-width:0;line-height:1.35}
 .compact-pair-tag{font-size:10px;font-weight:750;color:#688579;
-  background:#edf3ef;border-radius:4px;padding:2px 4px;flex:none;min-width:34px;text-align:center}
+  background:#edf3ef;border-radius:4px;padding:2px 4px;box-sizing:border-box;
+  width:100%;min-width:0;text-align:center;white-space:nowrap}
+.compact-pair-lines .compact-highlight-member,.compact-pair-lines .compact-staff-inline-values{
+  min-width:0;max-width:100%;overflow-wrap:anywhere;text-align:left;
+}
+.compact-pair-lines .compact-staff-inline-values{
+  display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;
+}
 .compact-pair-lines .compact-part{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 .compact-pair-lines .compact-part .cell-picker-trigger{min-height:26px;padding:4px 7px;font-size:11px}
 .compact-pair-lines .cell-history-action,.compact-type-suffix .cell-history-action{
@@ -729,13 +740,11 @@
   color:#4b6358;font-size:11px;line-height:1.4;text-align:left}
 .compact-content-department>.compact-part {flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
 .compact-content-department .cell-picker-trigger {min-height:26px;padding:3px 7px;font-size:11px}
-.compact-pair-lines .compact-pair-tag {min-width:46px}
 .compact-type-suffix[data-kind="HC"] {color:#58776a}
 .compact-type-suffix[data-kind="QPPL"] {color:#7c5238}
 .compact-type-suffix[data-kind="BC"] {color:#496580}
 @media(max-width:650px) {
   .compact-columns-options {width:min(340px,calc(100vw - 28px));}
-  .compact-pair-lines .compact-pair-tag {min-width:42px}
 }
 
 /* Show the four commonly used merges immediately. Keep secondary options
@@ -879,7 +888,7 @@
 .compact-stage-state .cell-picker-trigger{
   white-space:normal;max-width:100%;height:auto;overflow-wrap:break-word;word-break:normal;
 }
-.compact-cv-room-line{display:flex;align-items:flex-start;gap:5px;min-width:0;flex-wrap:wrap}
+.compact-pair-lines>.compact-cv-room-line{align-items:start}
 .compact-cv-room-name{display:inline-flex;align-items:center;min-width:0;overflow-wrap:anywhere}
 .compact-cv-room-name .compact-part{overflow-wrap:anywhere}
 .compact-group-filter-stack{display:grid;gap:3px;min-width:0}

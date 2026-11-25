@@ -157,6 +157,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
      </div>)}
      <div className="compact-cv-room-line">
        <span className="compact-pair-tag">{item.specialist?'CV':'Phòng'}</span>
+       <span className="compact-staff-inline-values">
        {(item.specialist||editable('specialist'))&&<span className="compact-highlight-member" data-ui-reference-part="specialist" data-ui-picker-skin={editable('specialist')?'standard':undefined}
          {...memberAttributes('specialist')}>{shown('specialist')}</span>}
        {(!!item.room||editable('room'))&&<span className="compact-cv-room-name" data-ui-reference-part="room"
@@ -164,6 +165,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
          {item.specialist?' (':''}{shown('room')}{item.specialist?')':''}
        </span>}
        {!item.room&&!item.specialist&&!editable('specialist')&&!editable('room')&&shown('specialist')}
+       </span>
      </div>
    </div>;
  }
