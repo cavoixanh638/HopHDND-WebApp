@@ -2653,8 +2653,8 @@ try{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
     const labels=[...panel?.querySelectorAll(':scope > label')??[]];
-    const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice]')??[]];
-    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===6&&
+    const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
+    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===8&&
       !panel.querySelector('details.compact-more-options')&&
       nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&
       nameBoxes.some(box=>box.dataset.compactChoice==='shortSpecialist')&&
@@ -2736,11 +2736,11 @@ try{
     const rect=panel?.getBoundingClientRect();
     const html=document.scrollingElement;
     const labels=[...panel?.querySelectorAll(':scope > label')??[]];
-    const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice]')??[]];
+    const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
-      labels.length===6&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
+      labels.length===8&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
       html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
