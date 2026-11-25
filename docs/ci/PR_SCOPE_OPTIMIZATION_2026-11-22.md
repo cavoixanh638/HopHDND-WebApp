@@ -36,3 +36,9 @@ Repository `cavoixanh638/HopHDND-WebApp`, source baseline `main` at `fb61b50ed64
 ## Rollback
 
 Revert CI-only commit via PR. The Pages publication and security gates remain in original form.
+
+## Integration and live acceptance — 25/11/2026
+
+PR #230 has been integrated at `4565cbf8d4cad1d9c4cf852223795b04e737cbd1`. Before merge, exact-head CI passed 12/12 workflows, including 14/14 scope contract cases in [run 45617146676](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45617146676). All eight scoped suites classified the workflow change as `RUN` (`critical,docs`, 16 changed paths), preserving full QA. Their combined observed job wall-clock baseline is 399 seconds (17 + 24 + 66 + 51 + 43 + 54 + 64 + 80). This is neither billed minutes nor a dollar-cost estimate.
+
+This documentation-only change is the genuine live acceptance case: expect eight existing checks to remain visible while expensive steps become `NOT_APPLICABLE`. Record actual job outcomes, logs and elapsed time in the associated PR conversation. Do not count skipped steps as passed tests. No source, production rules, release policy, billing or branch-protection settings are changed. Branch-protection REST returned 403; no attempt was made to bypass enforcement.
