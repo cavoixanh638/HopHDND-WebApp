@@ -57,6 +57,7 @@
 .column-options-checklist label span{font-weight:500;overflow-wrap:anywhere}
 .column-options-checklist input{flex:none;width:auto;margin:2px 0 0}
 .column-options-visibility>small,.column-options-note{font-size:11px;color:#657b70;line-height:1.35}
+.column-options-name-heading{border-top:1px solid #dce8e0;padding-top:8px;margin-top:2px}
 .column-options-close{justify-self:end}
 @media(max-width:420px){.column-options-checklist{grid-template-columns:minmax(0,1fr)}}
 @media print{.inline-g01-search-popover,.compact-columns-options-floating{display:none!important}}

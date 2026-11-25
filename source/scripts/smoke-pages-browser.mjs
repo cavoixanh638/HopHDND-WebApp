@@ -2652,10 +2652,13 @@ try{
   const compactMenuDesktop=await evaluate(`(()=>{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
-    const labels=[...panel?.querySelectorAll(':scope > label, .compact-more-options label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label')??[]];
+    const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice]')??[]];
     return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===6&&
-      panel.querySelectorAll('.compact-more-options').length===1&&
-      panel.querySelectorAll(':scope > label').length===4&&
+      !panel.querySelector('details.compact-more-options')&&
+      nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&
+      nameBoxes.some(box=>box.dataset.compactChoice==='shortSpecialist')&&
+      nameBoxes.some(box=>box.dataset.compactChoice==='shortLeaders')&&
       rect.left>=0&&rect.right<=innerWidth&&rect.height<580&&
       labels.some(label=>label.textContent.includes('Chuyên viên và phòng cùng dòng')),
       count:labels.length,rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
@@ -2732,11 +2735,12 @@ try{
     const viewport=document.querySelector('.item-table-scroll');
     const rect=panel?.getBoundingClientRect();
     const html=document.scrollingElement;
-    const labels=[...panel?.querySelectorAll(':scope > label, .compact-more-options label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label')??[]];
+    const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice]')??[]];
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
-      labels.length===6&&viewport.scrollWidth>viewport.clientWidth&&
+      labels.length===6&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
       html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
@@ -3387,6 +3391,50 @@ try{
   if(!r01Menu)throw Error('R01 staff menu missing');
   await eventually("!!document.querySelector('.compact-columns-options-floating')",
     'R01 staff menu portal did not open');
+  // Both name options are immediately available in the column menu. Exercise
+  // actual row rendering, Cancel and the existing shared layout save path.
+  const nameBox=(key)=>'.compact-columns-options input[data-compact-choice='+key+']';
+  const firstStaffCell=".item-data-table tbody tr.color-row:first-child td[data-col-key=room]";
+  const nameToggle=async(key,checked)=>{
+    const changed=await evaluate(`(()=>{
+      const box=document.querySelector(${JSON.stringify(nameBox(key))});
+      if(!box||box.disabled||!box.getClientRects().length||box.closest('details'))return false;
+      if(box.checked!==${checked})box.click();
+      return true;
+    })()`);
+    if(!changed)throw Error('Direct name checkbox missing: '+key);
+    await eventually(`document.querySelector(${JSON.stringify(nameBox(key))})?.checked===${checked}`,'Name choice did not update: '+key);
+  };
+  const fullNames=`(()=>{const s=document.querySelector(${JSON.stringify(firstStaffCell)})?.textContent??'';return s.includes('Chuyên viên mẫu A')&&s.includes('PCVP Trần Văn B')&&s.includes('PCT Nguyễn Văn C');})()`;
+  const shortNames=`(()=>{const s=document.querySelector(${JSON.stringify(firstStaffCell)})?.textContent??'';return s.includes('C.V.M.A')&&s.includes('PCVP T.V.B')&&s.includes('PCT N.V.C');})()`;
+  const openNameOptions=async()=>{
+    await evaluate("document.querySelector('.compact-columns-menu').open=true");
+    await eventually("!!document.querySelector('.compact-columns-options-floating')",'Name menu failed to reopen');
+  };
+  await eventually(shortNames,'R01 baseline abbreviated names missing');
+  await nameToggle('shortSpecialist',false);
+  await nameToggle('shortLeaders',false);
+  await eventually(fullNames,'Direct name choices did not restore full text in grouped cells');
+  await evaluate("document.querySelector('.inline-layout-cancel').click()");
+  await eventually("!document.querySelector('.inline-layout-cancel')",'Cancel did not exit name draft');
+  await eventually(shortNames,'Cancel did not restore name presentation');
+  await openNameOptions();
+  await nameToggle('shortSpecialist',false);
+  await nameToggle('shortLeaders',false);
+  await evaluate("document.querySelector('.inline-layout-save').click()");
+  await eventually("!document.querySelector('.inline-layout-cancel')",'Save did not commit name draft');
+  await eventually(fullNames,'Saved name layout did not keep full names');
+  await openNameOptions();
+  await eventually(`document.querySelector(${JSON.stringify(nameBox('shortSpecialist'))})?.checked===false&&document.querySelector(${JSON.stringify(nameBox('shortLeaders'))})?.checked===false`,'Saved name options did not survive reopen');
+  await nameToggle('shortSpecialist',true);
+  await nameToggle('shortLeaders',true);
+  await evaluate("document.querySelector('.inline-layout-save').click()");
+  await eventually("!document.querySelector('.inline-layout-cancel')",'Restore abbreviated name layout did not save');
+  await eventually(shortNames,'Saved abbreviations lost titles or did not render');
+  r01.push(await staffSearch('room','Chuyên viên mẫu A',2));
+  r01.push(await staffSearch('vpLeader','PCVP Trần Văn B',1));
+  console.log('ADMIN_COLUMN_NAME_OPTIONS_DIRECT_SAVE_CANCEL_SEARCH_PASS');
+  await openNameOptions();
   const toggleLeader=await evaluate(`(()=>{
     const label=[...document.querySelectorAll('.compact-columns-options label')]
       .find(x=>x.textContent.includes('Lãnh đạo UBND + VP'));
