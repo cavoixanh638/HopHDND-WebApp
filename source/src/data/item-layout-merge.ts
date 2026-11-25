@@ -121,6 +121,8 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   const summaryCards=Object.fromEntries(SUMMARY_CARD_KEYS.map(key=>[key,
     merge(base.summaryCards![key],edited.summaryCards![key],remote.summaryCards![key],
       'summaryCards.'+key,'hiển thị thẻ '+key)]));
+  const savedLayouts=merge(base.savedLayouts??[],edited.savedLayouts??[],remote.savedLayouts??[],'savedLayouts','danh sách giao diện đã lưu');
+  const activeLayoutId=merge(base.activeLayoutId??'',edited.activeLayoutId??'',remote.activeLayoutId??'','activeLayoutId','giao diện đang dùng');
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({columns,tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,...(persistTracks?{partyTrackWidths:mergedTracks}:{}),groupLabels,listTitle,summaryCards});
+  return validateItemLayout({...(savedLayouts.length?{savedLayouts}:{}),...(activeLayoutId?{activeLayoutId}:{}),columns,tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,...(persistTracks?{partyTrackWidths:mergedTracks}:{}),groupLabels,listTitle,summaryCards});
 }

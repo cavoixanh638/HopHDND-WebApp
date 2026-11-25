@@ -4643,10 +4643,12 @@ try{
       'Production column popup did not open from visible button');
     const popup=await evaluate(`(()=>{
       const panel=document.querySelector('.compact-columns-options-floating'),r=panel.getBoundingClientRect();
-      const names=[...panel.querySelectorAll('input[data-compact-choice]')];
+      const names=[...panel.querySelectorAll('input[data-compact-choice=shortSpecialist],input[data-compact-choice=shortLeaders]')];
       return {ok:r.left>=0&&r.right<=innerWidth+.5&&r.top>=0&&r.bottom<=innerHeight+.5&&
         !!panel.querySelector('.column-options-checklist input[data-column-choice]')&&
-        panel.textContent.includes('Gộp cột người phụ trách')&&names.length===2&&
+        panel.textContent.includes('Gộp cột')&&names.length===2&&
+        !!panel.querySelector('input[data-compact-choice=mergeTypeIntoContent]')&&
+        !!panel.querySelector('input[data-compact-choice=mergeDepartmentIntoContent]')&&
         names.every(x=>!x.closest('details')&&x.getClientRects().length>0)&&
         !document.querySelector('.inline-layout-savebar'),rect:{left:r.left,top:r.top,width:r.width,height:r.height}};
     })()`);
@@ -4654,6 +4656,16 @@ try{
     if(width===1600){
       const shot=await send('Page.captureScreenshot',{format:'png'});
       writeFileSync('hophdnd-production-column-options-visible.png',Buffer.from(shot.data,'base64'));
+      const typeToggle='.compact-columns-options-floating input[data-compact-choice=mergeTypeIntoContent]';
+      const deptToggle='.compact-columns-options-floating input[data-compact-choice=mergeDepartmentIntoContent]';
+      await pointerClick(typeToggle);
+      await eventually("!!document.querySelector('th[data-column-key=type]') && !document.querySelector('th[data-column-key=department]')",'Type split not independent');
+      await pointerClick(deptToggle);
+      await eventually("!!document.querySelector('th[data-column-key=type]') && !!document.querySelector('th[data-column-key=department]')",'Both document fields should be separate');
+      await pointerClick(typeToggle);
+      await eventually("!document.querySelector('th[data-column-key=type]') && !!document.querySelector('th[data-column-key=department]')",'Department split not independent');
+      await pointerClick(deptToggle);
+      await eventually("!document.querySelector('th[data-column-key=type]') && !document.querySelector('th[data-column-key=department]')",'Both document fields should merge');
       const checkbox='.compact-columns-options-floating input[data-compact-choice=shortSpecialist]';
       await pointerClick(checkbox);
       await eventually("!!document.querySelector('.inline-layout-cancel') && document.querySelector('.compact-columns-options-floating input[data-compact-choice=shortSpecialist]')?.checked===false",
@@ -4667,12 +4679,38 @@ try{
     }
     await evaluate("document.querySelector('.column-options-close').click()");
     await eventually("!document.querySelector('.compact-columns-options-floating')",'Column popup did not close');
+    if(width===1600){
+      const select='select[aria-label="Chọn giao diện đã lưu"]';
+      const nameForm='form[aria-label="Lưu giao diện mới"]';
+      const renameForm='form[aria-label="Đổi tên mẫu"]';
+      const openNew=()=>evaluate("Array.from(document.querySelectorAll('.admin-saved-layout-actions button')).find(b=>b.textContent.trim()==='Lưu giao diện mới').click()");
+      const enterName=async(form,name)=>{
+        await eventually("!!document.querySelector("+JSON.stringify(form+" input")+")",'Named layout form did not open');
+        await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(form+' input')});i.focus()})()`);
+        await send('Input.insertText',{text:name});
+        await evaluate(`document.querySelector(${JSON.stringify(form+' button[type=submit]')}).click()`);
+        await eventually("!document.querySelector("+JSON.stringify(form)+")",'Named layout did not commit');
+      };
+      await openNew();await enterName(nameForm,'QA gộp');
+      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA gộp'",'New layout not selected');
+      const original=await evaluate("document.querySelector("+JSON.stringify(select)+").value");
+      await evaluate("Array.from(document.querySelectorAll('.admin-saved-layout-actions button')).find(b=>b.textContent.trim()==='Đổi tên mẫu').click()");
+      await eventually("!!document.querySelector("+JSON.stringify(renameForm+" input")+")",'Rename form did not open');
+      await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(renameForm+' input')});i.focus();i.select()})()`);
+      await enterName(renameForm,'QA đổi tên');
+      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA đổi tên'",'Rename not saved');
+      await openNew();await enterName(nameForm,'QA mẫu hai');
+      await eventually("document.querySelector("+JSON.stringify(select)+")?.options.length===3",'Both presets must remain');
+      await evaluate(`(()=>{const s=document.querySelector(${JSON.stringify(select)});s.value=${JSON.stringify(original)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`);
+      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA đổi tên'",'Named layout not reselected');
+      console.log('SHARED_LAYOUT_PRESET_BROWSER_PASS');
+    }
     productionColumnChecks.push({width,height,triggerRect,popup:popup.rect});
   }
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&production-chrome=1&guest=1&edit=1'});
   await eventually("!!document.querySelector('.list-visual-parity .item-data-table')",'Production guest List did not mount');
-  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating')"))
+  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.admin-saved-layout-actions')"))
     throw Error('Guest received admin-only column or search menu in production chrome');
   console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
 

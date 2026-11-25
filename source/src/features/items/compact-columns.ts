@@ -11,13 +11,16 @@ export const COMPACT_GROUP_DEFAULT_LABELS={
   teamTogether:'Lãnh đạo / Phòng / CV'
 } as const;
 /** Personal presentation preferences only. Never changes source columns or permissions. */
-export type CompactOption='typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline';
+export type CompactOption=keyof SharedCompactDisplay;
 export type CompactDisplay=SharedCompactDisplay;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
   typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,
   leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,
+  mergeTypeIntoContent:true,mergeDepartmentIntoContent:true,
 };
 export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string;section:'merge'|'name'}[]=[
+  {key:'mergeTypeIntoContent',label:'Gộp Loại văn bản vào Nội dung trình',detail:'Bật/tắt riêng cột Loại văn bản',section:'merge'},
+  {key:'mergeDepartmentIntoContent',label:'Gộp Đơn vị chủ trì vào Nội dung trình',detail:'Bật/tắt riêng cột Đơn vị chủ trì',section:'merge'},
   {key:'leadersTogether',label:'Lãnh đạo UBND + VP',detail:'UBND trên, VP dưới',section:'merge'},
   {key:'roomSpecialist',label:'Phòng + Chuyên viên',detail:'Phòng trên, chuyên viên dưới',section:'merge'},
   {key:'teamTogether',label:'UBND + VP + Phòng + CV',detail:'Bốn thông tin theo nhóm',section:'merge'},
@@ -28,7 +31,7 @@ export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string;secti
 /** Group choices are exclusive only if they would consume the same visible column. */
 export function toggleCompactOption(prefs:CompactDisplay,option:CompactOption,checked:boolean):CompactDisplay {
   const next={...prefs,[option]:checked};
-  // Legacy U01/U02 flags are inert: the source groups are mandatory in ordinary views.
+  // Legacy flags remain inert. The new independent flags control U01.
   if(checked&&option==='teamTogether'){next.leadersTogether=false;next.roomSpecialist=false;}
   if(checked&&(option==='leadersTogether'||option==='roomSpecialist'))next.teamTogether=false;
   return next;
@@ -41,7 +44,7 @@ export function readCompactDisplay(scope:string):CompactDisplay {
     const val:unknown=JSON.parse(raw);
     if(!val||typeof val!=='object'||Array.isArray(val))return {...DEFAULT_COMPACT_DISPLAY};
     return Object.fromEntries((Object.keys(DEFAULT_COMPACT_DISPLAY) as CompactOption[])
-      .map(key=>[key,(val as Record<string,unknown>)[key]===true])) as CompactDisplay;
+      .map(key=>[key,typeof (val as Record<string,unknown>)[key]==='boolean'?(val as Record<string,unknown>)[key]:DEFAULT_COMPACT_DISPLAY[key]??false])) as CompactDisplay;
   }catch{return {...DEFAULT_COMPACT_DISPLAY};}
 }
 export function writeCompactDisplay(scope:string,prefs:CompactDisplay):void {
@@ -58,8 +61,8 @@ export function readPersonalCompactDisplay(scope:string):CompactDisplay|null {
     if(!value||typeof value!=='object'||Array.isArray(value))return null;
     const object=value as Record<string,unknown>;
     const keys=Object.keys(DEFAULT_COMPACT_DISPLAY) as CompactOption[];
-    if(keys.some(key=>typeof object[key]!=='boolean'&&!(key==='cvRoomInline'&&object[key]===undefined)))return null;
-    return Object.fromEntries(keys.map(key=>[key,object[key]??false])) as CompactDisplay;
+    if(keys.some(key=>typeof object[key]!=='boolean'&&!(['cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent'].includes(key)&&object[key]===undefined)))return null;
+    return Object.fromEntries(keys.map(key=>[key,object[key]??DEFAULT_COMPACT_DISPLAY[key]??false])) as CompactDisplay;
   }catch{return null;}
 }
 export function writePersonalCompactDisplay(scope:string,prefs:CompactDisplay):boolean {
@@ -106,8 +109,7 @@ export type CompactPair={
   anchor:string; hidden:string; hiddenFields:readonly string[];memberFields:readonly string[];
   tags:readonly string[];label:string;extraWidth:number;variant:CompactOption;
 };
-/** These are optional staff-only presentation groups. U01/U02 are unconditional
- * projections declared in activeCompactPairs; no saved flag can turn them off. */
+/** Staff-only presentation groups. U01 has independent options; U02 stays mandatory. */
 const PAIRS:Partial<Record<CompactOption,CompactPair>>={
   leadersTogether:{anchor:'vpLeader',hidden:'ubndLeader',hiddenFields:['ubndLeader'],
     memberFields:['ubndLeader','vpLeader'],tags:['UBND','VP'],label:'Lãnh đạo UBND / VP',extraWidth:0,variant:'leadersTogether'},
@@ -129,14 +131,17 @@ export function compactTypeTone(value:string):'HC'|'QPPL'|'BC'|'other'{
  * the first available member becomes the stable rendered anchor for this view. */
 export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDisplay):CompactPair[]{
   const keys=new Set(columns.filter(c=>c.visible&&!c.removed).map(c=>c.key));
+  const includeType=prefs.mergeTypeIntoContent!==false,includeDepartment=prefs.mergeDepartmentIntoContent!==false;
+  const documentOrder=['type','department','content'].filter(key=>key==='content'||(key==='type'?includeType:includeDepartment));
   const mandatory=[
-    {variant:'contentDetails' as const,order:['type','department','content'],anchor:'content',
-      label:'Nội dung trình',tags:['Loại VB','Sở','Nội dung'],extraWidth:0},
+    ...(includeType||includeDepartment?[{variant:'contentDetails' as const,order:documentOrder,anchor:'content',
+      label:'Nội dung trình',tags:documentOrder.map(key=>key==='type'?'Loại VB':key==='department'?'Sở':'Nội dung'),extraWidth:0}]:[]),
     {variant:'partyTogether' as const,order:['partyLevel','progressParty','progressBuild','progressCouncil'],
       anchor:'partyLevel',label:'Tiến độ 3 khâu',tags:['Cấp','Thành ủy','Xây dựng NQ','Ban hành NQ'],extraWidth:130}
   ].flatMap(def=>{
     const memberFields=def.order.filter(key=>keys.has(key));
-    if(memberFields.length===0)return [];
+    if(memberFields.length===0||def.variant==='contentDetails'&&memberFields.length===1&&
+      (includeType!==includeDepartment))return [];
     const anchor=keys.has(def.anchor)?def.anchor:memberFields[0];
     return [{anchor,hidden:memberFields.find(k=>k!==anchor)??anchor,
       hiddenFields:memberFields.filter(k=>k!==anchor),memberFields,

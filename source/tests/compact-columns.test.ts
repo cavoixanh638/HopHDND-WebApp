@@ -224,3 +224,27 @@ describe('Mandatory document/stage projection and optional staff groups are read
   });
 
 });
+
+
+describe('Independent document group options',()=>{
+  it.each([[true,true],[true,false],[false,true],[false,false]])('type=%s department=%s',(type,department)=>{
+    const source=defaultItemLayout().columns;
+    const prefs=toggleCompactOption(toggleCompactOption(DEFAULT_COMPACT_DISPLAY,'mergeTypeIntoContent',type),'mergeDepartmentIntoContent',department);
+    const shown=compactVisibleColumns(source,prefs);
+    expect(shown.some(c=>c.key==='type')).toBe(!type);
+    expect(shown.some(c=>c.key==='department')).toBe(!department);
+    expect(shown.some(c=>c.key==='content')).toBe(true);
+    const pairs=activeCompactPairs(source,prefs);
+    expect(pairs.find(p=>p.variant==='contentDetails')?.memberFields??['content']).toEqual([
+      ...(type?['type']:[]),...(department?['department']:[]),'content']);
+    expect(pairs.some(p=>p.variant==='partyTogether')).toBe(true);
+    expect(source).toHaveLength(15);
+  });
+  it('never reveals hidden fields or absorbs the other independent column',()=>{
+    const source=defaultItemLayout().columns.map(c=>({...c,visible:c.key!=='type'}));
+    const prefs={...DEFAULT_COMPACT_DISPLAY,mergeTypeIntoContent:true,mergeDepartmentIntoContent:false};
+    const pairs=activeCompactPairs(source,prefs);
+    expect(pairs.some(p=>p.variant==='contentDetails')).toBe(false);
+    expect(compactVisibleColumns(source,prefs).some(c=>c.key==='department')).toBe(true);
+  });
+});
