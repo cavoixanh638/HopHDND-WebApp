@@ -970,6 +970,45 @@ try{
     compactSliderProbe.floor.stage!=='11px')
     throw Error('Compact List must respect the font setting and minimum size: '+JSON.stringify(compactSliderProbe));
   console.log('GUEST_LIST_COMPACT_FONT_SLIDER_PASS',JSON.stringify(compactSliderProbe));
+  // L04: measure the actual left edge of every label and value rail on
+  // the real guest List, including the larger owner-selected font sizes.
+  const staffRailProbe=String.raw`(()=>{
+    const table=document.querySelector('.item-data-table');
+    if(!table)return {error:'No ItemList table'};
+    const prior=table.style.getPropertyValue('--table-font-size');
+    const priority=table.style.getPropertyPriority('--table-font-size');
+    const spread=xs=>Math.max(...xs)-Math.min(...xs);
+    const sizes=[];
+    try{
+      for(const px of [11,13,16,20]){
+        table.style.setProperty('--table-font-size',px+'px');
+        const groups=[...table.querySelectorAll('tbody .compact-pair-lines')].map(group=>{
+          const rows=[...group.children].map(row=>{
+            const tag=row.querySelector('.compact-pair-tag');
+            const value=row.querySelector(':scope > .compact-highlight-member,:scope > .compact-staff-inline-values');
+            if(!tag||!value)return null;
+            const t=tag.getBoundingClientRect(),v=value.getBoundingClientRect();
+            return {label:tag.textContent.trim(),left:t.left,width:t.width,value:v.left,
+              labelFits:tag.scrollWidth<=tag.clientWidth+1,positive:v.width>0};
+          });
+          if(rows.length<2||rows.some(r=>!r))return {ok:false,rows};
+          return {ok:spread(rows.map(r=>r.left))<=.75&&spread(rows.map(r=>r.width))<=.75&&
+            spread(rows.map(r=>r.value))<=.75&&rows.every(r=>r.labelFits&&r.positive),rows};
+        });
+        sizes.push({px,groups:groups.length,failures:groups.filter(g=>!g.ok)});
+      }
+    }finally{
+      if(prior)table.style.setProperty('--table-font-size',prior,priority);
+      else table.style.removeProperty('--table-font-size');
+    }
+    return {ok:sizes.every(s=>s.groups>0&&!s.failures.length),sizes};
+  })()`;
+  const verifyStaffRails=async(mode)=>{
+    const result=await evaluate(staffRailProbe);
+    if(!result.ok)throw Error('L04 label/value rail alignment failed '+mode+' '+JSON.stringify(result));
+    console.log('L04_STAFF_RAIL_ALIGNMENT_PASS '+mode+' '+JSON.stringify(result));
+  };
+  await verifyStaffRails('real-guest');
 
   // Test three adjacent NQ records with and without a user-assigned row
   // palette. Zebra + 2px separation may NOT erase the saved mint background,
@@ -3461,6 +3500,7 @@ try{
   if(!toggleInline)throw Error('R01 U04 inline switch missing');
   await eventually("!!document.querySelector('.compact-cv-room-line')",
     'R01 U04 inline view not shown');
+  await verifyStaffRails('inline-CV-room');
   r01.push(await staffSearch('room','Chuyen vien mau A',2));
   r01.push(await staffSearch('room','Phong mau 1',4));
   console.log('V2_R01_FULL_ORIGINAL_SEARCH_ADVANCED_AND_PASS',JSON.stringify(r01));
@@ -4638,6 +4678,7 @@ try{
         title:button?.textContent?.trim()};
     })()`);
     if(!defaultView.ok)throw Error('PRODUCTION_COLUMN_OPTIONS_NOT_VISIBLE '+JSON.stringify({width,defaultView}));
+    await verifyStaffRails('production-admin-'+width);
     const triggerRect=await pointerClick('.admin-list-heading .compact-columns-menu > summary');
     await eventually("!!document.querySelector('.compact-columns-options-floating')",
       'Production column popup did not open from visible button');
@@ -4710,6 +4751,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+
     '/compact-qa/compact-qa.html?app-shell=1&dense-chrome=1&production-chrome=1&guest=1&edit=1'});
   await eventually("!!document.querySelector('.list-visual-parity .item-data-table')",'Production guest List did not mount');
+  await verifyStaffRails('production-guest-editable');
   if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.admin-saved-layout-actions')"))
     throw Error('Guest received admin-only column or search menu in production chrome');
   console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
