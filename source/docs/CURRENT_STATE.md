@@ -1,8 +1,10 @@
-## 22/11/2026 — Chỉ phân quyền theo cột (PR chờ kiểm thử/duyệt)
+## 25/11/2026 — Trạng thái hiện hành trước đợt chỉnh toolbar
 
-Theo quyết định chủ dự án, bỏ tab/mục menu **Phân quyền chỉnh sửa** và giao diện cấp quyền theo dòng/ô. Checkbox **Cho sửa** theo cột tiếp tục nằm trong quản lý cột nâng cao. `mayEdit` chỉ xét `columns`; candidate Spark Rules cho primary/V2/direct-CAS được tạo lại theo cột. Toàn bộ UI/test cũ lưu nguyên văn tại [Chức năng cũ không dùng](chuc-nang-cu-khong-dung/README.md); dữ liệu `rows/cells` chưa xóa khỏi Firebase phục vụ đối chiếu và khôi phục. 
+**PR #231: DONE** từ 23/11/2026. Firebase Spark Rules chỉ xét quyền cột; backup Rules/quyền hẹp, restore trên localhost, deploy/readback và canary guest/admin PASS theo [biên nhận production](checkpoints/PR231_PRODUCTION_RULES_2026-11-23.md). Merge source `29c6ab700e7dad807226daaf12b07cc86bf990f3`; [owner publisher attempt 2](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45094072798) và [Pages deployment](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45095362949) SUCCESS. 1158 unit PASS, 170 SKIP; 37/37 direct-CAS/security; [nghiệm thu cuối](checkpoints/PR231_PAGES_ACCEPTANCE_2026-11-23.md), [Issue #232](https://github.com/cavoixanh638/HopHDND-WebApp/issues/232) closed completed. Mã cũ ở [Chức năng cũ không dùng](chuc-nang-cu-khong-dung/README.md); không xóa dữ liệu rows/cells cũ. Không thực hiện lại deploy Rules vì đổi toolbar.
 
-**RELEASE HOLD:** Chỉ là nhánh PR. Chưa merge, chưa publish Pages, chưa deploy Firebase Rules, chưa sửa dữ liệu production. Nếu server đang dùng Rules cũ, quyền dòng/ô lưu trước đây **có thể vẫn có hiệu lực trên server**; phải triển khai Rules mới qua quy trình bảo mật và nghiệm thu mới xác nhận được quyền cột là nguồn cấp phép duy nhất.
+Tiếp nối PR #233: source Pages ở thời điểm đối chiếu `7145e96d933d1e735fb5e8fe6149ef898614a041`, artifact `d10dbe6ba1ea91796998d11b658b6075dcff10c9`. Trang quản lý cột nâng cao mở mặc định. PR #231 receipt vẫn là biên nhận bảo mật đúng; không coi các checkpoint HOLD lịch sử là trạng thái hiện tại.
+
+Đợt chỉnh toolbar 25/11: admin có **Cột tìm** sát trigger và **Tùy chọn cột** ẩn/hiện/gộp; khách tìm mọi trường, không nhận cấu hình search admin. Thay đổi bố cục dùng chung qua nháp, Lưu bố cục/Hủy; không sửa quyền, Rules, dữ liệu. Kết quả phát hành đợt toolbar xác nhận riêng bằng exact SHA và version marker; không suy PASS từ tài liệu này.
 
 ---
 
