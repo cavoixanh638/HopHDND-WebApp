@@ -132,7 +132,23 @@ describe('R-V3-01: optional non-status picker clear while status menus stay exac
     expect(pickerSource).toContain("event.key === 'Escape'");
     // Legacy values remain selectable when unfiltered, including all status
     // editors. A typed department query must show only matching names.
-    expect(pickerSource).toContain("...(selectedIsFilteredOut&&!departmentFiltering ? [{ value, label: value }] : []),");
+    expect(pickerSource).toContain("...(selectedIsFilteredOut&&!departmentFiltering ? [{ value, label: displayOrganisationName(field??'',value) }] : []),");
+    expect(pickerSource).toContain("({ value: option, label: displayOrganisationName(field??'',option) })");
     expect(pickerSource).not.toContain(' (giá trị hiện tại)');
+  });
+});
+
+
+describe('organisation label alias in the real picker',()=>{
+  it('renders the short label but leaves unrelated fields and original option values intact',()=>{
+    const original='Các phòng thuộc VP UBND TP';
+    const props={label:'Chọn',value:original,options:[original],onChange:()=>{}};
+    for(const field of ['department','room'] as const){
+      const html=renderToStaticMarkup(createElement(CellPicker,{...props,field}));
+      expect(html).toContain('>VPUB TP<');
+    }
+    expect(renderToStaticMarkup(createElement(CellPicker,{...props,field:'type'}))).toContain('>'+original+'<');
+    expect(pickerSource).toContain('onChange(nextValue)');
+    expect(pickerViewSource).toContain('onClick={()=>onChoose(option.value)}');
   });
 });

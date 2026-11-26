@@ -68,7 +68,11 @@ export function SavedLayoutMenu({presets,activeId,dirty,busy,onSelect,onCreate,o
         <strong>Giao diện đã lưu</strong>
         <button type="button" className="saved-layout-icon saved-layout-add" aria-label="Lưu giao diện mới"
           title="Lưu giao diện hiện tại thành mẫu mới" disabled={busy||presets.length>=MAX_SAVED_LAYOUTS}
-          onClick={()=>{setError('');setNameEdit({name:''});}}>+</button>
+          onClick={()=>{setError('');setNameEdit({name:''});}}>
+          <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16">
+            <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+          </svg>
+        </button>
       </div>
       <div className="saved-layout-list" role="group" aria-label="Danh sách mẫu giao diện">
         {!activeId&&<div className="saved-layout-current"><span aria-hidden="true">✓</span> Giao diện hiện tại (chưa đặt tên)</div>}

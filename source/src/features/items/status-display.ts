@@ -1,4 +1,5 @@
 import type {Item,TextField} from '../../../shared/types';
+import {displayOrganisationName} from '../../domain/organisation-display';
 import {canonicalStatus,OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
 import {effectiveBuildStatus} from '../../domain/pr95-v5-l4-build-effective';
 
@@ -24,7 +25,7 @@ export function statusEditSelection(field:string,raw:string,selected:string):str
 }
 /** Match both canonical displayed text and historic source text in UI search. */
 export function statusFilterText(field:string,raw:string):string{
-  const shown=statusDisplayValue(field,raw);
+  const shown=displayOrganisationName(field,statusDisplayValue(field,raw));
   return shown===raw?raw:raw+' '+shown;
 }
 /** FILTER UI-only derived rows; original Item records continue to own all
@@ -37,4 +38,4 @@ export function projectedStatusFilterRows(items:readonly Item[]):Item[]{
     progressCouncil:statusDisplayValue('progressCouncil',item.progressCouncil)
   }));
 }
-export const statusReadOnlyValue=(field:TextField,value:string):string=>statusDisplayValue(field,value);
+export const statusReadOnlyValue=(field:TextField,value:string):string=>displayOrganisationName(field,statusDisplayValue(field,value));

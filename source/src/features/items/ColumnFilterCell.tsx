@@ -1,5 +1,6 @@
 import type {Item} from '../../../shared/types';
 import {displayId} from '../../domain/display-id';
+import {displayOrganisationName} from '../../domain/organisation-display';
 import {preserveStickyFilterViewport} from './filter-scroll';
 
 /** A compact permanent header filter row; options are for short categorical lists.
@@ -38,8 +39,8 @@ export function ColumnFilterCell({field,label,items,value,onChange,getValue,choi
         onChange={event=>onChange(event.currentTarget.value)}
         onKeyDown={clearOnEscape}>
         <option value="">Chọn để lọc</option>
-        {choices.map(option=><option value={option} key={option}>{option}</option>)}
-        {value&&!choices.includes(value)&&<option value={value}>{value}</option>}
+        {choices.map(option=><option value={option} key={option}>{displayOrganisationName(field,option)}</option>)}
+        {value&&!choices.includes(value)&&<option value={value}>{displayOrganisationName(field,value)}</option>}
       </select>:<input aria-label={`Tìm kiếm cột ${label}`} title={`Tìm kiếm cột ${label}`}
         type="search" autoComplete="off" spellCheck={false} placeholder={compact?'':'Tìm kiếm (không dấu)'}
         value={value} onPointerDown={event=>preserveStickyFilterViewport(event.currentTarget)}

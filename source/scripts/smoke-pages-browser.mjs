@@ -4752,6 +4752,16 @@ try{
     })()`);
     if(layoutRect.left<0||layoutRect.right>width+1||layoutRect.top<0||layoutRect.bottom>height+1)
       throw Error('Saved layout popup overflow: '+JSON.stringify(layoutRect));
+    const plus=await evaluate(`(()=>{
+      const button=document.querySelector('.saved-layout-add'),icon=button?.querySelector('svg');
+      if(!button||!icon)return null;
+      const b=button.getBoundingClientRect(),s=icon.getBoundingClientRect();
+      return {w:b.width,h:b.height,dx:Math.abs(b.left+b.width/2-s.left-s.width/2),
+        dy:Math.abs(b.top+b.height/2-s.top-s.height/2),iw:s.width,ih:s.height};
+    })()`);
+    if(!plus||Math.abs(plus.w-plus.h)>0.5||plus.dx>0.5||plus.dy>0.5||plus.iw!==16||plus.ih!==16)
+      throw Error('Saved layout plus must be centered in a square: '+JSON.stringify(plus));
+    console.log('SAVED_LAYOUT_PLUS_CENTER_PASS',width,JSON.stringify(plus));
     if(width===1600){
       const nameForm='form[aria-label="Lưu giao diện mới"]';
       const renameForm='form[aria-label="Đổi tên mẫu"]';

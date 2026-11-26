@@ -9,6 +9,7 @@ import { compareCatalogValues } from '../../domain/catalog-order';
 import { reportStage,reportStageLabels,type ReportStage } from '../../domain/report-workflow';
 import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
+import {displayOrganisationName} from '../../domain/organisation-display';
 import {canonicalStatus} from '../../domain/status-contract';
 import {reportReferenceGroupRows,reportReferenceStatusColumn,
   REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR,
@@ -304,9 +305,10 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         {shownRows.map(([label,cells])=>{
           const metrics=rowMetrics(cells);
           const groupEntries=[...cells.values()].flat();
+          const shownLabel=displayOrganisationName(group,label);
           return <tr key={label} data-ui-reference-report-row={rowReferences.get(label)}>
-            <th scope="row" data-ui-reference-report-column={RC.group} className="report-group-heading">{label}</th>
-            <td data-ui-reference-report-column={RC.total} className={'report-number report-total-col'+clickable(groupEntries)}>{drill(`${label} · Tổng số nội dung`,groupEntries)}</td>
+            <th scope="row" data-ui-reference-report-column={RC.group} className="report-group-heading" title={shownLabel===label?undefined:label}>{shownLabel}</th>
+            <td data-ui-reference-report-column={RC.total} className={'report-number report-total-col'+clickable(groupEntries)}>{drill(`${shownLabel} · Tổng số nội dung`,groupEntries)}</td>
             {report.columns.map(column=>{
               const entries=cells.get(column)??[];
               return <td key={column} data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
@@ -314,12 +316,12 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
                 style={entries.length&&emphasize&&visualStyle==='bars'
                   ?{'--bar-fill':`${Math.max(1,Math.round(entries.length/(maxByColumn.get(column)??1)*100))}%`} as CSSProperties:undefined}>
                 {entries.length?<span className="report-count-mark">
-                  {drill(`${label} · ${column}`,entries)}
+                  {drill(`${shownLabel} · ${column}`,entries)}
                 </span>:'—'}
               </td>;
             })}
             <td data-ui-reference-report-column={RC.percent} className="report-number report-percent-col">
-              {percentCell(metrics.percent,`${label}: đã hoàn thành ${metrics.completed} trên ${metrics.total} nội dung`)}
+              {percentCell(metrics.percent,`${shownLabel}: đã hoàn thành ${metrics.completed} trên ${metrics.total} nội dung`)}
             </td>
           </tr>;
         })}
