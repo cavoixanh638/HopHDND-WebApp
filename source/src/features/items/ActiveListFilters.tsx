@@ -1,4 +1,5 @@
 import type {ActiveListCondition} from './pr95-v6-l4-active-filters';
+import {displayOrganisationName} from '../../domain/organisation-display';
 
 export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,onClearAll}:{
   conditions:readonly ActiveListCondition[];
@@ -36,7 +37,7 @@ export function ActiveListFilters({conditions,visibleCount,sourceCount,onRemove,
         data-active-filter-id={condition.id} data-active-filter-category={condition.category}
         role="group" aria-label={condition.label+': '+condition.value}
         title={condition.label+': '+condition.value}>
-        <span className="list-active-filter-chip-value">{condition.value}</span>
+        <span className="list-active-filter-chip-value">{displayOrganisationName(condition.key??condition.category,condition.value)}</span>
         <button type="button" className="list-active-filter-remove"
           aria-label={'Bỏ điều kiện '+condition.label+': '+condition.value}
           title={'Chỉ bỏ '+condition.label}

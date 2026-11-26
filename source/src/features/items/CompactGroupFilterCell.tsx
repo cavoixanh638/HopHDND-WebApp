@@ -1,6 +1,7 @@
 import type {KeyboardEvent} from 'react';
 import type {Item} from '../../../shared/types';
 import {filterChoices} from './ColumnFilterCell';
+import {displayOrganisationName} from '../../domain/organisation-display';
 import {preserveStickyFilterViewport} from './filter-scroll';
 
 /** Every source filter survives the visual grouping. Independent source filters
@@ -26,8 +27,8 @@ export function CompactGroupFilterCell({items,fields,values,onChange}:{
             onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
             onChange={e=>onChange(field,e.currentTarget.value)} onKeyDown={clear}>
             <option value="">{label}</option>
-            {choices.map(choice=><option key={choice} value={choice}>{choice}</option>)}
-            {value&&!choices.includes(value)&&<option value={value}>{value}</option>}
+            {choices.map(choice=><option key={choice} value={choice}>{displayOrganisationName(field,choice)}</option>)}
+            {value&&!choices.includes(value)&&<option value={value}>{displayOrganisationName(field,value)}</option>}
           </select>:<input type="search" autoComplete="off" spellCheck={false} aria-label={'Lọc '+label}
             placeholder={label} value={value} onPointerDown={e=>preserveStickyFilterViewport(e.currentTarget)}
             onChange={e=>onChange(field,e.currentTarget.value)} onKeyDown={clear}/>}

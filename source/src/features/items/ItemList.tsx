@@ -8,6 +8,7 @@ import {InlineNoteEditor} from './InlineNoteEditor';
 import { displayId, isMissingDisplayCode } from '../../domain/display-id';
 import { DEFAULT_LIST_TITLE, SUMMARY_CARD_KEYS, validateListTitle, EXCEL_SOURCE_COLUMNS, EXCEL_COLUMN_KEYS, COMPACT_GROUP_LABEL_KEYS, validateCompactGroupLabels, cellHighlightStyle, overlayPersonalLayout, defaultItemLayout, loadItemLayout, saveItemLayout, validateItemLayout,validatePartyTrackWidths,resolvedPartyTrackWidths,partyTrackPhysicalWidth,partyTrackModeWidth,PARTY_TRACK_WIDTH_LIMITS,PARTY_TRACK_NAMES } from '../../data/item-preferences';
 import {normalizeSearch} from '../../domain/search';
+import {displayOrganisationName} from '../../domain/organisation-display';
 import {SearchHighlight} from './SearchHighlight';
 import { validateItemDraft } from '../../data/item-draft';
 import { assignmentIssue, type CatalogConfig, type CatalogKey } from '../../data/catalogs';
@@ -428,7 +429,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       for(const key of EXCEL_COLUMN_KEYS)fields[key]=normalizeSearch(key==='progressBuild'?effectiveBuildStatus(item):statusFilterText(key,filterValue(item,key)));
       for(const pair of compactPairs)
         fields['merged:'+pair.anchor]=normalizeSearch([compactFilterText(projectedBuildDisplayItem(item),pair.anchor,compactPairs),
-          ...pair.memberFields.map(key=>statusDisplayValue(key,effectiveItemField(item,key)))].join(' '));
+          ...pair.memberFields.map(key=>statusFilterText(key,effectiveItemField(item,key)))].join(' '));
       for(const column of activeLayout.columns)
         if(column.origin==='custom')
           fields[column.key]=normalizeSearch(column.values?.[customRowKey(item)]??'');
@@ -1431,13 +1432,13 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           value={toolbar.department}
           onChange={e=>setToolbar(old=>({...old,department:e.currentTarget.value}))}>
           <option value="">Tất cả Sở/ngành</option>
-          {exactChoices(items,'department').map(value=><option key={value} value={value}>{value}</option>)}
+          {exactChoices(items,'department').map(value=><option key={value} value={value}>{displayOrganisationName('department',value)}</option>)}
         </select>
         <select className={'list-filter-organisation'+(toolbar.room?' is-filter-active':'')} data-filter-active={toolbar.room?'true':'false'} aria-label="Lọc Phòng"
           value={toolbar.room}
           onChange={e=>setToolbar(old=>({...old,room:e.currentTarget.value}))}>
           <option value="">Tất cả Phòng</option>
-          {exactChoices(items,'room').map(value=><option key={value} value={value}>{value}</option>)}
+          {exactChoices(items,'room').map(value=><option key={value} value={value}>{displayOrganisationName('room',value)}</option>)}
         </select>
         <details className="list-filter-other" data-filter-active={otherActiveCount>0?'true':'false'}
           onToggle={e=>setOtherFiltersOpen(e.currentTarget.open)}>

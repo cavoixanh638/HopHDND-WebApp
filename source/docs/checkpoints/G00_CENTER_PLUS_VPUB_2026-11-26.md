@@ -1,0 +1,4 @@
+# G00 — Hai điều chỉnh hiển thị ngày 26/11/2026
+- Dấu + của Chọn giao diện: dùng SVG 16px có tâm hình học chính xác, nút vuông 28px, bỏ padding, giữ hitbox và aria-label. Chromium kiểm tra tâm tại các viewport trong smoke.
+- Rút gọn đúng nhãn tổ chức Các phòng thuộc VP UBND TP thành VPUB TP ở ô danh sách, bộ chọn, bộ lọc và dòng báo cáo. Nhãn gốc không hardcode trong bản đang phát hành; triển khai alias chỉ cho trường department/room, không đổi ID, key, giá trị chọn, dữ liệu nghiệp vụ, Excel nguồn, quyền, audit hay tổng nhóm. Tìm kiếm nhận cả tên đầy đủ và tên ngắn; danh mục quản trị giữ giá trị gốc.
+- Thêm regression unit và browser geometry. Chưa ghi PASS trước khi có CI exact SHA. Không sửa Rules, chính sách release, workflow hoặc biến phát hành. Tuân thủ cổng duyệt đối với các module không thuộc allowlist.

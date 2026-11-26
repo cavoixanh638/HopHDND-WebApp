@@ -3,6 +3,7 @@ import {claimCellPicker,releaseCellPickerClaim} from './pr95-v5-l1-picker-coordi
 import type {PickerViewport} from './pr95-v5-l1-picker-placement';
 import {positionCellPickerPopover} from './CellPickerPositioning';
 import { normalizeSearch } from '../../domain/search';
+import {displayOrganisationName,organisationSearchText} from '../../domain/organisation-display';
 import {SearchHighlight} from './SearchHighlight';
 import {CellPickerPopupView} from './CellPickerPopupView';
 import type {CellEditSessionManager,EditorKind} from '../../data/cell-edit-leases';
@@ -95,17 +96,17 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
     if (!open) return [];
     const normalizedQuery = normalizeSearch(query);
     return normalizedQuery
-      ? options.filter(option => normalizeSearch(option).includes(normalizedQuery))
+      ? options.filter(option => normalizeSearch(organisationSearchText(field??'',option)).includes(normalizedQuery))
       : options;
-  }, [open, options, query]);
+  }, [open, options, query, field]);
   const selectedIsFilteredOut = open && value !== '' && !filteredOptions.includes(value);
   // Present choices ONLY: no visual field/record heading or explanatory row.
   // Preserve an unrecognized legacy current value as a selectable choice so
   // that opening the editor never silently rewrites saved source data.
   const visibleOptions = open ? [
     ...(cellPickerCanClear(field,options)&&!departmentFiltering ? [{ value: '', label: '—' }] : []),
-    ...(selectedIsFilteredOut&&!departmentFiltering ? [{ value, label: value }] : []),
-    ...filteredOptions.filter(option => option !== '').map(option => ({ value: option, label: option })),
+    ...(selectedIsFilteredOut&&!departmentFiltering ? [{ value, label: displayOrganisationName(field??'',value) }] : []),
+    ...filteredOptions.filter(option => option !== '').map(option => ({ value: option, label: displayOrganisationName(field??'',option) })),
   ] : [];
 
   const close = (restoreFocus = false):Promise<void> => {
@@ -318,7 +319,7 @@ export function CellPicker({ label, value, displayValue, options, searchable = f
         void operation.then(()=>{if(pendingAcquire.current===operation)pendingAcquire.current=null;});
       }}
     >
-      <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??value) || '—'} query={highlightQuery}/></span>
+      <span className="cell-picker-value-text"><SearchHighlight value={(displayValue??displayOrganisationName(field??'',value)) || '—'} query={highlightQuery}/></span>
     </button>
     {leaseError&&<small className="error-text" role="alert">{leaseError}</small>}
     {open&&<CellPickerPopupView

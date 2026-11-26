@@ -24,7 +24,13 @@
 .saved-layout-icon{flex:none;display:grid;place-items:center;width:28px;height:28px;font-size:16px;font-weight:650}
 .saved-layout-icon:hover{background:#dcefe4}
 .saved-layout-delete:hover{color:#a52c38;background:#fbe7e9}
-.saved-layout-add{border:1px solid #b7d3c3;background:#edf7f0;font-size:20px;color:#21583f}
+.saved-layout-popup .saved-layout-heading > .saved-layout-add{
+  box-sizing:border-box;display:grid;place-items:center;flex:0 0 28px;
+  width:28px;height:28px;min-width:28px;min-height:28px;padding:0;line-height:1;
+  border:1px solid #b7d3c3;background:#edf7f0;color:#21583f
+}
+.saved-layout-add>svg{display:block;width:16px;height:16px;pointer-events:none}
+.saved-layout-popup .saved-layout-heading > .saved-layout-add:hover:not(:disabled){background:#dcefe4}
 .saved-layout-popup button:disabled,.list-font-controls button:disabled{opacity:.48;cursor:not-allowed}
 .saved-layout-name-form{display:grid;gap:8px;padding-top:8px;border-top:1px solid #dce8e0}
 .saved-layout-name-form label{display:grid;gap:4px;font-size:12px;font-weight:600}

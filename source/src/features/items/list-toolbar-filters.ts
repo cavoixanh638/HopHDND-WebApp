@@ -1,5 +1,6 @@
 import type {Item} from '../../../shared/types';
 import {normalizeSearch} from '../../domain/search';
+import {organisationSearchText} from '../../domain/organisation-display';
 import {displayId} from '../../domain/display-id';
 import {isActive} from '../../domain/reporting';
 import type {SummarySelection} from '../../domain/item-summary';
@@ -67,11 +68,11 @@ export function filterToolbarRows(
     const values=state.field==='all'
       ?[...(allowedSearchColumns&&!allowedSearchColumns.includes('displayCode')?[]:[displayId(item)]),
         ...SEARCHABLE_ITEM_FIELDS.filter(key=>!allowedSearchColumns||allowedSearchColumns.includes(key))
-          .map(key=>effectiveItemField(item,key)),
+          .map(key=>organisationSearchText(key,effectiveItemField(item,key))),
         ...(customValue&&(!allowedSearchColumns||allowedSearchColumns.includes('*'))
           ?[customValue(item,'*')]:[])]
       :[...(state.field==='displayCode'?[displayId(item)]:[]),
-        state.field in item?effectiveItemField(item,state.field):
+        state.field in item?organisationSearchText(state.field,effectiveItemField(item,state.field)):
         customValue?.(item,state.field)??''];
     return values.some(value=>normalizeSearch(value).includes(needle));
   });
