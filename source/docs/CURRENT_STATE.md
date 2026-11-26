@@ -1,3 +1,11 @@
+## 26/11/2026 — Phát hành UI thường ngày theo dữ liệu kiểm tra được
+
+PR #242 đã merge `d9e949ccf56e82ac74caaa4a95d147f60cff3ec3`; 10/10 CI PASS và [kiểm thử nguồn](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45844295020) xác nhận 1.175 unit, dấu cộng tâm 0px tại 1600/1280/390. [Publisher push](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45845082951) HOLD do import mới và các host có logic ghi. Không coi là đã phát hành.
+
+Đợt tiếp theo tách nhãn/alias/icon vào dữ liệu JSON có schema fail-closed, tách số học L03 khỏi host có callback; bổ sung kiểm tra từng blob before/after và các import trình bày chính xác. Xem [G00 declarative UI release](checkpoints/G00_DECLARATIVE_UI_RELEASE_2026-11-26.md). Chính sách mới vẫn phải được owner duyệt một lần sau CI + merge; không sửa publisher/approval helper/Rules/RTDB. Sau baseline này, thay đổi hợp lệ trong JSON/CSS và mô-đun trình bày đã duyệt không cần Run workflow thủ công; nghiệm thu auto thật cần một lượt UI-only push tiếp theo. Tài liệu này không chứng nhận candidate đã PASS hoặc production đã phát hành.
+
+---
+
 ## 25/11/2026 — Hotfix Tùy chọn cột bị ẩn trong giao diện thật
 
 PR #237 và #236 đã phát hành: source `0076f106c4f374f59f38033066c26851b54da579`, artifact `4126541155332d3a932b5c42fde5d9169ec82769`, [publisher](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45637903245) và [Pages](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45638602552) SUCCESS. Tuy nhiên người dùng xác nhận nút Tùy chọn cột không thấy ở chế độ xem admin thật. Nguyên nhân: nút đặt trong card-header bị CSS list-visual-parity ẩn khi data-preview-options=closed; các fixture cũ kiểm tra tồn tại DOM và programmatic open, không tái hiện đủ CSS sản xuất. Hotfix chuyển một nút duy nhất sang hàng tiêu đề luôn hiện, fallback toolbar nếu không có hàng tiêu đề admin; không thay thao tác, quyền, Rules hoặc dữ liệu. Thêm fixture production-chrome và kiểm thử pointer trên desktop/mobile + guest, không dùng menu.open để thay cho click thực. Chỉ chốt release khi exact CI và Pages thành công, xác minh nguồn đang phát hành. Không suy PASS từ tài liệu này.

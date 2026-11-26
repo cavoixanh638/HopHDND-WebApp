@@ -1,10 +1,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync,copyFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {dirname,join} from 'node:path';
+import {execFileSync} from 'node:child_process';
 import {classifyCommits,isAutoUiPath,isPagesArtifactCommit,
   isBootstrapPolicyCommit,isSafePresentationSource,
   isVettedSingleTableUi,isScopedAutopublishMigration,reviewedUiTransition,
-  isReviewedCiOptimization,reviewedCiOptimization,isSafeOrdinaryFeatureChange,isSafeQaSchedulingChange}
+  isReviewedCiOptimization,reviewedCiOptimization,isSafeOrdinaryFeatureChange,isSafeQaSchedulingChange,
+  uiPresentationPath,isSafeUiPresentationData,isSafeUiPresentationChange}
   from './pages-release-policy.mjs';
 
 const baseline='cc81aee8114a969892f6a812f03ca37e44a6d5b7';
@@ -378,4 +382,135 @@ test('unknown code, write-capable view, test selector and production guards neve
     '.github/scripts/ci-pr-scope.mjs','source/scripts/pages-release-approval.mjs',
     '.github/workflows/publish-pages.yml','source/firebase/database.spark.rules.json',
   ])assert.deepEqual(decide([commit(head,[path])]),{allowed:false,mode:'hold',blocked:[path]});
+});
+
+
+const presentationSource=readFileSync(new URL('../../'+uiPresentationPath,import.meta.url),'utf8');
+const presentationObject=()=>JSON.parse(presentationSource);
+const serializeConfig=JSON.stringify;
+const candidate=(modify)=>{const value=presentationObject();modify(value);return serializeConfig(value);};
+const configCommit=(before,after,sha=head)=>commit(sha,[uiPresentationPath],{
+  sourceChanges:{[uiPresentationPath]:{before,after}},
+});
+test('checked-in presentation JSON is valid, and ordinary label/alias/icon changes auto-release',()=>{
+  assert.equal(isAutoUiPath(uiPresentationPath),true);
+  assert.equal(isSafeUiPresentationData(presentationSource),true);
+  for(const after of [
+    candidate(c=>{c.organisationAliases[0].label='VPUB';}),
+    candidate(c=>{c.organisationAliases.push({fields:['department'],source:'Đơn vị thử nghiệm',label:'ĐV thử'});}),
+    candidate(c=>{c.labels.savedLayoutTrigger='Mẫu giao diện';c.labels.columnOptions='Tùy chỉnh cột';}),
+    candidate(c=>{c.icons.savedLayoutAdd.path='M8 3v10M3 8h10';c.icons.savedLayoutAdd.strokeWidth=1.5;}),
+  ]){
+    assert.equal(isSafeUiPresentationChange(presentationSource,after),true);
+    assert.deepEqual(decide([configCommit(presentationSource,after)]),{allowed:true,mode:'auto',blocked:[]});
+  }
+});
+test('declarative UI guard rejects malformed or executable payloads, business fields and ambiguous aliases',()=>{
+  for(const after of [
+    '',
+    undefined,
+    '{"version":1}',
+    candidate(c=>{c.version=2;}),
+    candidate(c=>{c.auth={admin:true};}),
+    candidate(c=>{c.labels.onClick='save';}),
+    candidate(c=>{c.labels.columnOptions='<script>bad</script>';}),
+    candidate(c=>{c.labels.columnOptions='abc\u202Edef';}),
+    candidate(c=>{c.organisationAliases[0].fields=['progressParty'];}),
+    candidate(c=>{c.organisationAliases[0].fields=['department','department'];}),
+    candidate(c=>{c.organisationAliases.push({...c.organisationAliases[0],label:'Alias khác'});}),
+    candidate(c=>{c.organisationAliases.push({...c.organisationAliases[0],source:'Đơn vị khác'});}),
+    candidate(c=>{c.icons.savedLayoutAdd.path='M8 2" onload="bad';}),
+    candidate(c=>{c.icons.savedLayoutAdd.strokeWidth='2';}),
+    candidate(c=>{c.icons.savedLayoutAdd.strokeWidth=10;}),
+    candidate(c=>{c.icons.savedLayoutAdd.href='https://example.invalid/';}),
+  ]){
+    assert.equal(isSafeUiPresentationData(after),false);
+    assert.deepEqual(decide([configCommit(presentationSource,after)]),
+      {allowed:false,mode:'hold',blocked:[uiPresentationPath]});
+  }
+  assert.deepEqual(decide([configCommit(undefined,presentationSource)]),
+    {allowed:false,mode:'hold',blocked:[uiPresentationPath]});
+  assert.deepEqual(decide([commit(head,[uiPresentationPath])]),
+    {allowed:false,mode:'hold',blocked:[uiPresentationPath]});
+  assert.deepEqual(decide([commit(head,['source/src/presentation/unknown.json'])]),
+    {allowed:false,mode:'hold',blocked:['source/src/presentation/unknown.json']});
+});
+test('a safe data-only edit cannot conceal changes to mixed edit/save hosts or policy',()=>{
+  const after=candidate(c=>{c.labels.columnOptions='Tùy chỉnh cột';});
+  for(const path of [
+    'source/src/features/items/CellPicker.tsx',
+    'source/src/features/items/SavedLayoutMenu.tsx',
+    'source/src/features/items/L03InlineWidthControl.tsx',
+    'source/src/features/items/status-display.ts',
+    'source/src/domain/organisation-display.ts',
+    'source/src/data/item-preferences.ts',
+    'source/src/app/App.tsx',
+    'source/src/data/firebase-repository.ts',
+    'source/firebase/database.spark.rules.json',
+    'source/scripts/pages-release-policy.mjs',
+    'source/scripts/pages-release-approval.mjs',
+    '.github/workflows/publish-pages.yml',
+  ]){
+    assert.deepEqual(decide([commit('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',[path]),
+      configCommit(presentationSource,after)]),{allowed:false,mode:'hold',blocked:[path]});
+  }
+  const invalid=candidate(c=>{c.auth={admin:true};});
+  assert.deepEqual(decide([configCommit(presentationSource,invalid,'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'),
+    configCommit(invalid,after)]),{allowed:false,mode:'hold',blocked:[uiPresentationPath]});
+});
+test('audited layout math and exact read-only presentation imports may auto-release, other imports stay guarded',()=>{
+  for(const path of [
+    'source/src/features/items/list-nowrap-widths.ts',
+    'source/src/features/items/l03-width-geometry.ts',
+  ]){
+    const before=readFileSync(new URL('../../'+path,import.meta.url),'utf8');
+    const after=before+'\n// screen geometry only\n';
+    assert.equal(isAutoUiPath(path),true);
+    assert.equal(isSafeOrdinaryFeatureChange(path,before,after),true,path);
+    assert.deepEqual(decide([commit(head,[path],{sourceChanges:{[path]:{before,after}}})]),
+      {allowed:true,mode:'auto',blocked:[]});
+    for(const bad of [after+'\nwindow.location.href="https://example.invalid";',
+      after+'\nimport {writeRecord} from "../../data/firebase-repository";',
+      after+'\neditor.onWidthsCommit({});'])
+      assert.equal(isSafeOrdinaryFeatureChange(path,before,bad),false);
+  }
+  const path='source/src/features/items/ColumnFilterCell.tsx';
+  const before="import type {Item} from '../../../shared/types';\nexport function View(){return null;}";
+  const after=before+"\nimport {displayOrganisationName} from '../../domain/organisation-display';";
+  assert.equal(isSafeOrdinaryFeatureChange(path,before,after),true);
+  assert.equal(isSafeOrdinaryFeatureChange(path,before,
+    after.replace('../../domain/organisation-display','../../data/firebase-repository')),false);
+  const configView=safeView+"\nimport uiPresentation from '../../presentation/ui-presentation.json';";
+  assert.equal(isSafePresentationSource(pickerView,configView),true);
+  assert.equal(isSafePresentationSource(pickerView,
+    configView.replace('ui-presentation.json','unreviewed.json')),false);
+});
+test('actual git history: valid UI-only push auto, invalid earlier change cannot hide behind a later safe commit',()=>{
+  const temp=mkdtempSync(join(tmpdir(),'hdnd-ui-release-'));
+  try{
+    const p=join(temp,uiPresentationPath),script=join(temp,'source/scripts/pages-release-policy.mjs');
+    mkdirSync(dirname(p),{recursive:true});mkdirSync(dirname(script),{recursive:true});
+    copyFileSync(new URL('./pages-release-policy.mjs',import.meta.url),script);
+    const git=(...args)=>execFileSync('git',args,{cwd:temp,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+    git('init','-q');git('config','user.name','QA');git('config','user.email','qa@example.invalid');
+    const save=(msg)=>{git('add','.');git('commit','-qm',msg);return git('rev-parse','HEAD');};
+    writeFileSync(p,presentationSource);const first=save('approved baseline');
+    const after=candidate(c=>{c.labels.savedLayoutHeading='Mẫu đã lưu';});
+    writeFileSync(p,after);const second=save('UI label only');
+    const decision=(start,end)=>{
+      const out=execFileSync(process.execPath,[script,'--baseline',start,'--head',end],{cwd:temp,encoding:'utf8'});
+      return JSON.parse(out.split('\n').find(line=>line.startsWith('PAGES_RELEASE_POLICY ')).slice('PAGES_RELEASE_POLICY '.length));
+    };
+    assert.equal(decision(first,second).mode,'auto');
+    writeFileSync(p,candidate(c=>{c.permissions={admin:true};}));save('bad earlier change');
+    writeFileSync(p,presentationSource);const fourth=save('restore label data');
+    assert.equal(decision(second,fourth).mode,'hold');
+    assert.deepEqual(decision(second,fourth).blocked,[uiPresentationPath]);
+    const guarded=join(temp,'source/src/features/items/CellPicker.tsx');
+    mkdirSync(dirname(guarded),{recursive:true});writeFileSync(guarded,'// guarded core');
+    const fifth=save('guarded mixed core');
+    assert.deepEqual(decision(fourth,fifth).blocked,['source/src/features/items/CellPicker.tsx']);
+    writeFileSync(p,after);const sixth=save('ordinary label after guarded edit');
+    assert.equal(decision(fourth,sixth).mode,'hold');
+  }finally{rmSync(temp,{recursive:true,force:true});}
 });

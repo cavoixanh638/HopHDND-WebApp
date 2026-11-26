@@ -1,4 +1,5 @@
 import type {KeyboardEvent,RefObject} from 'react';
+import uiPresentation from '../../presentation/ui-presentation.json';
 
 /**
  * PRESENTATION-ONLY boundary for CellPicker.
@@ -45,14 +46,14 @@ export function CellPickerPopupView({
     onBlur={onBlur}
   >
     {searchable&&<label className="cell-picker-search">
-      {department?'Tìm Sở, ngành':'Tìm lựa chọn'}
+      {department?uiPresentation.labels.departmentSearch:uiPresentation.labels.otherSearch}
       <input
         ref={searchRef}
         type="search"
         value={query}
         onChange={event=>onQueryChange(event.target.value)}
         onKeyDown={onQueryKeyDown}
-        placeholder={department?'Tìm tên Sở, ngành (không dấu)':'Nhập để lọc'}
+        placeholder={department?uiPresentation.labels.departmentPlaceholder:uiPresentation.labels.otherPlaceholder}
       />
     </label>}
     <div className="cell-picker-options" role="listbox" aria-label={label}>
@@ -71,7 +72,7 @@ export function CellPickerPopupView({
           onKeyDown={event=>onOptionKeyDown(event,index,option.value)}
         >{option.label}</button>
       ))}
-      {!options.length&&<p className="cell-picker-empty">Không có lựa chọn phù hợp.</p>}
+      {!options.length&&<p className="cell-picker-empty">{uiPresentation.labels.pickerEmpty}</p>}
     </div>
   </div>;
 }
