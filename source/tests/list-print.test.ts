@@ -27,9 +27,12 @@ describe('A4 print content contract',()=>{
 });
 
 describe('Readable print status and normal content typography',()=>{
-  it('prints the document content in regular weight, with color-independent status markers',()=>{
+  it('prints regular content and clean unboxed status text with grayscale-readable emphasis',()=>{
     expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-document-main\{\s*font-weight:400!important/);
-    expect(LIST_A4_PRINT_CSS).toContain('content:attr(data-marker)');
+    expect(LIST_A4_PRINT_CSS).not.toContain('data-marker');
+    expect(LIST_A4_PRINT_CSS).toContain('padding:0;border:0;background:transparent');
+    expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-submitted"\]\{\s*color:#[0-9a-f]+;font-weight:700/);
+    expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-required"\]\{\s*color:#[0-9a-f]+;font-style:italic/);
     expect(LIST_A4_PRINT_CSS).toContain('minmax(0,43fr) minmax(0,57fr)');
     for(const tone of ['not-submitted','processing','waiting','completed','not-required'])
       expect(LIST_A4_PRINT_CSS).toContain('data-tone="'+tone+'"');

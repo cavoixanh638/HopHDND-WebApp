@@ -3,6 +3,7 @@ import {createDemoItems} from '../src/data/demo-items';
 import {FirebaseRepository,sameDatasetEpoch} from '../src/data/firebase-repository';
 import type {ActiveDatasetPointer} from '../src/data/dataset-replacement-integrity';
 import type {Database} from 'firebase/database';
+import type {User} from 'firebase/auth';
 const io=vi.hoisted(()=>({get:vi.fn(),transaction:vi.fn(),listeners:new Map<string,{next:(s:any)=>void;fail:(e:Error)=>void}>()}));
 vi.mock('firebase/database',()=>({
   ref:(_db:any,path:string)=>path,get:io.get,runTransaction:io.transaction,
@@ -17,7 +18,9 @@ const pointer:ActiveDatasetPointer={
 const row=createDemoItems(1)[0];
 const path='hdnd/datasetV2/generations/'+pointer.generationId+'/items';
 const db={} as Database;
-const make=()=>new FirebaseRepository(db,()=>null,()=>({columns:{}}),path,pointer);
+const verifiedAdmin={email:'cavoixanh638@gmail.com',emailVerified:true,
+  providerData:[{providerId:'google.com'}]} as User;
+const make=(user:()=>User|null=()=>null)=>new FirebaseRepository(db,user,()=>({columns:{}}),path,pointer);
 const emit=(path:string,value:unknown)=>io.listeners.get(path)!.next({val:()=>value});
 beforeEach(()=>{
   io.get.mockReset();io.transaction.mockReset();io.listeners.clear();
@@ -47,7 +50,9 @@ describe('PR95 L2 active Firebase generation fencing',()=>{
   });
   it('blocks stale history and save without contacting the row transaction',async()=>{
     io.get.mockImplementation(async()=>({val:()=>({...pointer,digest:'b'.repeat(64)})}));
-    await expect(make().history(row.recordId)).rejects.toThrow('Thế hệ Firebase');
+    await expect(make().history(row.recordId)).rejects.toThrow('Chỉ quản trị');
+    expect(io.get).not.toHaveBeenCalled();
+    await expect(make(()=>verifiedAdmin).history(row.recordId)).rejects.toThrow('Thế hệ Firebase');
     const result=await make().save([{recordId:row.recordId,sourceCode:row.displayCode,
       baseRevision:row.revision,baseValues:{note:row.note},changes:{note:'Nháp mới'},operationId:'test-operation'}]);
     expect(result[0].ok).toBe(false);

@@ -1,6 +1,6 @@
 ## 26/11/2026 — Yêu cầu mới: in PDF dễ đọc và công cụ chỉ Admin
 
-Đổi Nội dung trình thành font-weight 400; status L03 phân biệt bằng ký hiệu/viền/màu và giữ nguyên text. Lịch sử hai cột Ghi chú/Tiến độ hiện tại và A+/A− chỉ Admin, kiểm thử guest/admin/signout. Khách vẫn dùng font bố cục chung và quyền sửa cột đã cấp. Xem [checkpoint](checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md). Lịch sử thô lồng trong record có public read; đây chưa phải migration server-side private audit, không sửa Rules/dữ liệu. Cần exact CI PASS, release gate và Pages/version đúng SHA trước khi ghi nhận phát hành.
+Đổi Nội dung trình thành font-weight 400; status L03 dùng bảng con chữ thường, đường kẻ mảnh, không ô màu/ký hiệu; Sở chưa trình in đậm, Không phải trình in nghiêng, giữ nguyên text. Lịch sử hai cột Ghi chú/Tiến độ hiện tại và A+/A− chỉ Admin, kiểm thử guest/admin/signout. Khách vẫn dùng font bố cục chung và quyền sửa cột đã cấp. Xem [checkpoint](checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md). Lịch sử thô lồng trong record có public read; đây chưa phải migration server-side private audit, không sửa Rules/dữ liệu. Cần exact CI PASS, release gate và Pages/version đúng SHA trước khi ghi nhận phát hành.
 
 ---
 

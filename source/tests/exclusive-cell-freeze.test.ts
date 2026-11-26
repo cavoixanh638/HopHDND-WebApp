@@ -523,7 +523,10 @@ describe.skipIf(!enabled)('exclusive cell edit leases + drain/freeze RTDB securi
     expect(event?.oldValues).toEqual({note:original.note});
     expect(event?.changesJson).toBeUndefined();
     expect(event?.oldValuesJson).toBeUndefined();
-    const retrieved=await writer.history('r1');
+    await expect(writer.history('r1')).rejects.toThrow('Chỉ quản trị');
+    const root=real('administrator');
+    const reader=new FirebaseRepository(root.db,()=>root.user,()=>({columns:{}}));
+    const retrieved=await reader.history('r1');
     expect(retrieved.at(-1)?.changes).toEqual({note:'Verified structured audit'});
     expect(retrieved.at(-1)?.oldValues).toEqual({note:original.note});
     await session.finish('r1','note');

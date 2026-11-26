@@ -134,7 +134,9 @@ try{
       const value=badge.querySelector('.hdnd-print-stage-value');
       const row=badge.closest('.hdnd-print-stage-row'),outer=badge.closest('td');
       const b=badge.getBoundingClientRect(),t=outer.getBoundingClientRect();
-      return {tone:badge.dataset.tone,marker:badge.dataset.marker,
+      const css=getComputedStyle(badge);
+      return {tone:badge.dataset.tone,background:css.backgroundColor,
+        border:css.borderTopWidth,weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,
         pseudo:getComputedStyle(badge,'::before').content,
         text:value?.textContent,overflow:b.right>t.right+1||b.left<t.left-1||
           (value&&value.scrollWidth>value.clientWidth+2),
@@ -148,15 +150,17 @@ try{
   assert.equal(renderInfo.contentWeight,'400','Nội dung trình must be regular weight in print');
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>s.text&&s.tone&&!s.overflow&&s.separated),
     'Print stage rows overlap or lose content: '+JSON.stringify(renderInfo.stages));
-  const markers={'not-submitted':'!',processing:'•',waiting:'…',completed:'✓','not-required':'—',neutral:''};
   for(const stage of renderInfo.stages){
-    assert.equal(stage.marker,markers[stage.tone],'Print symbol inconsistent with status');
-    assert.equal(stage.pseudo,JSON.stringify(stage.marker),'Print symbol not visible without fill');
+    assert.equal(stage.background,'rgba(0, 0, 0, 0)','Status text must have no colored box');
+    assert.equal(stage.border,'0px','Status text must have no individual border');
+    assert.equal(stage.pseudo,'none','Status text must have no pictogram');
+    assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
+    assert.equal(stage.fontStyle,stage.tone==='not-required'?'italic':'normal','Not required must be distinguishable in grayscale');
   }
-  assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct print status classes in fixture');
-  console.log('PRINT_REGULAR_CONTENT_AND_STAGE_SYMBOLS_PASS '+JSON.stringify({
+  assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct status classes in fixture');
+  console.log('PRINT_REGULAR_CONTENT_AND_CLEAN_STAGE_TEXT_PASS '+JSON.stringify({
     font:renderInfo.contentWeight,tones:[...new Set(renderInfo.stages.map(s=>s.tone))],
-    symbols:[...new Set(renderInfo.stages.map(s=>s.marker))]}));
+    stageStyles:renderInfo.stages.map(({tone,weight,fontStyle,color})=>({tone,weight,fontStyle,color}))}));
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
   mkdirSync('qa-results/print-a4',{recursive:true});
   const pdfPath='qa-results/print-a4/hdnd-current-visible-a4.pdf';

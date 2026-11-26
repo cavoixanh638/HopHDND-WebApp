@@ -60,46 +60,41 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root .hdnd-print-document-meta{
     margin-top:1mm;color:#536877;line-height:1.26;
   }
-  /* Three aligned label/status pairs. Text, symbols and outlines are
-     meaningful even without color; fractional rails include the gutter. */
+  /* Compact administrative print table: no colored pills or pictograms.
+     Hairline separators, aligned text and emphasis on not-yet-submitted
+     statuses also work on grayscale printers. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
     display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);
-    align-items:center;gap:1mm;padding:.8mm 0;
+    align-items:center;gap:1.4mm;padding:1mm 0;
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
-    border-top:.35pt solid #c4ccd2;
+    border-top:.35pt solid #bfc7ce;
   }
   #hdnd-a4-print-root .hdnd-print-stage-label{
-    font-size:7.7pt;font-weight:600;line-height:1.26;
-    min-width:0;overflow-wrap:anywhere;
+    font-size:7.7pt;font-weight:400;line-height:1.3;
+    min-width:0;overflow-wrap:anywhere;color:#26323a;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
-    display:grid;grid-template-columns:2.2mm minmax(0,1fr);
-    align-items:center;gap:.65mm;min-width:0;box-sizing:border-box;
-    padding:.85mm .8mm;border:.55pt solid #8996a1;
-    border-left:1.35pt solid #8996a1;border-radius:.7mm;
-    text-align:left;font-weight:500;font-size:7.7pt;line-height:1.28;
-    background:#f3f5f7;color:#27313a;overflow-wrap:anywhere;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
-  }
-  #hdnd-a4-print-root .hdnd-print-stage-state::before{
-    content:attr(data-marker);text-align:center;font-weight:700;line-height:1;
+    display:block;min-width:0;box-sizing:border-box;
+    padding:0;border:0;background:transparent;
+    text-align:left;font-weight:400;font-size:8pt;line-height:1.3;
+    color:#26323a;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
-    background:#fdf0f1;color:#722632;border-style:dashed;border-color:#9d4551;
+    color:#872b35;font-weight:700;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="processing"]{
-    background:#fff4e4;color:#6b420e;border-color:#996b29;
+    color:#6b420e;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="waiting"]{
-    background:#edf3f8;color:#254963;border-color:#527791;border-style:dotted;
+    color:#254963;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="completed"]{
-    background:#e9f4eb;color:#195032;border-color:#467252;font-weight:650;
+    color:#265e42;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"]{
-    background:#fff;color:#505b63;border-color:#9ca5ab;
+    color:#59636a;font-style:italic;
   }
   #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
     font-weight:400!important;
@@ -160,11 +155,6 @@ export function printStageTone(field:string,value:string):PrintStageTone{
   if(field==='progressCouncil'&&status==='Hoàn thành')return 'completed';
   return 'neutral';
 }
-const printStageMarkers:Record<PrintStageTone,string>={
-  'not-submitted':'!',processing:'•',waiting:'…',completed:'✓',
-  'not-required':'—',neutral:'',
-};
-
 function printStageRows(source:Element,target:HTMLTableCellElement):void {
   for(const row of Array.from(source.querySelectorAll('.compact-stage-row'))){
     const labelElement=row.querySelector('.compact-stage-title');
@@ -180,7 +170,7 @@ function printStageRows(source:Element,target:HTMLTableCellElement):void {
     appendPart(badge,'span','hdnd-print-stage-value',shown);
     const tone=printStageTone(row.getAttribute('data-stage-field')??'',shown);
     badge.dataset.tone=tone;
-    badge.dataset.marker=printStageMarkers[tone];
+
   }
 }
 function printStaffRows(source:Element,target:HTMLTableCellElement):void {

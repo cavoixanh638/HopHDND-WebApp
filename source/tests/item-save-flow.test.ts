@@ -144,25 +144,32 @@ describe('separate item layout save and data draft',()=>{
     expect(nodes(tree).some(n=>n.type==='button'&&n.props?.className==='content-button')).toBe(true);
     expect(nodes(tree).some(n=>n.type==='select'&&String(n.props?.['aria-label']??'').includes('Chuyên viên'))).toBe(false);
   });
-  it('offers read-only history on only Ghi chú and Tiến độ hiện tại in the guest list',()=>{
+  it('restricts history and table font controls to Admin even if guest receives a callback',()=>{
     const items=createDemoItems(1),onCellHistory=vi.fn();
-    const tree=ItemList({items,drafts:{},errors:{},busy:false,
+    const layout={...defaultItemLayout(),tableFontSize:16};
+    const props={items,drafts:{},errors:{},busy:false,
       onUpdate:vi.fn(),onHistory:vi.fn(),onCellHistory,
-      readOnly:true,sourceKind:'firebase',customizing:false,anonymousViewer:true,
-      sourceKey:'guest-two-field-history',catalog:catalogFromItems(items),onClose:vi.fn(),
+      readOnly:true,sourceKind:'firebase' as const,customizing:false,
+      sourceKey:'admin-only-history-font',catalog:catalogFromItems(items),onClose:vi.fn(),
       onSaveData:vi.fn().mockResolvedValue(false),onDiscardData:vi.fn(),
-      onLayoutSaved:vi.fn(),initialLayout:defaultItemLayout(),
-      canEditCell:()=>false});
-    const historyButtons=nodes(tree).filter(node=>node.type===CellHistoryAction);
+      onLayoutSaved:vi.fn(),initialLayout:layout,canEditCell:()=>false};
+    for(const role of [{anonymousViewer:true,allowLayout:true},{anonymousViewer:false,allowLayout:false}]){
+      const all=nodes(ItemList({...props,...role}));
+      expect(all.filter(node=>node.type===CellHistoryAction)).toHaveLength(0);
+      expect(all.some(n=>n.props?.className==='list-font-controls')).toBe(false);
+      expect(all.find(n=>n.type==='table'&&String(n.props?.className).includes('item-data-table'))?.props.style['--table-font-size']).toBe('16px');
+    }
+    expect(onCellHistory).not.toHaveBeenCalled();
+    const all=nodes(ItemList({...props,anonymousViewer:false,allowLayout:true}));
+    const historyButtons=all.filter(node=>node.type===CellHistoryAction);
     expect(historyButtons).toHaveLength(2);
     expect(historyButtons.map(node=>node.props.label)).toEqual(expect.arrayContaining([
       expect.stringContaining('Ghi chú'),expect.stringContaining('Tiến độ hiện tại')
     ]));
     for(const button of historyButtons)button.props.onClick();
-    expect(onCellHistory.mock.calls.map(([,field])=>field).sort())
-      .toEqual(['note','specificProgress']);
-    expect(nodes(tree).filter(n=>n.type==='button'&&n.props.className==='content-button'))
-      .toHaveLength(0);
+    expect(onCellHistory.mock.calls.map(([,field])=>field).sort()).toEqual(['note','specificProgress']);
+    expect(all.some(n=>n.props?.className==='list-font-controls')).toBe(true);
+    expect(all.filter(n=>n.type==='button'&&n.props.className==='content-button')).toHaveLength(0);
   });
   it('enables granted cells on the signed-in ordinary view but not ungranted cells or unauthenticated Sheets-only views',()=>{
     const items=createDemoItems(1),id=items[0].recordId;
