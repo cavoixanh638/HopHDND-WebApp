@@ -4070,7 +4070,7 @@ try{
   if(wideAfter.widths[ix]!==wideBefore.widths[ix]+wideDragBudget||
     wideAfter.widths[ix+1]!==expectedStaff||
     wideAfter.widths.at(-1)!==expectedNote||
-    wideAfter.id!==wideBefore.id)
+    wideAfter.id!==wideBefore.id||wideAfter.party!==wideBefore.party||wideAfter.content!==wideBefore.content)
     throw Error('L023 adjacent→last fallback incorrect: '+
       JSON.stringify({wideBefore,wideAfter,wideDragBudget,expectedStaff,expectedNote}));
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
@@ -4787,6 +4787,16 @@ try{
     await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await eventually("!document.querySelector('.saved-layout-popup')",'Escape must dismiss layout menu');
     if(width===1600){
+      // Copy a real changed layout, including long, unabbreviated names and the
+      // combined specialist (room) row, rather than testing only short initials.
+      await pointerClick('.admin-list-heading .compact-columns-menu > summary');
+      for(const [key,desired] of [['shortSpecialist',false],['shortLeaders',false],['cvRoomInline',true]]){
+        const choice='.compact-columns-options-floating input[data-compact-choice='+key+']';
+        await eventually("!!document.querySelector("+JSON.stringify(choice)+")",'Missing staff preference '+key);
+        if(await evaluate("document.querySelector("+JSON.stringify(choice)+").checked")!==desired)await pointerClick(choice);
+      }
+      await evaluate("document.querySelector('.column-options-close').click()");
+      await eventually("!!document.querySelector('.compact-staff-inline-values')",'Full-name specialist + room fixture not rendered');
       // Actual font controls, not just a synthetic CSS variable override.
       const fontAudit=String.raw`(()=>{
         const table=document.querySelector('.item-data-table');
@@ -4829,7 +4839,7 @@ try{
       if(!copied?.includes('QA bản sao 20px'))throw Error('Save As must select the new named preset');
       const originalChoice=await evaluate("Array.from(document.querySelectorAll('.saved-layout-choice')).find(b=>b.textContent.includes('QA đổi tên')).closest('[data-layout-id]').dataset.layoutId");
       await pointerClick('.saved-layout-row[data-layout-id="'+originalChoice+'"] .saved-layout-choice');
-      await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px'",'Save As mutated original font');
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px' && !document.querySelector('.compact-staff-inline-values')",'Save As mutated original font or CV/room grouping');
       await evaluate("document.querySelector('.list-font-controls button[aria-label=\"Tăng cỡ chữ bảng\"]').click()");
       await eventually("document.querySelector('.list-font-controls output')?.textContent==='14px'",'Font draft did not change');
       await pointerClick('.inline-layout-cancel');

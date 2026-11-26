@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {defaultItemLayout,validateItemLayout,saveNewLayoutPreset,applyLayoutPreset,updateActiveLayoutPreset,DEFAULT_PARTY_TRACK_WIDTHS} from '../src/data/item-preferences';
 import {mergeItemLayout,LayoutConflictError} from '../src/data/item-layout-merge';
-import {emptyListContentMinimums,withPartyContentMinimums} from '../src/features/items/list-nowrap-widths';
+import {emptyListContentMinimums,withPartyContentMinimums,preserveListContentMinimums} from '../src/features/items/list-nowrap-widths';
 import {l03ResizeBoundary} from '../src/features/items/L03InlineWidthControl';
 import {projectedPhysicalLimits} from '../src/data/resize-last-column';
 
@@ -59,4 +59,17 @@ describe('Save As preserves the original named layout',()=>{
     expect(reopened.compactDisplay?.mergeTypeIntoContent).toBe(false);
     expect(reopened.columns.find(c=>c.key==='content')?.width).toBe(edited.columns.find(c=>c.key==='content')?.width);
   });
+});
+
+it('keeps normal editable rail and column floors when the layout draft disables pickers',()=>{
+  const normal=emptyListContentMinimums(),draft=emptyListContentMinimums();
+  normal.columns.room=203;normal.party.editable={label:112,level:67,status:149};
+  draft.columns.room=178;draft.party.readonly={label:120,status:142};
+  const retained=preserveListContentMinimums(draft,normal);
+  expect(retained.columns.room).toBe(203);
+  expect(retained.party.editable).toEqual(normal.party.editable);
+  expect(retained.party.readonly).toEqual(draft.party.readonly);
+  draft.columns.room=275;
+  expect(preserveListContentMinimums(draft,normal).columns.room).toBe(275);
+  expect(normal.columns.room).toBe(203);
 });

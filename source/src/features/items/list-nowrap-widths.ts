@@ -97,3 +97,12 @@ export function withPartyContentMinimums(saved:PartyTrackWidths,minimum:PartyTra
       level:Math.max(saved.editable.level,minimum.editable.level),
       status:Math.max(saved.editable.status,minimum.editable.status)}};
 }
+
+/** Preserve picker chrome while layout edit temporarily renders cells read-only.
+ * Recompute when font, grouping or source visibility actually changes. */
+export function preserveListContentMinimums(measured:ListContentMinimums,normal:ListContentMinimums):ListContentMinimums{
+  const columns={...measured.columns};
+  for(const [key,width] of Object.entries(normal.columns))
+    columns[key]=Math.max(columns[key]??0,width);
+  return {columns,party:withPartyContentMinimums(measured.party,normal.party)};
+}

@@ -6,3 +6,5 @@
 - Kiểm thử bổ sung menu pointer + geometry 1600/1280/390px, create/rename/select, font 20px và nowrap, unit test migration/CAS/preset/resize floor. Chờ CI đúng head; chưa nghiệm thu production cho PR mới.
 
 - Bổ sung 26/11: nút Lưu thành giao diện mới ngay cạnh Lưu bố cục/Hủy. Dùng đường CAS tạo mẫu hiện hữu từ nháp; kiểm thử browser chọn lại gốc 1 (13px), bản sao 20px và Hủy. Không thay đổi nút + hoặc thao tác đổi tên/xóa. CSS hai nút dropdown dùng chung selector để tránh lệch tone.
+
+- Regression L023: retain the measured editable picker floor when layout draft changes editing chrome at the same font/group/visibility; all unrelated physical columns (including L03) must keep their width. Save As browser proof includes unabridged staff names and joined CV/Phòng.

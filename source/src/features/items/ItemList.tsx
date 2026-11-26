@@ -70,7 +70,7 @@ import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placem
 import {canHideInlineColumn,renameInlineColumn,setInlineColumnVisibility,setInlineSummaryVisibility} from './inline-g01-layout';
 import './inline-g01-list.css';
 import {SavedLayoutMenu} from './SavedLayoutMenu';
-import {emptyListContentMinimums,measureListContentMinimums,withPartyContentMinimums} from './list-nowrap-widths';
+import {emptyListContentMinimums,measureListContentMinimums,withPartyContentMinimums,preserveListContentMinimums,type ListContentMinimums} from './list-nowrap-widths';
 import './list-nowrap-widths.css';
 
 export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,onOpenCatalog,focusColumnKey,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,directStatusCasActive=false,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,defaultTableFontSize=13,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; savingRows?:ReadonlySet<string>; busy: boolean; onUpdate: (id: string, changes: Changes) => boolean|void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;onOpenCatalog?:(key:string)=>void;focusColumnKey?:string|null;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;directStatusCasActive?:boolean;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;defaultTableFontSize?:number;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
@@ -555,6 +555,13 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const {ref:tableViewportRef,width:viewportWidth}=useElementWidth();
   const printTableRef=useRef<HTMLTableElement|null>(null);
   const [contentMinimums,setContentMinimums]=useState(emptyListContentMinimums);
+  const normalViewMinimums=useRef<{signature:string;minimums:ListContentMinimums}|null>(null);
+  // Layout editing disables field pickers temporarily. At the same font and
+  // group visibility, retain their measured chrome so a drag cannot change
+  // the other columns or reduce the L03 physical width merely by opening edit.
+  const contentMeasureSignature=JSON.stringify([chosenFontSize,explicitFontSize!==undefined,
+    Object.entries(compactDisplay).sort(([a],[b])=>a.localeCompare(b)),
+    activeLayout.columns.filter(c=>c.visible&&!c.removed).map(c=>c.key).sort(),showAllSourceColumns]);
   // The minimum is a live screen projection, not a persisted layout mutation.
   // Re-measure after font/permission/row changes and after delayed web-font loads.
   useLayoutEffect(()=>{
@@ -563,7 +570,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     let alive=true;
     const measure=()=>{
       if(!alive||!table.isConnected||!table.getBoundingClientRect().width)return;
-      const next=measureListContentMinimums(table);
+      const measured=measureListContentMinimums(table);
+      const stable=normalViewMinimums.current;
+      const next=inlineMode&&stable?.signature===contentMeasureSignature
+        ?preserveListContentMinimums(measured,stable.minimums):measured;
+      if(!inlineMode)normalViewMinimums.current={signature:contentMeasureSignature,minimums:measured};
       setContentMinimums(previous=>JSON.stringify(previous)===JSON.stringify(next)?previous:next);
     };
     measure();
@@ -571,7 +582,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     if(fonts?.status==='loading')void fonts.ready.then(measure);
     fonts?.addEventListener('loadingdone',measure);
     return()=>{alive=false;fonts?.removeEventListener('loadingdone',measure);};
-  },[rows,activeLayout,compactDisplay,chosenFontSize,canEdit,locked,savingRows,viewportWidth,customizing]);
+  },[rows,activeLayout,compactDisplay,chosenFontSize,canEdit,locked,savingRows,viewportWidth,customizing,inlineMode,contentMeasureSignature]);
 
   // Guest long lists should reach the viewport floor. A fixed 64dvh cap left
   // a visible blank strip below 59 records at Chrome 75% zoom. Measure the
