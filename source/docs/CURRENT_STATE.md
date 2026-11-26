@@ -1,3 +1,9 @@
+## 26/11/2026 — Yêu cầu mới: in PDF dễ đọc và công cụ chỉ Admin
+
+Đổi Nội dung trình thành font-weight 400; status L03 phân biệt bằng ký hiệu/viền/màu và giữ nguyên text. Lịch sử hai cột Ghi chú/Tiến độ hiện tại và A+/A− chỉ Admin, kiểm thử guest/admin/signout. Khách vẫn dùng font bố cục chung và quyền sửa cột đã cấp. Xem [checkpoint](checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md). Lịch sử thô lồng trong record có public read; đây chưa phải migration server-side private audit, không sửa Rules/dữ liệu. Cần exact CI PASS, release gate và Pages/version đúng SHA trước khi ghi nhận phát hành.
+
+---
+
 ## 26/11/2026 — Phát hành UI thường ngày theo dữ liệu kiểm tra được
 
 PR #242 đã merge `d9e949ccf56e82ac74caaa4a95d147f60cff3ec3`; 10/10 CI PASS và [kiểm thử nguồn](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45844295020) xác nhận 1.175 unit, dấu cộng tâm 0px tại 1600/1280/390. [Publisher push](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45845082951) ban đầu HOLD do import mới và các host có logic ghi. Sau owner-dispatch, [publisher](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45845566570) và [Pages](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45846209408) SUCCESS; artifact `35fbc6b91027f4b9ef5cfc0c96507228c2a779c7`, version.json.source_sha đúng merge #242.

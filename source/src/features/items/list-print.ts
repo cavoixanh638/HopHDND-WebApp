@@ -1,3 +1,5 @@
+import {canonicalStatus} from '../../domain/status-contract';
+
 /** A4 landscape print snapshot of exactly the List heading and visible cells.
  * Preserve semantic L03/L04 rows, use original ID as one unbroken value,
  * and show a bare page number at the top only from page 2 onwards.
@@ -53,38 +55,54 @@ export const LIST_A4_PRINT_CSS=`
     overflow-wrap:normal!important;
   }
   #hdnd-a4-print-root .hdnd-print-document-main{
-    font-weight:650;line-height:1.36;white-space:pre-line;
+    font-weight:400!important;line-height:1.36;white-space:pre-line;
   }
   #hdnd-a4-print-root .hdnd-print-document-meta{
     margin-top:1mm;color:#536877;line-height:1.26;
   }
-  /* Mirror the three L03 rails as explicit label/status pairs, never a
-     flattened concatenation. Entire stage rows are kept together. */
+  /* Three aligned label/status pairs. Text, symbols and outlines are
+     meaningful even without color; fractional rails include the gutter. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
-    display:grid;grid-template-columns:minmax(0,45%) minmax(0,55%);
-    align-items:center;gap:1.4mm;margin:1mm 0;
+    display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);
+    align-items:center;gap:1mm;padding:.8mm 0;
     break-inside:avoid;page-break-inside:avoid;
   }
+  #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
+    border-top:.35pt solid #c4ccd2;
+  }
   #hdnd-a4-print-root .hdnd-print-stage-label{
-    font-size:7.7pt;font-weight:650;line-height:1.26;
-    overflow-wrap:break-word;
+    font-size:7.7pt;font-weight:600;line-height:1.26;
+    min-width:0;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
-    display:block;min-width:0;padding:1.25mm 1mm;border-radius:1.2mm;
-    text-align:center;font-weight:600;font-size:7.7pt;line-height:1.25;
-    background:#e8eef4;color:#304a60;overflow-wrap:break-word;
+    display:grid;grid-template-columns:2.2mm minmax(0,1fr);
+    align-items:center;gap:.65mm;min-width:0;box-sizing:border-box;
+    padding:.85mm .8mm;border:.55pt solid #8996a1;
+    border-left:1.35pt solid #8996a1;border-radius:.7mm;
+    text-align:left;font-weight:500;font-size:7.7pt;line-height:1.28;
+    background:#f3f5f7;color:#27313a;overflow-wrap:anywhere;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
+  #hdnd-a4-print-root .hdnd-print-stage-state::before{
+    content:attr(data-marker);text-align:center;font-weight:700;line-height:1;
+  }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
-    background:#fae3e9;color:#9e3045;
+    background:#fdf0f1;color:#722632;border-style:dashed;border-color:#9d4551;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="processing"]{
-    background:#ffecd7;color:#8c5615;
+    background:#fff4e4;color:#6b420e;border-color:#996b29;
   }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="completed"],
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="complete"],
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="approved"]{
-    background:#def2e5;color:#17683f;
+  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="waiting"]{
+    background:#edf3f8;color:#254963;border-color:#527791;border-style:dotted;
+  }
+  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="completed"]{
+    background:#e9f4eb;color:#195032;border-color:#467252;font-weight:650;
+  }
+  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"]{
+    background:#fff;color:#505b63;border-color:#9ca5ab;
+  }
+  #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
+    font-weight:400!important;
   }
   /* The L04 source has 4 independent office/room/staff lines. */
   #hdnd-a4-print-root .hdnd-print-staff-row{
@@ -122,6 +140,31 @@ function appendPart(parent:HTMLElement,tag:'div'|'span',className:string,value:s
   parent.appendChild(el);
   return el;
 }
+/** Print categories are derived from the exact known status, not the
+ * optional screen palette. Never label unfamiliar text as completed. */
+export type PrintStageTone='not-submitted'|'processing'|'waiting'|'completed'|'not-required'|'neutral';
+export function printStageTone(field:string,value:string):PrintStageTone{
+  if(field!=='progressParty'&&field!=='progressBuild'&&field!=='progressCouncil')return 'neutral';
+  const status=canonicalStatus(field,value);
+  if(status==='Sở chưa trình')return 'not-submitted';
+  if(status==='VP đang xử lý')return 'processing';
+  if(field!=='progressCouncil'&&status==='Không phải trình')return 'not-required';
+  if(field==='progressParty'){
+    if(status==='Đã có TBKL')return 'completed';
+    if(['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL'].includes(status))return 'waiting';
+  }
+  if(field==='progressBuild'){
+    if(status==='Đã có QĐ')return 'completed';
+    if(status==='Đã trình, chờ QĐ')return 'waiting';
+  }
+  if(field==='progressCouncil'&&status==='Hoàn thành')return 'completed';
+  return 'neutral';
+}
+const printStageMarkers:Record<PrintStageTone,string>={
+  'not-submitted':'!',processing:'•',waiting:'…',completed:'✓',
+  'not-required':'—',neutral:'',
+};
+
 function printStageRows(source:Element,target:HTMLTableCellElement):void {
   for(const row of Array.from(source.querySelectorAll('.compact-stage-row'))){
     const labelElement=row.querySelector('.compact-stage-title');
@@ -132,9 +175,12 @@ function printStageRows(source:Element,target:HTMLTableCellElement):void {
     const status=row.querySelector('.compact-stage-state');
     const line=appendPart(target,'div','hdnd-print-stage-row','');
     appendPart(line,'span','hdnd-print-stage-label',label);
-    const badge=appendPart(line,'span','hdnd-print-stage-state',displayText(status)||'—');
-    const tone=status?.getAttribute('data-progress-tone')??row.getAttribute('data-progress-tone');
-    if(tone)badge.dataset.tone=tone;
+    const shown=displayText(status)||'—';
+    const badge=appendPart(line,'span','hdnd-print-stage-state','');
+    appendPart(badge,'span','hdnd-print-stage-value',shown);
+    const tone=printStageTone(row.getAttribute('data-stage-field')??'',shown);
+    badge.dataset.tone=tone;
+    badge.dataset.marker=printStageMarkers[tone];
   }
 }
 function printStaffRows(source:Element,target:HTMLTableCellElement):void {

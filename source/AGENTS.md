@@ -1,3 +1,11 @@
+## CHỈ THỊ 26/11/2026 — LỊCH SỬ VÀ CỠ CHỮ CHỈ ADMIN, BẢN IN A4
+
+- Nội dung trình in chữ thường, không đậm; Tiến độ 3 khâu phân biệt bằng ký hiệu, đường kẻ và màu, giữ đúng text và ý nghĩa từng khâu. Xem [checkpoint](docs/checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md).
+- Quy định mới thay thế test guest history cũ: chỉ Admin thấy/mở lịch sử Ghi chú, Tiến độ hiện tại và chỉnh cỡ chữ. Khách vẫn kế thừa font chung và quyền sửa cột được cấp. Không giảm quyền ghi hoặc làm đổi dữ liệu.
+- Phân quyền giao diện/repository không đồng nghĩa private raw RTDB: lịch sử còn lồng trong record có read công khai. Không khẳng định bảo mật server hoặc tự đổi Rules/dữ liệu; tách audit cần đợt riêng.
+
+---
+
 ## CHỈ THỊ 26/11/2026 — SỬA UI THÔNG THƯỜNG THEO RANH GIỚI HIỂN THỊ
 
 - Trước khi sửa, đọc [quy trình UI declarative](docs/checkpoints/G00_DECLARATIVE_UI_RELEASE_2026-11-26.md). Đổi nhãn, viết tắt đơn vị, biểu tượng + trong `src/presentation/ui-presentation.json`; CSS cho màu/căn lề/độ rộng; số học bố cục trong `l03-width-geometry.ts` hoặc `list-nowrap-widths.ts`. Đừng sửa CellPicker, SavedLayoutMenu, L03InlineWidthControl, App, dữ liệu/quyền chỉ để đổi hiển thị.

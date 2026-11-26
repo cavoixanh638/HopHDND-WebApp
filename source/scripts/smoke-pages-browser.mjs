@@ -555,36 +555,18 @@ try{
   })()`);
   if(!fullExcelColumns)throw Error('Mandatory UI groups must retain all existing source values, N/O and no phantom columns');
 
-  // Read-only anonymous viewers have the same TWO field-history actions as
-  // administrators. Neither history action grants edit rights.
-  const listHistory=await evaluate(`(()=>{
-    const historyFields=['note','specificProgress'];
-    const find=key=>document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="'+key+'"]');
-    const buttons=historyFields.map(key=>find(key)?.querySelector('button.cell-history-action'));
-    const unrelated=['content','department','progressCouncil'].some(key=>
-      !!find(key)?.querySelector('button.cell-history-action'));
-    return {ok:buttons.every(Boolean)&&!unrelated,
-      labels:buttons.map(button=>button?.getAttribute('aria-label'))};
+  // The owner has made history and table font adjustment Admin-only.
+  const guestHistory=await evaluate(`(()=>{
+    const table=document.querySelector('.item-data-table');
+    return {notes:!!table?.querySelector('td[data-col-key="note"]'),
+      progress:!!table?.querySelector('td[data-col-key="specificProgress"]'),
+      history:table?.querySelectorAll('.cell-history-action').length??-1,
+      font:document.querySelectorAll('.list-font-controls').length,
+      dialog:!!document.querySelector('dialog[aria-label^="Lịch sử sửa đổi"]')};
   })()`);
-  if(!listHistory.ok||!listHistory.labels.some(x=>x?.includes('Ghi chú'))||
-    !listHistory.labels.some(x=>x?.includes('Tiến độ hiện tại')))
-    throw Error('Guest must see history on note and current-progress only: '+JSON.stringify(listHistory));
-  for(const field of ['specificProgress','note']){
-    await evaluate(`document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="${field}"] button.cell-history-action').click()`);
-    await eventually(`!!document.querySelector('dialog.modal[open][aria-label^="Lịch sử sửa đổi"]')`,
-      'History dialog did not open for '+field);
-    const modalField=await evaluate(`(()=>{
-      const dialog=document.querySelector('dialog.modal[open]');
-      return {title:dialog?.getAttribute('aria-label'),demo:!!dialog?.querySelector('.note-history-demo')};
-    })()`);
-    if(!modalField.title?.includes(field==='note'?'Ghi chú':'Tiến độ hiện tại')||
-      modalField.demo!==(field==='note'))
-      throw Error('History dialog must target exactly the requested column: '+
-        JSON.stringify({field,modalField}));
-    await evaluate("document.querySelector('dialog.modal[open] button[aria-label=\\\"Đóng cửa sổ\\\"]')?.click()");
-    await eventually("!document.querySelector('dialog.modal[open]')",'History dialog did not close');
-  }
-  console.log('GUEST_TWO_FIELD_HISTORY_PASS',JSON.stringify(listHistory));
+  if(!guestHistory.notes||!guestHistory.progress||guestHistory.history!==0||guestHistory.font!==0||guestHistory.dialog)
+    throw Error('Guest must have current values but no history or font tools: '+JSON.stringify(guestHistory));
+  console.log('GUEST_NO_HISTORY_OR_FONT_CONTROLS_PASS',JSON.stringify(guestHistory));
   const groupedDefault=await evaluate(`(()=>{
     const headings=[...document.querySelectorAll('.item-heading-row th')]
       .map(el=>el.querySelector('.column-heading-label')?.textContent?.trim());
@@ -1609,6 +1591,38 @@ try{
   await eventually("document.querySelectorAll('nav.primary-section-switcher .primary-section-card').length===2",
     'verified admin A01/A02 not rendered',150);
   console.log('UI6_R02_REAL_ADMIN_TWO_NAV_PASS',JSON.stringify({uid:v6AdminIdentity.uid,provider:'google.com',navCount:2}));
+  await eventually("!!document.querySelector('.item-data-table tbody tr:first-child td[data-col-key=\\\"note\\\"] button.cell-history-action')",
+    'Verified Admin List history must appear',100);
+  if(!await evaluate("!!document.querySelector('.list-font-controls')"))
+    throw Error('Verified Admin List font controls missing');
+  const listHistory=await evaluate(`(()=>{
+    const historyFields=['note','specificProgress'];
+    const find=key=>document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="'+key+'"]');
+    const buttons=historyFields.map(key=>find(key)?.querySelector('button.cell-history-action'));
+    const unrelated=['content','department','progressCouncil'].some(key=>
+      !!find(key)?.querySelector('button.cell-history-action'));
+    return {ok:buttons.every(Boolean)&&!unrelated,
+      labels:buttons.map(button=>button?.getAttribute('aria-label'))};
+  })()`);
+  if(!listHistory.ok||!listHistory.labels.some(x=>x?.includes('Ghi chú'))||
+    !listHistory.labels.some(x=>x?.includes('Tiến độ hiện tại')))
+    throw Error('Verified Admin must see history on note and current-progress only: '+JSON.stringify(listHistory));
+  for(const field of ['specificProgress','note']){
+    await evaluate(`document.querySelector('.item-data-table tbody tr:first-child td[data-col-key="${field}"] button.cell-history-action').click()`);
+    await eventually(`!!document.querySelector('dialog.modal[open][aria-label^="Lịch sử sửa đổi"]')`,
+      'History dialog did not open for '+field);
+    const modalField=await evaluate(`(()=>{
+      const dialog=document.querySelector('dialog.modal[open]');
+      return {title:dialog?.getAttribute('aria-label'),demo:!!dialog?.querySelector('.note-history-demo')};
+    })()`);
+    if(!modalField.title?.includes(field==='note'?'Ghi chú':'Tiến độ hiện tại')||
+      modalField.demo!==(field==='note'))
+      throw Error('History dialog must target exactly the requested column: '+
+        JSON.stringify({field,modalField}));
+    await evaluate("document.querySelector('dialog.modal[open] button[aria-label=\\\"Đóng cửa sổ\\\"]')?.click()");
+    await eventually("!document.querySelector('dialog.modal[open]')",'History dialog did not close');
+  }
+  console.log('ADMIN_TWO_FIELD_HISTORY_PASS',JSON.stringify(listHistory));
   // Keep the original strict geometry, hover, theme and fixed-size checks;
   // the only change is the correctly authenticated role in which they run.
   // Clear the pointer left by the preceding guest-only CSS hover checks.
@@ -2474,6 +2488,9 @@ try{
   await eventually("!!document.querySelector('.v3-settings-menu .v3-gear-login')&&"+
     "!!document.querySelector('.item-data-region')&&!document.querySelector('nav.primary-section-switcher')",
     'real Firebase signout must return to guest List without navigation',150);
+  if(await evaluate("!!document.querySelector('.list-font-controls,.item-data-table .cell-history-action,dialog[aria-label^=\\\"Lịch sử sửa đổi\\\"]')"))
+    throw Error('Signout left admin-only history/font controls');
+  console.log('SIGNOUT_HISTORY_AND_FONT_HIDDEN_PASS');
   console.log('UI6_R02_REAL_AUTH_SIGNOUT_RETURNS_GUEST_LIST_NO_NAV_PASS');
 
   // The guest must NEVER enter an account/settings page from a public UI
@@ -4868,7 +4885,7 @@ try{
   await eventually("!!document.querySelector('.list-visual-parity .item-data-table tbody .compact-pair-lines')",
     'Production guest grouped readonly List did not mount');
   await verifyStaffRails('production-guest-readonly');
-  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.saved-layout-menu')"))
+  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.saved-layout-menu,.list-font-controls,.item-data-table .cell-history-action')"))
     throw Error('Guest received admin-only column or search menu in production chrome');
   console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
 

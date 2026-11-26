@@ -193,9 +193,14 @@ export class FirebaseRepository implements Repository {
     return results;
   }
   async history(recordId:string):Promise<AuditEntry[]>{
+    // Application-level guard; raw RTDB parent read grants remain separate.
+    const assertAdmin=()=>{if(!firebaseAdmin(this.user()))throw new Error('Chỉ quản trị được xem lịch sử sửa đổi.');};
+    assertAdmin();
     await this.assertEpoch();
+    assertAdmin();
     const raw=(await get(ref(this.database,`${this.itemPath}/${recordId}/history`))).val()??{};
     await this.assertEpoch();
+    assertAdmin();
     return Object.values(raw as Record<string,FirebaseEvent>).sort((a,b)=>a.at-b.at).map(event=>({
       operationId:event.operationId,recordId:event.recordId,at:new Date(event.at).toISOString(),
       changes:event.changes??JSON.parse(event.changesJson??'{}'),

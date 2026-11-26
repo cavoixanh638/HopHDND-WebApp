@@ -129,9 +129,34 @@ try{
   const renderInfo=await page.evaluate(()=>{
     const c=document.querySelector('#hdnd-a4-print-root td[data-print-kind="displayCode"]');
     const st=c?getComputedStyle(c):null;
-    return {noWrap:st?.whiteSpace,break:st?.wordBreak};
+    const main=document.querySelector('#hdnd-a4-print-root .hdnd-print-document-main');
+    const stages=[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-stage-state')].map(badge=>{
+      const value=badge.querySelector('.hdnd-print-stage-value');
+      const row=badge.closest('.hdnd-print-stage-row'),outer=badge.closest('td');
+      const b=badge.getBoundingClientRect(),t=outer.getBoundingClientRect();
+      return {tone:badge.dataset.tone,marker:badge.dataset.marker,
+        pseudo:getComputedStyle(badge,'::before').content,
+        text:value?.textContent,overflow:b.right>t.right+1||b.left<t.left-1||
+          (value&&value.scrollWidth>value.clientWidth+2),
+        separated:row===row.parentElement.firstElementChild||
+          parseFloat(getComputedStyle(row).borderTopWidth)>0};
+    });
+    return {noWrap:st?.whiteSpace,break:st?.wordBreak,
+      contentWeight:main?getComputedStyle(main).fontWeight:null,stages};
   });
   assert.equal(renderInfo.noWrap,'nowrap','ID nowrap not effective in print');
+  assert.equal(renderInfo.contentWeight,'400','Nội dung trình must be regular weight in print');
+  assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>s.text&&s.tone&&!s.overflow&&s.separated),
+    'Print stage rows overlap or lose content: '+JSON.stringify(renderInfo.stages));
+  const markers={'not-submitted':'!',processing:'•',waiting:'…',completed:'✓','not-required':'—',neutral:''};
+  for(const stage of renderInfo.stages){
+    assert.equal(stage.marker,markers[stage.tone],'Print symbol inconsistent with status');
+    assert.equal(stage.pseudo,JSON.stringify(stage.marker),'Print symbol not visible without fill');
+  }
+  assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct print status classes in fixture');
+  console.log('PRINT_REGULAR_CONTENT_AND_STAGE_SYMBOLS_PASS '+JSON.stringify({
+    font:renderInfo.contentWeight,tones:[...new Set(renderInfo.stages.map(s=>s.tone))],
+    symbols:[...new Set(renderInfo.stages.map(s=>s.marker))]}));
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
   mkdirSync('qa-results/print-a4',{recursive:true});
   const pdfPath='qa-results/print-a4/hdnd-current-visible-a4.pdf';
@@ -167,6 +192,10 @@ try{
     'qa-results/print-a4/hdnd-current-visible-a4.pdf',
     'qa-results/print-a4/page'],{encoding:'utf8'});
   assert.equal(png.status,0,'Unable to render the first two printed pages: '+(png.stderr??''));
+  const gray=spawnSync('pdftoppm',['-f','1','-l','1','-r','100','-gray','-png',
+    pdfPath,'qa-results/print-a4/page-gray'],{encoding:'utf8'});
+  assert.equal(gray.status,0,'Unable to render monochrome print page: '+(gray.stderr??''));
+  console.log('PRINT_GRAYSCALE_PAGE_RENDER_PASS');
   assert(!printed.content.includes('Tổng số nội dung'),'Added a summary into print');
   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Print DOM not cleaned');

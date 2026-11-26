@@ -536,7 +536,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
           {visible.map(item=><tr key={item.recordId} data-ui-reference-record-id={item.recordId} className={[itemColor(item,colors)?'report-grid-color-'+itemColor(item,colors):''].join(' ')}>
             {renderedColumns.map(c=>{const pair=popupPairs.find(p=>p.anchor===c.key);const writable=editing&&popupMayEdit&&editableFields.has(c.key)&&
               mayEditField(item,c.key as TextField);
-              const showCellHistory=!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
+              const showCellHistory=mayCustomize&&!!onCellHistory&&(c.key==='note'||c.key==='specificProgress');
               const showRowHistory=false;
               const isL03=pair?.variant==='partyTogether';
                const levelEditable=!!isL03&&editing&&popupMayEdit&&mayEditField(item,'partyLevel');

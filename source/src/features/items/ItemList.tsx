@@ -203,7 +203,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   useEffect(()=>{if(initialLayout&&!customizing){setApplied(initialLayout);sharedBase.current=initialLayout;}},[initialLayout,customizing]);
   const {draft:layout,setDraft:setLayout,dirty,markSaved,clearCheckpoint,recoveryMessage,checkpointMessage,unmatchedCheckpoint,restoreOldDraft,discardOldDraft} = useRecoverableDraft(layoutRecoveryScope(`items:${sourceKey}`),applied,validateItemDraft,undefined,customizing);
   const activeLayout = customizing ? layout : inlineMode&&inlineDraft ? inlineDraft : applied;
-  const explicitFontSize=personalFontSize??activeLayout.tableFontSize;
+  const explicitFontSize=(adminControls?personalFontSize:undefined)??activeLayout.tableFontSize;
   const chosenFontSize=explicitFontSize??defaultTableFontSize;
   const inlineDirty=inlineMode&&!!inlineDraft&&!!inlineEditBase.current&&
     JSON.stringify(inlineDraft)!==JSON.stringify(inlineEditBase.current);
@@ -871,6 +871,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     return saved;
   };
   const changeListFont=(delta:number)=>{
+    if(!adminControls)return;
     const size=Math.max(MIN_LIST_FONT_SIZE,Math.min(MAX_LIST_FONT_SIZE,chosenFontSize+delta));
     if(size===chosenFontSize)return;
     if(canEditListSettings){
@@ -881,14 +882,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       setLayout(base=>({...base,tableFontSize:size}));
     }else setPersonalFontSize(size);
   };
-  const fontControls=<div className="list-font-controls" role="group" aria-label="Cỡ chữ toàn bảng"
+  const fontControls=adminControls?<div className="list-font-controls" role="group" aria-label="Cỡ chữ toàn bảng"
       title="Tăng hoặc giảm cỡ chữ trong toàn bộ bảng">
     <button type="button" aria-label="Giảm cỡ chữ bảng" disabled={chosenFontSize<=MIN_LIST_FONT_SIZE||viewSaving}
       onClick={()=>changeListFont(-1)}>A−</button>
     <output aria-live="polite">{chosenFontSize}px</output>
     <button type="button" aria-label="Tăng cỡ chữ bảng" disabled={chosenFontSize>=MAX_LIST_FONT_SIZE||viewSaving}
       onClick={()=>changeListFont(1)}>A+</button>
-  </div>;
+  </div>:null;
   // Excel-style hide/show works in the normal Admin table.
   // Both ordinary View and 'Chỉnh giao diện' enter the same Save/Cancel flow.
   const changeInlineColumnVisibility=(key:string,visible:boolean)=>{
@@ -1080,7 +1081,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                 return next===null?false:guardBuildUpdate(item.recordId,{[field]:next});}}/>
         :(shortLeader||shortPerson)?<span title={item[field]} aria-label={item[field]}>
           {(shortLeader?abbreviateLeaderName(item[field]):abbreviateVietnameseName(item[field]))||'—'}</span>:field==='content'?<SearchHighlight value={original} query={columnFilters.content||(!customizing&&(toolbar.field==='all'||toolbar.field==='content')?toolbar.search:'')}/>:original}
-      {onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
+      {adminControls&&onCellHistory&&(field==='note'||field==='specificProgress')&&<CellHistoryAction label={label+' · '+displayId(item)}
         onClick={()=>onCellHistory(item,field)}/>}
     </span>;
   };
@@ -1604,7 +1605,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         return <td key={column.key} data-col-key={column.key}
            data-ui-reference-part={key==='note'||key==='specificProgress'?key:undefined}
           data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
-          className={[writable?'editable-cell':'',onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
+          className={[writable?'editable-cell':'',adminControls&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable&&key!=='note'&&key!=='specificProgress'?'Bấm để sửa':undefined}
           style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='type'
           ?<span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
@@ -1642,7 +1643,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       :statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)
         ?<span className="workflow-status-value"><SearchHighlight value={statusReadOnlyValue(key,effectiveItemField(item,key))} query={columnFilters[key]}/></span>
       :<SearchHighlight value={statusReadOnlyValue(key,effectiveItemField(item,key))||'—'} query={columnFilters[key]}/>} {key==='specialist'&&assignmentIssue(item,catalog)&&<small className="warning-text">{assignmentIssue(item,catalog)}</small>}
-          {onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
+          {adminControls&&onCellHistory&&(key==='note'||key==='specificProgress')&&<CellHistoryAction label={metadata.label+' · '+displayId(item)}
             onClick={()=>onCellHistory(item,key)}/>}</td>;
       })}</tr>)}
       {!rows.length && <tr><td className="empty" colSpan={Math.max(1,displayedColumns.length)}>Không tìm thấy nội dung phù hợp. Hãy thử đổi từ khóa hoặc bộ lọc.</td></tr>}
