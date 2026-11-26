@@ -2,7 +2,7 @@
 
 ## Nguyên nhân và quyết định
 
-PR #242 đã PASS 10/10 workflow, gồm 1.175 unit và Chromium dấu cộng lệch 0px ở 3 viewport. Merge `d9e949ccf56e82ac74caaa4a95d147f60cff3ec3` vẫn HOLD do các tệp picker/save host, helper mới và import mới. Không whitelist nguyên tệp chứa quyền/lease/CAS và không sửa biến release để vượt cổng.
+PR #242 đã PASS 10/10 workflow, gồm 1.175 unit và Chromium dấu cộng lệch 0px ở 3 viewport. Merge `d9e949ccf56e82ac74caaa4a95d147f60cff3ec3` ban đầu HOLD do các tệp picker/save host, helper mới và import mới. Sau đó [owner-dispatch](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45845566570) và [Pages](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45846209408) SUCCESS, version.json xác nhận đúng source #242. Không whitelist nguyên tệp chứa quyền/lease/CAS và không sửa biến release để vượt cổng.
 
 ## Luồng sửa thường ngày
 
@@ -20,8 +20,8 @@ Kiểm tra từng commit chưa phát hành (immutable before/after), không ch�
 
 ## Nghiệm thu
 
-- Regression Node không phụ thuộc npm cho schema, alias/icon thay đổi hợp lệ, dữ liệu lỗi, import lạ, thay core/Rules/policy và Git history thực trong thư mục tạm.
+- Regression Node không phụ thuộc npm cho schema, alias/icon thay đổi hợp lệ, dữ liệu lỗi, import lạ, thay core/Rules/policy và Git history thực trong thư mục tạm. Các test cố định dùng fixture tổng hợp; các test tích hợp đọc config hiện hành, không khóa cứng tên hiển thị cũ.
 - Giữ nguyên publisher, toàn bộ TypeScript, unit, Chrome, Emulator, Rules SHA và kiểm tra race trước push. Không thêm dependency hoặc vòng CI riêng.
-- Migration chính sách **không tự phê duyệt**. Sau exact-head CI PASS và merge, chủ repository Run workflow main một lần cho cả #242 và migration, rồi kiểm tra publish/Pages/version.json. Không deploy Rules, không ghi Firebase sản xuất.
+- Migration chính sách **không tự phê duyệt**. Sau exact-head CI PASS và merge, chủ repository Run workflow main một lần cho migration, rồi kiểm tra publish/Pages/version.json. Không deploy Rules, không ghi Firebase sản xuất.
 - Bằng chứng auto sau baseline: PR kế tiếp chỉ sửa JSON/CSS hợp lệ phải có `policy_mode=auto`, publish SUCCESS và version.json.source_sha đúng. Không báo đã có production auto thực tế chỉ từ test synthetic; cần đối chiếu lần phát hành thật.
 - Rollback: revert migration qua PR và owner-dispatch, không restore dữ liệu.

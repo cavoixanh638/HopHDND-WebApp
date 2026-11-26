@@ -385,7 +385,21 @@ test('unknown code, write-capable view, test selector and production guards neve
 });
 
 
-const presentationSource=readFileSync(new URL('../../'+uiPresentationPath,import.meta.url),'utf8');
+const actualPresentationSource=readFileSync(new URL('../../'+uiPresentationPath,import.meta.url),'utf8');
+// Regression scenarios use an immutable synthetic fixture, not mutable live
+// wording/aliases; valid future edits must not require changing these tests.
+const presentationSource=JSON.stringify({
+  version:1,
+  organisationAliases:[{fields:['department','room'],source:'Đơn vị mẫu A',label:'ĐV A'}],
+  labels:{
+    savedLayoutTrigger:'Chọn giao diện',savedLayoutHeading:'Giao diện đã lưu',
+    savedLayoutUnnamed:'Giao diện hiện tại (chưa đặt tên)',columnOptions:'Tùy chọn cột',
+    departmentSearch:'Tìm Sở, ngành',otherSearch:'Tìm lựa chọn',
+    departmentPlaceholder:'Tìm tên Sở, ngành (không dấu)',otherPlaceholder:'Nhập để lọc',
+    pickerEmpty:'Không có lựa chọn phù hợp.',
+  },
+  icons:{savedLayoutAdd:{path:'M8 2.5v11M2.5 8h11',strokeWidth:2}},
+});
 const presentationObject=()=>JSON.parse(presentationSource);
 const serializeConfig=JSON.stringify;
 const candidate=(modify)=>{const value=presentationObject();modify(value);return serializeConfig(value);};
@@ -394,6 +408,7 @@ const configCommit=(before,after,sha=head)=>commit(sha,[uiPresentationPath],{
 });
 test('checked-in presentation JSON is valid, and ordinary label/alias/icon changes auto-release',()=>{
   assert.equal(isAutoUiPath(uiPresentationPath),true);
+  assert.equal(isSafeUiPresentationData(actualPresentationSource),true);
   assert.equal(isSafeUiPresentationData(presentationSource),true);
   for(const after of [
     candidate(c=>{c.organisationAliases[0].label='VPUB';}),

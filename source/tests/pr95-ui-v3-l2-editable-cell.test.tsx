@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';
 import {describe,expect,it} from 'vitest';
+import uiPresentation from '../src/presentation/ui-presentation.json';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
@@ -141,13 +142,16 @@ describe('R-V3-01: optional non-status picker clear while status menus stay exac
 
 describe('organisation label alias in the real picker',()=>{
   it('renders the short label but leaves unrelated fields and original option values intact',()=>{
-    const original='Các phòng thuộc VP UBND TP';
-    const props={label:'Chọn',value:original,options:[original],onChange:()=>{}};
-    for(const field of ['department','room'] as const){
-      const html=renderToStaticMarkup(createElement(CellPicker,{...props,field}));
-      expect(html).toContain('>VPUB TP<');
+    const escaped=(value:string)=>renderToStaticMarkup(createElement('span',null,value)).slice(6,-7);
+    for(const alias of uiPresentation.organisationAliases){
+      const props={label:'Chọn',value:alias.source,options:[alias.source],onChange:()=>{}};
+      for(const field of alias.fields as ('department'|'room')[]){
+        const html=renderToStaticMarkup(createElement(CellPicker,{...props,field}));
+        expect(html).toContain('>'+escaped(alias.label)+'<');
+      }
+      expect(renderToStaticMarkup(createElement(CellPicker,{...props,field:'type'}))).toContain('>'+escaped(alias.source)+'<');
     }
-    expect(renderToStaticMarkup(createElement(CellPicker,{...props,field:'type'}))).toContain('>'+original+'<');
+    expect(renderToStaticMarkup(createElement(CellPicker,{label:'Chọn',value:'Không đổi',options:['Không đổi'],field:'type',onChange:()=>{}}))).toContain('>Không đổi<');
     expect(pickerSource).toContain('onChange(nextValue)');
     expect(pickerViewSource).toContain('onClick={()=>onChoose(option.value)}');
   });
