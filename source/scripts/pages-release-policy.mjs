@@ -88,7 +88,59 @@ export function isScopedAutopublishMigration(commit,baseline){
  * security tests/commands, release policy, packages or unknown source.
  * Compare EACH commit, not merely final files, to retain historical HOLD.
  */
+// Declarative presentation is data, not executable code. No arbitrary JSON
+// paths, handlers, URL/HTML payloads, storage keys or business-status aliases.
+// Each before/after blob is independently validated at every unpublished commit.
+export const uiPresentationPath='source/src/presentation/ui-presentation.json';
+const uiLabelKeys=[
+  'savedLayoutTrigger','savedLayoutHeading','savedLayoutUnnamed','columnOptions',
+  'departmentSearch','otherSearch','departmentPlaceholder','otherPlaceholder','pickerEmpty',
+];
+const hasExactKeys=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&
+  Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+const validUiText=(value)=>typeof value==='string'&&value.length>0&&value.length<=180&&
+  value.trim()===value&&value.normalize('NFC')===value&&!/[<>{}\p{C}\u2028\u2029]/u.test(value);
+export function isSafeUiPresentationData(source){
+  if(typeof source!=='string'||!source.trim()||source.length>32768)return false;
+  let config;
+  try{config=JSON.parse(source);}catch{return false;}
+  if(!hasExactKeys(config,['version','organisationAliases','labels','icons'])||config.version!==1||
+     !hasExactKeys(config.labels,uiLabelKeys)||!uiLabelKeys.every(key=>validUiText(config.labels[key]))||
+     !hasExactKeys(config.icons,['savedLayoutAdd'])||
+     !hasExactKeys(config.icons.savedLayoutAdd,['path','strokeWidth']))return false;
+  const icon=config.icons.savedLayoutAdd;
+  if(typeof icon.path!=='string'||icon.path.length>512||
+     !/^[Mm][MmLlHhVvCcSsQqTtAaZz0-9.,+\- \t]+$/.test(icon.path)||
+     typeof icon.strokeWidth!=='number'||!Number.isFinite(icon.strokeWidth)||
+     icon.strokeWidth<0.5||icon.strokeWidth>4)return false;
+  const aliases=config.organisationAliases;
+  if(!Array.isArray(aliases)||aliases.length>100)return false;
+  const sources=new Set(),labels=new Set();
+  for(const alias of aliases){
+    if(!hasExactKeys(alias,['fields','source','label'])||!validUiText(alias.source)||
+       !validUiText(alias.label)||!Array.isArray(alias.fields)||!alias.fields.length||
+       alias.fields.length>2||new Set(alias.fields).size!==alias.fields.length||
+       !alias.fields.every(field=>field==='department'||field==='room'))return false;
+    for(const field of alias.fields){
+      const sourceKey=field+'\0'+alias.source,labelKey=field+'\0'+alias.label;
+      if(sources.has(sourceKey)||labels.has(labelKey))return false;
+      sources.add(sourceKey);labels.add(labelKey);
+    }
+  }
+  return true;
+}
+export const isSafeUiPresentationChange=(before,after)=>
+  isSafeUiPresentationData(before)&&isSafeUiPresentationData(after);
+
+// These files do only screen measurement or adjacent-track arithmetic.
+// Their callback/authorization hosts remain outside the auto-release boundary.
+const layoutGeometryModules=new Set([
+  'source/src/features/items/list-nowrap-widths.ts',
+  'source/src/features/items/l03-width-geometry.ts',
+]);
+
 const ordinaryPresentationModules=new Set([
+  ...layoutGeometryModules,
   'source/src/domain/search.ts',
   'source/src/features/items/ActiveListFilters.tsx',
   'source/src/features/items/ColumnFilterCell.tsx',
@@ -152,8 +204,8 @@ export function isReviewedCiOptimization(commit,baseline){
     sameFileSet(commit.files,reviewedCiFiles);
 }
 
-// No new imports, re-exports, direct network, persistence or execution APIs
-// for the additional audited display/search/print/report modules. This is
+// No unreviewed new imports, re-exports, direct network, persistence or execution APIs
+// for the audited display/search/print/report modules. This is
 // a conservative change boundary, not a substitute for the full release QA.
 const privilegedFeatureApis=/\b(?:fetch|WebSocket|XMLHttpRequest|EventSource|localStorage|sessionStorage|indexedDB|globalThis|process|Function|eval|require|importScripts|firebase|writeDatabase|setDoc|updateDoc|deleteDoc|runTransaction|savePermissions|sendBeacon|postMessage)\b|dangerouslySetInnerHTML|import\s*\(/;
 function staticImports(source){
@@ -162,12 +214,24 @@ function staticImports(source){
   if(starters.length!==imports.length)return null;
   return imports.map(m=>m[0].replace(/\s+/g,' ').trim()).sort().join('\n');
 }
+// Additional imports in already-audited item/report presentation modules
+// may refer only to the exact read-only alias helper or declarative JSON.
+// Other new imports, aliases, re-exports and runtime capabilities stay HOLD.
+const uiJsonImport=/^import uiPresentation from ['"]\.\.\/\.\.\/presentation\/ui-presentation\.json['"];?$/;
+const uiAliasImport=/^import \{(?:displayOrganisationName|organisationSearchText|displayOrganisationName,\s*organisationSearchText|organisationSearchText,\s*displayOrganisationName)\} from ['"]\.\.\/\.\.\/domain\/organisation-display['"];?$/;
+function stripAuditedPresentationImports(path,imports){
+  if(!/^source\/src\/features\/(?:items|reports)\//.test(path))return imports;
+  return imports.split('\n').filter(line=>!uiJsonImport.test(line)&&!uiAliasImport.test(line)).join('\n');
+}
 export function isSafeOrdinaryFeatureChange(path,before,after){
   if(!ordinaryPresentationModules.has(path)||
      typeof before!=='string'||!before.trim()||typeof after!=='string'||!after.trim())return false;
   if(privilegedFeatureApis.test(after)||/^[ \t]*export\s+(?:\*|\{[^}]*\})\s+from\b/m.test(after))return false;
   const oldImports=staticImports(before),newImports=staticImports(after);
-  return oldImports!==null&&newImports!==null&&oldImports===newImports;
+  if(oldImports===null||newImports===null)return false;
+  if(layoutGeometryModules.has(path))return oldImports===newImports&&
+    !forbiddenPresentationApis.test(after)&&!/\b(?:verifiedAdmin|onWidthsCommit|onUpdate|leaseManager|directStatusCas)\b/.test(after);
+  return stripAuditedPresentationImports(path,oldImports)===stripAuditedPresentationImports(path,newImports);
 }
 
 // Only the existing, audited read-only QA workflows may auto-release after
@@ -216,7 +280,7 @@ const uiModules=new Set([
 ]);
 
 export function isAutoUiPath(path){
-  return /^source\/src\/[a-zA-Z0-9_./-]+\.css$/.test(path)||
+  return path===uiPresentationPath||/^source\/src\/[a-zA-Z0-9_./-]+\.css$/.test(path)||
     /^source\/src\/[a-zA-Z0-9_./-]+\.(svg|png|webp|jpg|jpeg)$/.test(path)||
     /^source\/src\/qa\/[a-zA-Z0-9_./-]+\.(ts|tsx|css)$/.test(path)||
     /^source\/tests\/[a-zA-Z0-9_./-]+$/.test(path)||
@@ -242,8 +306,8 @@ export function isSafePresentationSource(path,source){
   if(/^\s*export\s+(?:\*|\{[^}]*\})\s+from\b/m.test(source))return false;
   const importLines=source.split('\n').filter(line=>/^\s*import\b/.test(line));
   if(path.endsWith('CellPickerPopupView.tsx')){
-    // Only React type annotations; JSX uses the automatic jsx-runtime.
-    if(!importLines.every(line=>/^\s*import\s+type\s+\{[^}]+\}\s+from\s+['"]react['"];?\s*$/.test(line)))
+    // React type annotations and the exact declarative presentation JSON only.
+    if(!importLines.every(line=>/^\s*import\s+type\s+\{[^}]+\}\s+from\s+['"]react['"];?\s*$/.test(line)||uiJsonImport.test(line.trim())))
       return false;
     // Do not permit this visual leaf to become a save/auth service or
     // independently mutate record values on user interaction.
@@ -292,6 +356,10 @@ export function classifyCommits({commits,baseline,head,approved,sourceContents={
     for(const file of commit.files??[]){
       sourceChanged=true;
       const change=commit.sourceChanges?.[file];
+      if(file===uiPresentationPath){
+        if(!isSafeUiPresentationChange(change?.before,change?.after))blocked.push(file);
+        continue;
+      }
       if(qaSchedulingWorkflows.has(file)){
         if(!isSafeQaSchedulingChange(file,change?.before,change?.after))blocked.push(file);
         continue;
@@ -345,7 +413,7 @@ function readCommitChanges(baseline,head){
       .split('\n').filter(Boolean);
     const sourceChanges={};
     for(const file of files){
-      if(!ordinaryPresentationModules.has(file)&&!qaSchedulingWorkflows.has(file))continue;
+      if(file!==uiPresentationPath&&!ordinaryPresentationModules.has(file)&&!qaSchedulingWorkflows.has(file))continue;
       // Use immutable before/after blobs for this commit. Missing or deleted
       // paths stay HOLD; no reading from a mutable checkout.
       try{

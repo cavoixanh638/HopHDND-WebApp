@@ -30,7 +30,8 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).toContain('stageInlineLayout(base=>setInlineSummaryVisibility(base,key,checked))');
     expect(list).toContain('stageInlineLayout(base=>({...base,partyTrackWidths:widths}))');
     // The single column shortcut handles visibility and group choices via the existing draft.
-    expect(list).toContain('aria-label="Tùy chọn cột"');
+    expect(list).toContain('aria-label={uiPresentation.labels.columnOptions}');
+    expect(list).toContain('>{uiPresentation.labels.columnOptions} <span');
     expect(list).toContain('className="column-options-checklist"');
     expect(list).toContain('<strong className="column-options-name-heading">Viết tắt tên</strong>');
     expect(list).toContain('data-compact-choice={option.key}');

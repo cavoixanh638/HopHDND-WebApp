@@ -1,3 +1,12 @@
+## CHỈ THỊ 26/11/2026 — SỬA UI THÔNG THƯỜNG THEO RANH GIỚI HIỂN THỊ
+
+- Trước khi sửa, đọc [quy trình UI declarative](docs/checkpoints/G00_DECLARATIVE_UI_RELEASE_2026-11-26.md). Đổi nhãn, viết tắt đơn vị, biểu tượng + trong `src/presentation/ui-presentation.json`; CSS cho màu/căn lề/độ rộng; số học bố cục trong `l03-width-geometry.ts` hoặc `list-nowrap-widths.ts`. Đừng sửa CellPicker, SavedLayoutMenu, L03InlineWidthControl, App, dữ liệu/quyền chỉ để đổi hiển thị.
+- Phần trình bày đã rà soát chỉ thêm import đúng helper alias/JSON đã duyệt. Không whitelist cả tệp lõi hoặc thư mục src; module lạ vẫn HOLD. Nếu phải tách thêm lõi/UI, làm rõ phạm vi trước khi lập PR.
+- Merge đúng SHA sau CI, kiểm tra publisher thật và version.json; nếu chỉ UI hợp lệ mà HOLD, kiểm tra log và sửa đúng ranh giới, không bắt owner Run workflow cho việc thường ngày. Policy migration, auth, quyền, schema, data, Rules và callback ghi vẫn owner approval.
+- Không sửa biến, không tự duyệt policy, không bỏ QA. Cập nhật checkpoint và CURRENT_STATE theo bằng chứng, phân biệt PASS CI và deploy thực.
+
+---
+
 ## CHỈ THỊ 21/11/2026 — KHÔNG BẮT CHỦ DỰ ÁN CẬP NHẬT SHA VARIABLE LIÊN TỤC
 
 - **Các chỉnh sửa thuần UI trong allowlist** phải tự phát hành sau CI qua `policy_mode=auto` (không cần chủ dự án thao tác).

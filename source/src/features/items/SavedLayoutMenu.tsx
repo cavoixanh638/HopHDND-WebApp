@@ -1,5 +1,6 @@
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
+import uiPresentation from '../../presentation/ui-presentation.json';
 import {MAX_SAVED_LAYOUTS,type SavedLayoutPreset} from '../../data/item-preferences';
 import {placeCompactMenu,type CompactMenuPlacement} from './compact-menu-placement';
 
@@ -57,25 +58,26 @@ export function SavedLayoutMenu({presets,activeId,dirty,busy,onSelect,onCreate,o
   };
   return <div className="saved-layout-menu">
     <button type="button" className="saved-layout-trigger" ref={trigger}
-      aria-label="Chọn giao diện" aria-controls="hdnd-saved-layout-popup" aria-expanded={open}
+      aria-label={uiPresentation.labels.savedLayoutTrigger} aria-controls="hdnd-saved-layout-popup" aria-expanded={open}
       title={presets.find(p=>p.id===activeId)?.name??'Giao diện hiện tại chưa đặt tên'}
-      onClick={()=>open?close():setOpen(true)}>Chọn giao diện <span aria-hidden="true">▾</span></button>
+      onClick={()=>open?close():setOpen(true)}>{uiPresentation.labels.savedLayoutTrigger} <span aria-hidden="true">▾</span></button>
     {open&&placement&&createPortal(<div id="hdnd-saved-layout-popup" ref={panel} tabIndex={-1}
       className="compact-columns-options compact-columns-options-floating saved-layout-popup"
-      role="group" aria-label="Giao diện đã lưu" data-popover-side={placement.side}
+      role="group" aria-label={uiPresentation.labels.savedLayoutHeading} data-popover-side={placement.side}
       style={{top:placement.top,left:placement.left,width:placement.width,maxHeight:placement.maxHeight}}>
       <div className="column-options-section-heading saved-layout-heading">
-        <strong>Giao diện đã lưu</strong>
+        <strong>{uiPresentation.labels.savedLayoutHeading}</strong>
         <button type="button" className="saved-layout-icon saved-layout-add" aria-label="Lưu giao diện mới"
           title="Lưu giao diện hiện tại thành mẫu mới" disabled={busy||presets.length>=MAX_SAVED_LAYOUTS}
           onClick={()=>{setError('');setNameEdit({name:''});}}>
           <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16">
-            <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <path d={uiPresentation.icons.savedLayoutAdd.path} stroke="currentColor"
+              strokeWidth={uiPresentation.icons.savedLayoutAdd.strokeWidth} strokeLinecap="round" fill="none"/>
           </svg>
         </button>
       </div>
       <div className="saved-layout-list" role="group" aria-label="Danh sách mẫu giao diện">
-        {!activeId&&<div className="saved-layout-current"><span aria-hidden="true">✓</span> Giao diện hiện tại (chưa đặt tên)</div>}
+        {!activeId&&<div className="saved-layout-current"><span aria-hidden="true">✓</span> {uiPresentation.labels.savedLayoutUnnamed}</div>}
         {presets.map(p=><div className="saved-layout-row" key={p.id} data-layout-id={p.id}>
           <button type="button" className="saved-layout-choice" aria-pressed={activeId===p.id}
             disabled={busy||dirty} onClick={()=>{if(activeId===p.id)close(true);else void apply(()=>onSelect(p.id));}}>

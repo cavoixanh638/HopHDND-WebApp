@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {createPortal} from 'react-dom';
+import uiPresentation from '../../presentation/ui-presentation.json';
 import type {CSSProperties} from 'react';
 import type { Changes, Item, Patch, TextField, EditableField } from '../../../shared/types';
 import { TEXT_FIELDS, STATUS_OPTIONS } from '../../../shared/field-definitions';
@@ -1097,8 +1098,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           setCompactMenuOpen(opened);
           if(!opened)setCompactMenuPlacement(null);
         }}>
-        <summary ref={compactSummaryRef} aria-label="Tùy chọn cột"
-          aria-controls="hdnd-compact-columns-popup" aria-expanded={compactMenuOpen}>Tùy chọn cột <span aria-hidden="true">▾</span></summary>
+        <summary ref={compactSummaryRef} aria-label={uiPresentation.labels.columnOptions}
+          aria-controls="hdnd-compact-columns-popup" aria-expanded={compactMenuOpen}>{uiPresentation.labels.columnOptions} <span aria-hidden="true">▾</span></summary>
       </details>
       {compactMenuOpen&&compactMenuPlacement&&typeof document!=='undefined'&&createPortal(
         <div id="hdnd-compact-columns-popup" ref={compactPanelRef} tabIndex={-1}
@@ -1111,7 +1112,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             width:compactMenuPlacement.width,
             maxHeight:compactMenuPlacement.maxHeight,
           }}>
-          <strong className="column-options-title">Tùy chọn cột</strong>
+          <strong className="column-options-title">{uiPresentation.labels.columnOptions}</strong>
           {canEditListSettings&&<div className="column-options-visibility" role="group" aria-label="Ẩn hoặc hiện cột dữ liệu">
             <div className="column-options-section-heading"><strong>Ẩn / hiện cột</strong>
               <button type="button" className="button ghost" disabled={viewSaving||!hiddenQuickColumns.length}

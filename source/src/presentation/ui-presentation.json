@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "organisationAliases": [
+    {
+      "fields": [
+        "department",
+        "room"
+      ],
+      "source": "Các phòng thuộc VP UBND TP",
+      "label": "VPUB TP"
+    }
+  ],
+  "labels": {
+    "savedLayoutTrigger": "Chọn giao diện",
+    "savedLayoutHeading": "Giao diện đã lưu",
+    "savedLayoutUnnamed": "Giao diện hiện tại (chưa đặt tên)",
+    "columnOptions": "Tùy chọn cột",
+    "departmentSearch": "Tìm Sở, ngành",
+    "otherSearch": "Tìm lựa chọn",
+    "departmentPlaceholder": "Tìm tên Sở, ngành (không dấu)",
+    "otherPlaceholder": "Nhập để lọc",
+    "pickerEmpty": "Không có lựa chọn phù hợp."
+  },
+  "icons": {
+    "savedLayoutAdd": {
+      "path": "M8 2.5v11M2.5 8h11",
+      "strokeWidth": 2
+    }
+  }
+}
