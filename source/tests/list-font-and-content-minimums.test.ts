@@ -41,3 +41,22 @@ describe('List font and protected content widths',()=>{
     expect(withPartyContentMinimums(saved,emptyListContentMinimums().party)).toEqual(saved);
   });
 });
+
+
+describe('Save As preserves the original named layout',()=>{
+  it('copies the entire edited presentation, leaving the original unchanged after CAS and JSON reload',()=>{
+    const original=saveNewLayoutPreset({...defaultItemLayout(),tableFontSize:13},'preset_orig1','Gốc 1');
+    const snapshot=structuredClone(original.savedLayouts![0]);
+    const edited={...original,tableFontSize:20,listTitle:'Bản mới',columns:original.columns.map(c=>c.key==='content'?{...c,width:c.width+40}:c),compactDisplay:{...original.compactDisplay!,mergeTypeIntoContent:false}};
+    const copy=saveNewLayoutPreset(edited,'preset_copy2','Gốc 2');
+    const saved=validateItemLayout(JSON.parse(JSON.stringify(mergeItemLayout(original,copy,original))));
+    expect(saved.savedLayouts![0]).toEqual(snapshot);
+    expect(saved.activeLayoutId).toBe('preset_copy2');
+    expect(applyLayoutPreset(saved,'preset_orig1').tableFontSize).toBe(13);
+    const reopened=applyLayoutPreset(saved,'preset_copy2');
+    expect(reopened.tableFontSize).toBe(20);
+    expect(reopened.listTitle).toBe('Bản mới');
+    expect(reopened.compactDisplay?.mergeTypeIntoContent).toBe(false);
+    expect(reopened.columns.find(c=>c.key==='content')?.width).toBe(edited.columns.find(c=>c.key==='content')?.width);
+  });
+});

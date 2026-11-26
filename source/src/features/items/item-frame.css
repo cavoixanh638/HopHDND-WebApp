@@ -568,13 +568,13 @@
 
 /* Compact view menu belongs to the table header, not to the Excel schema. */
 .compact-columns-menu{position:relative;z-index:20;flex:none}
-.compact-columns-menu>summary{display:inline-flex;align-items:center;gap:6px;
+.compact-columns-menu>summary,.saved-layout-trigger{box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;
   padding:5px 10px;min-height:28px;border:1px solid #85aa98;border-radius:7px;
-  background:#edf7f0;color:#21583f;font-size:11px;font-weight:700;
-  cursor:pointer;list-style:none}
+  background:#edf7f0;color:#21583f;font-family:inherit;font-size:11px;font-weight:700;line-height:normal;
+  cursor:pointer;list-style:none;white-space:nowrap}
 .compact-columns-menu>summary::-webkit-details-marker{display:none}
-.compact-columns-menu[open]>summary{background:#dcefe4;border-color:#377e5d}
-.compact-columns-menu>summary:focus-visible{outline:2px solid #237f5c;outline-offset:2px}
+.compact-columns-menu[open]>summary,.saved-layout-trigger[aria-expanded="true"]{background:#dcefe4;border-color:#377e5d}
+.compact-columns-menu>summary:focus-visible,.saved-layout-trigger:focus-visible{outline:2px solid #237f5c;outline-offset:2px}
 .compact-active-count{display:grid;place-items:center;min-width:17px;min-height:17px;
   padding:0 3px;border-radius:10px;background:#226c4e;color:#fff;font-size:10px}
 .compact-columns-options{position:absolute;right:0;top:calc(100% + 6px);z-index:30;

@@ -65,7 +65,7 @@ import {mountSharedEditTooltip} from '../../components/SharedEditTooltip';
 import {buildLocked,buildLockReason,effectiveBuildStatus,effectiveItemField,projectedBuildDisplayItem,rejectsBuildChange} from '../../domain/pr95-v5-l4-build-effective';
 import {CellHistoryAction} from '../../components/CellHistoryAction';
 import {emptyListFilters,clearActivePersonalView,loadColorRules,saveColorRules,itemColor,type ColorRule} from '../../data/list-views';
-import {applyLayoutPreset,saveNewLayoutPreset,updateActiveLayoutPreset,renameLayoutPreset,deleteLayoutPreset,MIN_LIST_FONT_SIZE,MAX_LIST_FONT_SIZE} from '../../data/item-preferences';
+import {applyLayoutPreset,saveNewLayoutPreset,updateActiveLayoutPreset,renameLayoutPreset,deleteLayoutPreset,MAX_SAVED_LAYOUTS,MIN_LIST_FONT_SIZE,MAX_LIST_FONT_SIZE} from '../../data/item-preferences';
 import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placement';
 import {canHideInlineColumn,renameInlineColumn,setInlineColumnVisibility,setInlineSummaryVisibility} from './inline-g01-layout';
 import './inline-g01-list.css';
@@ -113,6 +113,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // The ordinary List owns the only visible data table. Layout edits stay in
   // this local draft until the Admin explicitly chooses Save (one shared CAS).
   const [inlineDraft,setInlineDraft]=useState<ItemLayout|null>(null);
+  const [saveAsName,setSaveAsName]=useState<string|null>(null);
   const inlineEditBase=useRef<ItemLayout|null>(null);
   // G00: a header command in Customize mode opens the matching advanced field.
   const [requestedColumnFocus,setRequestedColumnFocus]=useState<string|null>(null);
@@ -753,7 +754,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   },[titleEditorOpen]);
   useEffect(()=>{
     if(!adminControls||customizing){
-      setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
+      setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;setSaveAsName(null);
       setTitleEditorOpen(false);setSearchScopeOpen(false);
     }
   },[adminControls,customizing]);
@@ -817,7 +818,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     }
   };
   const finishInlineLayout=()=>{
-    setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;
+    setInlineMode(false);setInlineDraft(null);inlineEditBase.current=null;setSaveAsName(null);
     setTitleEditorOpen(false);setListTitleDraft(null);listTitleBaseline.current=null;
     setViewLayoutConflicts([]);setViewLayoutChoices({});
     if(compactDetailsRef.current)compactDetailsRef.current.open=false;
@@ -1229,7 +1230,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
       {inlineMode&&adminControls&&<div className="inline-layout-savebar"
         role="group" aria-label="Lưu hoặc hủy thay đổi giao diện Danh sách">
-        <span><strong>Đang chỉnh trực tiếp trên bảng</strong>
+        <span><strong>Đang chỉnh: {applied.savedLayouts?.find(p=>p.id===applied.activeLayoutId)?.name??'Giao diện hiện tại'}</strong>
           <small>{inlineDirty?'Có thay đổi bố cục chưa lưu':'Chưa có thay đổi bố cục'} · {applied.activeLayoutId?'Lưu vào mẫu đang chọn hoặc lưu giao diện mới':'Không sửa dữ liệu hồ sơ'}</small>
         </span>
         <div className="inline-layout-save-actions">
@@ -1237,9 +1238,23 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             disabled={!inlineDirty||locked||viewSaving} onClick={()=>void saveInlineLayout()}>
             {viewSaving?'Đang lưu…':'Lưu bố cục'}
           </button>
+          <button type="button" className="button ghost inline-layout-save-as"
+            disabled={locked||viewSaving||(applied.savedLayouts?.length??0)>=MAX_SAVED_LAYOUTS}
+            title="Lưu bố cục đang chỉnh thành mẫu riêng, không cập nhật mẫu gốc"
+            aria-expanded={saveAsName!==null} onClick={()=>setSaveAsName(name=>name===null?'':null)}>Lưu thành giao diện mới</button>
           <button type="button" className="button ghost inline-layout-cancel"
             disabled={locked||viewSaving} onClick={finishInlineLayout}>Hủy thay đổi</button>
         </div>
+        {saveAsName!==null&&<form className="inline-layout-save-as-form" aria-label="Lưu thành giao diện mới" onSubmit={event=>{
+          event.preventDefault();if(saveAsName.trim())void createSavedLayout(saveAsName);
+        }}>
+          <label>Tên giao diện mới<input autoFocus aria-label="Tên giao diện mới" maxLength={60} required
+            placeholder="Ví dụ: Giao diện gốc 2" value={saveAsName} disabled={locked||viewSaving}
+            onChange={event=>{setSaveAsName(event.currentTarget.value);setLayoutError('');}}/></label>
+          <small>Giữ nguyên mẫu gốc. Mẫu mới sẽ được chọn sau khi lưu thành công.</small>
+          <button className="button primary" type="submit" disabled={locked||viewSaving||!saveAsName.trim()}>Lưu mẫu mới</button>
+          <button className="button ghost" type="button" disabled={viewSaving} onClick={()=>setSaveAsName(null)}>Hủy</button>
+        </form>}
       </div>}
       {inlineMode&&adminControls&&(onPersistViewerLayout||isRamAdminList)&&<div
         className="admin-list-controls" id="admin-layout-controls"

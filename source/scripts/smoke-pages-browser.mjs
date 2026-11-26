@@ -4816,9 +4816,26 @@ try{
       const large=await evaluate(fontAudit);
       if(!large.groups||large.fonts.some(f=>f!=='20px')||large.textFonts.some(f=>f!=='20px')||large.failures.length)
         throw Error('Font 20px protected one-line contract failed: '+JSON.stringify(large));
+      await pointerClick('.inline-layout-save-as');
+      const saveAsForm='form[aria-label="Lưu thành giao diện mới"]';
+      await eventually("!!document.querySelector("+JSON.stringify(saveAsForm+" input")+")",'Save As next to Save/Cancel did not open');
+      await evaluate(`document.querySelector(${JSON.stringify(saveAsForm+' input')}).focus()`);
+      await send('Input.insertText',{text:'QA bản sao 20px'});
+      await evaluate(`document.querySelector(${JSON.stringify(saveAsForm+' button[type=submit]')}).click()`);
+      await eventually("!document.querySelector('.inline-layout-savebar') && document.querySelector('.list-font-controls output')?.textContent==='20px'",'Save As did not commit new font preset');
+      await pointerClick(layoutTrigger);
+      await eventually("document.querySelectorAll('.saved-layout-choice').length===3",'Save As overwrote a prior preset');
+      const copied=await evaluate("document.querySelector('.saved-layout-choice[aria-pressed=true]')?.textContent");
+      if(!copied?.includes('QA bản sao 20px'))throw Error('Save As must select the new named preset');
+      const originalChoice=await evaluate("Array.from(document.querySelectorAll('.saved-layout-choice')).find(b=>b.textContent.includes('QA đổi tên')).closest('[data-layout-id]').dataset.layoutId");
+      await pointerClick('.saved-layout-row[data-layout-id="'+originalChoice+'"] .saved-layout-choice');
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px'",'Save As mutated original font');
+      await evaluate("document.querySelector('.list-font-controls button[aria-label=\"Tăng cỡ chữ bảng\"]').click()");
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='14px'",'Font draft did not change');
       await pointerClick('.inline-layout-cancel');
       await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px'",'Font Cancel did not restore previous size');
       console.log('LIST_FONT_AND_NOWRAP_20PX_PASS',JSON.stringify({groups:large.groups,fonts:large.fonts,textFonts:large.textFonts}));
+      console.log('SAVE_AS_PRESERVES_ORIGINAL_LAYOUT_PASS');
     }
     productionColumnChecks.push({width,height,triggerRect,popup:popup.rect});
   }
