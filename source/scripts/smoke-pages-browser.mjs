@@ -3879,11 +3879,15 @@ try{
   await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
+  const staffMinimum=async()=>Number(await evaluate("document.querySelector('col[data-protected-column=room]')?.dataset.contentMinimum"));
+  const fallbackStaffMinimum=await staffMinimum();
+  if(!Number.isFinite(fallbackStaffMinimum)||fallbackStaffMinimum<130||fallbackStaffMinimum>fallbackBefore.staff)
+    throw Error('Invalid measured staff minimum '+fallbackStaffMinimum);
   // The responsive projection changes how much room the staff group can
   // donate. Drag far enough to exhaust its actual current capacity plus the
   // 6px compact-ID fallback, not an obsolete hard-coded 160px baseline.
   const fallbackTravel=Math.max(160,
-    fallbackBefore.staff-130+(fallbackBefore.id-46)+8);
+    fallbackBefore.staff-fallbackStaffMinimum+(fallbackBefore.id-46)+8);
   const fallbackEdge=await evaluate(`(()=>{
     const el=document.querySelector('th[data-column-key=content] .column-resizer');
     el.scrollIntoView({block:'center',inline:'nearest'});
@@ -3897,8 +3901,8 @@ try{
     'L019 fallback failed to use last ID after adjacent reached minimum');
   const fallbackAfter=await widthSnapshot();
   assertSameTotal(fallbackBefore,fallbackAfter,'L019 adjacent exhausted => last fallback');
-  if(fallbackAfter.content!==fallbackBefore.content+(fallbackBefore.staff-130)+(fallbackBefore.id-46)||
-    fallbackAfter.staff!==130||fallbackAfter.party!==fallbackBefore.party||fallbackAfter.id!==46)
+  if(fallbackAfter.content!==fallbackBefore.content+(fallbackBefore.staff-fallbackStaffMinimum)+(fallbackBefore.id-46)||
+    fallbackAfter.staff!==fallbackStaffMinimum||fallbackAfter.party!==fallbackBefore.party||fallbackAfter.id!==46)
     throw Error('L019 fallback exceeded min or skipped adjacent: '+
       JSON.stringify({fallbackBefore,fallbackAfter}));
   const l019BeforeShot=await send('Page.captureScreenshot',{format:'png'});
@@ -4033,11 +4037,14 @@ try{
     textGeometry.departmentY===null||
     Math.abs(textGeometry.badgeY-textGeometry.departmentY)>7)
     throw Error('L023 text alignment/grip from owner screenshot: '+JSON.stringify(textGeometry));
-  // Grouped Staff has 70px mandatory extra width (min physical 130px).
+  // Staff must retain both its original physical floor and the measured text floor.
   // A 250px pointer move is CLAMPED to the actual remaining slack in Staff
   // then Note after responsive fit. Neither saved min nor total may be broken.
   const wideBefore=await widthSnapshot();
-  const wideStaffSlack=Math.max(0,wideBefore.staff-130);
+  const wideStaffMinimum=await staffMinimum();
+  if(!Number.isFinite(wideStaffMinimum)||wideStaffMinimum<130||wideStaffMinimum>wideBefore.staff)
+    throw Error('Invalid wide protected staff minimum '+wideStaffMinimum);
+  const wideStaffSlack=Math.max(0,wideBefore.staff-wideStaffMinimum);
   const wideNoteSlack=Math.max(0,wideBefore.widths.at(-1)-60);
   const wideDragBudget=Math.min(250,wideStaffSlack+wideNoteSlack);
   const wideEdge=await evaluate(`(()=>{
@@ -4063,7 +4070,7 @@ try{
   if(wideAfter.widths[ix]!==wideBefore.widths[ix]+wideDragBudget||
     wideAfter.widths[ix+1]!==expectedStaff||
     wideAfter.widths.at(-1)!==expectedNote||
-    wideAfter.id!==wideBefore.id)
+    wideAfter.id!==wideBefore.id||wideAfter.party!==wideBefore.party||wideAfter.content!==wideBefore.content)
     throw Error('L023 adjacent→last fallback incorrect: '+
       JSON.stringify({wideBefore,wideAfter,wideDragBudget,expectedStaff,expectedNote}));
   console.log('L023_OWNER_COLUMN_DRAG_250_AND_TEXT_ALIGNMENT_PASS',
@@ -4110,7 +4117,7 @@ try{
       'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
     const l03Viewport=await evaluate("document.querySelector('.item-table-scroll')?.clientWidth");
-    if(before.party!==276||Math.abs(before.total-l03Viewport)>1||
+    if(before.party<276||Math.abs(before.total-l03Viewport)>1||
       (l03LegacyWidths.length&&JSON.stringify(before.widths)!==
         JSON.stringify(l03LegacyWidths[0].before.widths))||
       await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
@@ -4725,31 +4732,120 @@ try{
     }
     await evaluate("document.querySelector('.column-options-close').click()");
     await eventually("!document.querySelector('.compact-columns-options-floating')",'Column popup did not close');
+    const layoutTrigger='.saved-layout-trigger';
+    const layoutPanel='.saved-layout-popup';
+    const sameTone=await evaluate(`(()=>{
+      const a=document.querySelector('.admin-list-heading .compact-columns-menu > summary');
+      const b=document.querySelector('.saved-layout-trigger');
+      if(!a||!b)return false;
+      const as=getComputedStyle(a),bs=getComputedStyle(b),ar=a.getBoundingClientRect(),br=b.getBoundingClientRect();
+      return as.backgroundColor===bs.backgroundColor&&as.borderTopColor===bs.borderTopColor&&
+        as.fontSize===bs.fontSize&&Math.abs(ar.height-br.height)<=2&&
+        (innerWidth<1000||Math.abs(ar.top+ar.height/2-br.top-br.height/2)<=2);
+    })()`);
+    if(!sameTone)throw Error('Saved layout trigger must match column options tone and alignment');
+    await pointerClick(layoutTrigger);
+    await eventually("!!document.querySelector('.saved-layout-popup .saved-layout-add')",'Saved layout popup missing');
+    const layoutRect=await evaluate(`(()=>{
+      const r=document.querySelector('.saved-layout-popup').getBoundingClientRect();
+      return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};
+    })()`);
+    if(layoutRect.left<0||layoutRect.right>width+1||layoutRect.top<0||layoutRect.bottom>height+1)
+      throw Error('Saved layout popup overflow: '+JSON.stringify(layoutRect));
     if(width===1600){
-      const select='select[aria-label="Chọn giao diện đã lưu"]';
       const nameForm='form[aria-label="Lưu giao diện mới"]';
       const renameForm='form[aria-label="Đổi tên mẫu"]';
-      const openNew=()=>evaluate("Array.from(document.querySelectorAll('.admin-saved-layout-actions button')).find(b=>b.textContent.trim()==='Lưu giao diện mới').click()");
+      const selected=()=>evaluate("document.querySelector('.saved-layout-choice[aria-pressed=true]')?.textContent?.trim()");
+      const openMenu=async()=>{if(!await evaluate("!!document.querySelector('.saved-layout-popup')"))await pointerClick(layoutTrigger);
+        await eventually("!!document.querySelector('.saved-layout-popup')",'Saved layout menu did not open');};
+      const openNew=async()=>{await openMenu();await pointerClick('.saved-layout-add');};
       const enterName=async(form,name)=>{
         await eventually("!!document.querySelector("+JSON.stringify(form+" input")+")",'Named layout form did not open');
-        await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(form+' input')});i.focus()})()`);
+        await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(form+' input')});i.focus();i.select()})()`);
         await send('Input.insertText',{text:name});
         await evaluate(`document.querySelector(${JSON.stringify(form+' button[type=submit]')}).click()`);
         await eventually("!document.querySelector("+JSON.stringify(form)+")",'Named layout did not commit');
       };
       await openNew();await enterName(nameForm,'QA gộp');
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA gộp'",'New layout not selected');
-      const original=await evaluate("document.querySelector("+JSON.stringify(select)+").value");
-      await evaluate("Array.from(document.querySelectorAll('.admin-saved-layout-actions button')).find(b=>b.textContent.trim()==='Đổi tên mẫu').click()");
-      await eventually("!!document.querySelector("+JSON.stringify(renameForm+" input")+")",'Rename form did not open');
-      await evaluate(`(()=>{const i=document.querySelector(${JSON.stringify(renameForm+' input')});i.focus();i.select()})()`);
+      await openMenu();
+      if(!(await selected())?.includes('QA gộp'))throw Error('New layout not ticked');
+      const original=await evaluate("document.querySelector('.saved-layout-choice[aria-pressed=true]').closest('[data-layout-id]').dataset.layoutId");
+      await pointerClick('.saved-layout-row[data-layout-id="'+original+'"] button[title="Đổi tên mẫu"]');
       await enterName(renameForm,'QA đổi tên');
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA đổi tên'",'Rename not saved');
+      await openMenu();
+      if(!(await selected())?.includes('QA đổi tên'))throw Error('Rename not saved');
       await openNew();await enterName(nameForm,'QA mẫu hai');
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.options.length===3",'Both presets must remain');
-      await evaluate(`(()=>{const s=document.querySelector(${JSON.stringify(select)});s.value=${JSON.stringify(original)};s.dispatchEvent(new Event('change',{bubbles:true}))})()`);
-      await eventually("document.querySelector("+JSON.stringify(select)+")?.selectedOptions[0]?.textContent==='QA đổi tên'",'Named layout not reselected');
+      await openMenu();
+      if(await evaluate("document.querySelectorAll('.saved-layout-choice').length")!==2)throw Error('Both presets must remain');
+      await pointerClick('.saved-layout-row[data-layout-id="'+original+'"] .saved-layout-choice');
+      await eventually("!document.querySelector('.saved-layout-popup')",'Named layout did not close after select');
+      await openMenu();
+      if(!(await selected())?.includes('QA đổi tên'))throw Error('Named layout not reselected');
       console.log('SHARED_LAYOUT_PRESET_BROWSER_PASS');
+    }
+    await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    await eventually("!document.querySelector('.saved-layout-popup')",'Escape must dismiss layout menu');
+    if(width===1600){
+      // Copy a real changed layout, including long, unabbreviated names and the
+      // combined specialist (room) row, rather than testing only short initials.
+      await pointerClick('.admin-list-heading .compact-columns-menu > summary');
+      for(const [key,desired] of [['shortSpecialist',false],['shortLeaders',false],['cvRoomInline',true]]){
+        const choice='.compact-columns-options-floating input[data-compact-choice='+key+']';
+        await eventually("!!document.querySelector("+JSON.stringify(choice)+")",'Missing staff preference '+key);
+        if(await evaluate("document.querySelector("+JSON.stringify(choice)+").checked")!==desired)await pointerClick(choice);
+      }
+      await evaluate("document.querySelector('.column-options-close').click()");
+      await eventually("!!document.querySelector('.compact-staff-inline-values')",'Full-name specialist + room fixture not rendered');
+      // Actual font controls, not just a synthetic CSS variable override.
+      const fontAudit=String.raw`(()=>{
+        const table=document.querySelector('.item-data-table');
+        const groups=[...table.querySelectorAll('.compact-pair-lines,.compact-stages[data-rev2=true]')];
+        const cells=[...table.querySelectorAll('tbody td[data-col-key]')];
+        const textTargets=[...table.querySelectorAll('.compact-pair-lines .compact-highlight-member,.compact-staff-inline-values,.compact-stage-title,.compact-stage-state,.compact-stage-level[data-level-editor=true]')];
+        const texts=textTargets.map(el=>{
+          const range=document.createRange(),walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+          const rects=[];
+          for(let n=walker.nextNode();n;n=walker.nextNode()){
+            if(!n.textContent.trim()||n.parentElement.closest('.warning-text,.error-text,[role=alert],[role=status]'))continue;
+            range.selectNodeContents(n);rects.push(...[...range.getClientRects()].filter(r=>r.width>0));
+          }
+          const box=el.getBoundingClientRect(),td=el.closest('td').getBoundingClientRect();
+          return {text:el.textContent.trim(),wrap:rects.length>0&&Math.max(...rects.map(r=>r.top))-Math.min(...rects.map(r=>r.top))>5,
+            outside:rects.some(r=>r.left<td.left-2||r.right>td.right+2),font:getComputedStyle(el).fontSize,
+            overflow:el.scrollWidth>el.clientWidth+2};
+        });
+        return {groups:groups.length,fonts:[...new Set(cells.map(c=>getComputedStyle(c).fontSize))],
+          textFonts:[...new Set(texts.map(t=>t.font))],failures:texts.filter(t=>t.wrap||t.outside||t.overflow)};
+      })()`;
+      for(let i=0;i<7;i++){
+        await evaluate("document.querySelector('.list-font-controls button[aria-label=\"Tăng cỡ chữ bảng\"]').click()");
+        await new Promise(resolve=>setTimeout(resolve,60));
+      }
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='20px'",'A+ did not reach 20px');
+      const large=await evaluate(fontAudit);
+      if(!large.groups||large.fonts.some(f=>f!=='20px')||large.textFonts.some(f=>f!=='20px')||large.failures.length)
+        throw Error('Font 20px protected one-line contract failed: '+JSON.stringify(large));
+      await pointerClick('.inline-layout-save-as');
+      const saveAsForm='form[aria-label="Lưu thành giao diện mới"]';
+      await eventually("!!document.querySelector("+JSON.stringify(saveAsForm+" input")+")",'Save As next to Save/Cancel did not open');
+      await evaluate(`document.querySelector(${JSON.stringify(saveAsForm+' input')}).focus()`);
+      await send('Input.insertText',{text:'QA bản sao 20px'});
+      await evaluate(`document.querySelector(${JSON.stringify(saveAsForm+' button[type=submit]')}).click()`);
+      await eventually("!document.querySelector('.inline-layout-savebar') && document.querySelector('.list-font-controls output')?.textContent==='20px'",'Save As did not commit new font preset');
+      await pointerClick(layoutTrigger);
+      await eventually("document.querySelectorAll('.saved-layout-choice').length===3",'Save As overwrote a prior preset');
+      const copied=await evaluate("document.querySelector('.saved-layout-choice[aria-pressed=true]')?.textContent");
+      if(!copied?.includes('QA bản sao 20px'))throw Error('Save As must select the new named preset');
+      const originalChoice=await evaluate("Array.from(document.querySelectorAll('.saved-layout-choice')).find(b=>b.textContent.includes('QA đổi tên')).closest('[data-layout-id]').dataset.layoutId");
+      await pointerClick('.saved-layout-row[data-layout-id="'+originalChoice+'"] .saved-layout-choice');
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px' && !document.querySelector('.compact-staff-inline-values')",'Save As mutated original font or CV/room grouping');
+      await evaluate("document.querySelector('.list-font-controls button[aria-label=\"Tăng cỡ chữ bảng\"]').click()");
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='14px'",'Font draft did not change');
+      await pointerClick('.inline-layout-cancel');
+      await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px'",'Font Cancel did not restore previous size');
+      console.log('LIST_FONT_AND_NOWRAP_20PX_PASS',JSON.stringify({groups:large.groups,fonts:large.fonts,textFonts:large.textFonts}));
+      console.log('SAVE_AS_PRESERVES_ORIGINAL_LAYOUT_PASS');
     }
     productionColumnChecks.push({width,height,triggerRect,popup:popup.rect});
   }
@@ -4762,7 +4858,7 @@ try{
   await eventually("!!document.querySelector('.list-visual-parity .item-data-table tbody .compact-pair-lines')",
     'Production guest grouped readonly List did not mount');
   await verifyStaffRails('production-guest-readonly');
-  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.admin-saved-layout-actions')"))
+  if(await evaluate("!!document.querySelector('.compact-columns-menu,.inline-g01-search-trigger,.compact-columns-options-floating,.saved-layout-menu')"))
     throw Error('Guest received admin-only column or search menu in production chrome');
   console.log('PRODUCTION_COLUMN_OPTIONS_VISIBLE_POINTER_PASS',JSON.stringify(productionColumnChecks));
 

@@ -78,6 +78,7 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   });
   const tableWidth=merge(base.tableWidth,edited.tableWidth,remote.tableWidth,'tableWidth','độ rộng tối thiểu các cột');
   const frameWidth=merge(base.frameWidth??'auto',edited.frameWidth??'auto',remote.frameWidth??'auto','frameWidth','độ rộng vùng danh sách');
+  const tableFontSize=merge(base.tableFontSize,edited.tableFontSize,remote.tableFontSize,'tableFontSize','cỡ chữ bảng');
   const cellHighlights=merge(base.cellHighlights??[],edited.cellHighlights??[],
     remote.cellHighlights??[],'cellHighlights','màu ô theo từ khóa');
   const compactDisplay=Object.fromEntries((Object.keys(base.compactDisplay??{}) as (keyof NonNullable<ItemLayout['compactDisplay']>)[]).map(key=>
@@ -124,5 +125,5 @@ export function mergeItemLayout(baseInput:ItemLayout,editedInput:ItemLayout,remo
   const savedLayouts=merge(base.savedLayouts??[],edited.savedLayouts??[],remote.savedLayouts??[],'savedLayouts','danh sách giao diện đã lưu');
   const activeLayoutId=merge(base.activeLayoutId??'',edited.activeLayoutId??'',remote.activeLayoutId??'','activeLayoutId','giao diện đang dùng');
   if(conflicts.length)throw new LayoutConflictError(conflicts);
-  return validateItemLayout({...(savedLayouts.length?{savedLayouts}:{}),...(activeLayoutId?{activeLayoutId}:{}),columns,tableWidth,frameWidth,cellHighlights,compactDisplay,partyGroupWidths,...(persistTracks?{partyTrackWidths:mergedTracks}:{}),groupLabels,listTitle,summaryCards});
+  return validateItemLayout({...(savedLayouts.length?{savedLayouts}:{}),...(activeLayoutId?{activeLayoutId}:{}),columns,tableWidth,frameWidth,tableFontSize,cellHighlights,compactDisplay,partyGroupWidths,...(persistTracks?{partyTrackWidths:mergedTracks}:{}),groupLabels,listTitle,summaryCards});
 }
