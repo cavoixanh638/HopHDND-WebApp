@@ -133,15 +133,40 @@ try{
     const stages=[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-stage-state')].map(badge=>{
       const value=badge.querySelector('.hdnd-print-stage-value');
       const row=badge.closest('.hdnd-print-stage-row'),outer=badge.closest('td');
-      const b=badge.getBoundingClientRect(),t=outer.getBoundingClientRect();
-      const css=getComputedStyle(badge);
-      return {tone:badge.dataset.tone,background:css.backgroundColor,
-        border:css.borderTopWidth,weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,
+      const label=row.querySelector('.hdnd-print-stage-label');
+      const r=row.getBoundingClientRect(),t=outer.getBoundingClientRect();
+      const b=badge.getBoundingClientRect(),l=label.getBoundingClientRect(),v=value?.getBoundingClientRect();
+      const css=getComputedStyle(badge),rowCss=getComputedStyle(row),labelCss=getComputedStyle(label);
+      const labelRange=document.createRange();
+      labelRange.selectNodeContents(label);
+      const labelTextRect=labelRange.getBoundingClientRect();
+      const labelTextLeft=l.left+parseFloat(labelCss.paddingLeft)+parseFloat(labelCss.borderLeftWidth);
+      const previous=row.previousElementSibling;
+      const before=previous?.getBoundingClientRect();
+      const borderWidths=['Top','Right','Bottom','Left'].map(side=>parseFloat(rowCss['border'+side+'Width']));
+      const borderStyles=['Top','Right','Bottom','Left'].map(side=>rowCss['border'+side+'Style']);
+      const previousDivider=previous?.querySelector('.hdnd-print-stage-state')?.getBoundingClientRect();
+      return {tone:badge.dataset.tone,rowTone:row.dataset.tone,background:rowCss.backgroundColor,
+        outerBorderWidths:borderWidths,outerBorderStyles:borderStyles,
+        divider:parseFloat(css.borderLeftWidth),dividerStyle:css.borderLeftStyle,
+        extraStateBorders:['Top','Right','Bottom'].map(side=>parseFloat(css['border'+side+'Width'])),
+        weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,align:css.textAlign,
+        labelAlign:labelCss.textAlign,labelJustify:labelCss.justifyContent,
+        labelStartsAtLeft:labelTextRect.width>0&&Math.abs(labelTextRect.left-labelTextLeft)<=1,
         pseudo:getComputedStyle(badge,'::before').content,
-        text:value?.textContent,overflow:b.right>t.right+1||b.left<t.left-1||
-          (value&&value.scrollWidth>value.clientWidth+2),
-        separated:row===row.parentElement.firstElementChild||
-          parseFloat(getComputedStyle(row).borderTopWidth)>0};
+        label:label.textContent?.trim(),text:value?.textContent?.trim(),
+        overflow:r.right>t.right+1||r.left<t.left-1||l.left<r.left-1||b.right>r.right+1||
+          l.right>b.left+1||!v||v.left<b.left-1||v.right>b.right+1||
+          v.top<b.top-1||v.bottom>b.bottom+1||
+          label.scrollWidth>label.clientWidth+2||value.scrollWidth>value.clientWidth+2,
+        centered:!!v&&Math.abs((v.left+v.right-b.left-b.right)/2)<=1&&
+          Math.abs((v.top+v.bottom-b.top-b.bottom)/2)<=1,
+        aligned:!before||(Math.abs(r.left-before.left)<=1&&Math.abs(r.right-before.right)<=1&&
+          !!previousDivider&&Math.abs(b.left-previousDivider.left)<=1),
+        sharedDivider:Math.abs(l.right-b.left)<=1&&Math.abs(l.top-b.top)<=1&&Math.abs(l.bottom-b.bottom)<=1,
+        leftRatio:l.width/(l.width+b.width),
+        separated:!before||r.top-before.bottom>=1.5,
+        height:r.height,gap:before?r.top-before.bottom:null};
     });
     const neutral=(color)=>{
       if(color==='transparent')return true;
@@ -161,20 +186,39 @@ try{
   assert.equal(renderInfo.noWrap,'nowrap','ID nowrap not effective in print');
   assert.equal(renderInfo.contentWeight,'400','Nội dung trình must be regular weight in print');
   assert.deepEqual(renderInfo.nonMonochrome,[],'Print elements must be black text and neutral paper/grid');
-  assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>s.text&&s.tone&&!s.overflow&&s.separated),
-    'Print stage rows overlap or lose content: '+JSON.stringify(renderInfo.stages));
+  assert.equal(renderInfo.stages.length,printed.printRows*3,'Every printed record must preserve all three stage boxes');
+  assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
+    s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.separated&&s.aligned&&
+    s.centered&&s.sharedDivider&&Math.abs(s.leftRatio-.45)<=.015&&s.height>=18),
+    'Print stage compartments must align, use a 45/55 split, remain spaced and fully contain text: '+JSON.stringify(renderInfo.stages));
   for(const stage of renderInfo.stages){
-    assert.equal(stage.background,'rgba(0, 0, 0, 0)','Status text must have no colored box');
+    assert.equal(stage.background,'rgb(255, 255, 255)','Closed stage box must remain white paper');
     assert.equal(stage.color,'rgb(0, 0, 0)','All stages must use black text');
-    assert.equal(stage.border,'0px','Status text must have no individual border');
+    assert(stage.outerBorderWidths.every(width=>width>0),'Each entire label/status row needs four enclosing edges');
+    assert(stage.outerBorderStyles.every(style=>style===(stage.tone==='not-required'?'dashed':'solid')),
+      'Not required uses a dashed outer outline; other states use a solid outline');
+    assert(stage.divider>0&&stage.dividerStyle==='solid','Require a thin solid vertical internal divider');
+    assert(stage.divider<=Math.min(...stage.outerBorderWidths)+.01,'Internal divider must not be heavier than outline');
+    assert(stage.extraStateBorders.every(width=>width===0),'Status must not have a separate nested outline');
+    assert.equal(stage.labelAlign,'left','Stage label must align left');
+    // Chromium can serialize flex-start as flow-start; assert actual text geometry.
+    assert(stage.labelStartsAtLeft,'Label text must start at the inner left edge: '+JSON.stringify(stage));
+    assert.equal(stage.align,'center','Status labels must be centered');
     assert.equal(stage.pseudo,'none','Status text must have no pictogram');
     assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
     assert.equal(stage.fontStyle,stage.tone==='not-required'?'italic':'normal','Not required must be distinguishable in grayscale');
   }
   assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct status classes in fixture');
-  console.log('PRINT_REGULAR_CONTENT_AND_CLEAN_STAGE_TEXT_PASS '+JSON.stringify({
+  console.log('PRINT_CLOSED_MONOCHROME_STAGE_COMPARTMENTS_PASS '+JSON.stringify({
     font:renderInfo.contentWeight,tones:[...new Set(renderInfo.stages.map(s=>s.tone))],
-    stageStyles:renderInfo.stages.map(({tone,weight,fontStyle,color})=>({tone,weight,fontStyle,color}))}));
+    count:renderInfo.stages.length,
+    minGap:Math.min(...renderInfo.stages.map(s=>s.gap).filter(s=>s!==null)),
+    minHeight:Math.min(...renderInfo.stages.map(s=>s.height)),
+    minLeftRatio:Math.min(...renderInfo.stages.map(s=>s.leftRatio)),
+    maxLeftRatio:Math.max(...renderInfo.stages.map(s=>s.leftRatio)),
+    allCentered:renderInfo.stages.every(s=>s.centered),
+    allAligned:renderInfo.stages.every(s=>s.aligned),
+    allSharedDividers:renderInfo.stages.every(s=>s.sharedDivider)}));
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
   mkdirSync('qa-results/print-a4',{recursive:true});
   const pdfPath='qa-results/print-a4/hdnd-current-visible-a4.pdf';

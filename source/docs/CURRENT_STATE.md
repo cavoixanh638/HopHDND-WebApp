@@ -1,3 +1,9 @@
+## 27/11/2026 — Chốt bản in Tiến độ 3 khâu: ba ô khép kín 45/55
+
+Chủ dự án đồng ý phương án cuối: mỗi khâu có một khung bao cả nhãn và trạng thái, vách dọc mảnh, nhãn trái 45% / trạng thái căn giữa 55%, khoảng cách đứng 0,9mm. Chữ đen/nền trắng/viền trung tính; Sở chưa trình đậm, Không phải trình nghiêng + viền bao nét đứt. Giữ nguyên nội dung, trạng thái, quyền, dữ liệu, màn hình, các cột khác và A4 ngang. [PR #245](https://github.com/cavoixanh638/HopHDND-WebApp/pull/245): CI cũ 10/10 PASS cho phương án hộp trạng thái riêng, **không tái sử dụng làm PASS cho thiết kế mới**. QA mới đo bốn cạnh ngoài, vách dọc chung, tỷ lệ 45/55, căn giữa, tràn chữ và khoảng cách của toàn bộ 3 khâu mỗi hồ sơ; giữ kiểm tra PDF RGB mọi trang, unit và smoke. Chờ exact-head CI, release gate, Pages và kiểm tra live riêng. Baseline đã phát hành source `7c734d490254626d1b06e253b590f7aaeb182e74`, Pages [45985479252](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45985479252). Không sửa Rules, dữ liệu hoặc policy.
+
+---
+
 ## 26/11/2026 — Yêu cầu mới: in PDF dễ đọc và công cụ chỉ Admin
 
 Đổi Nội dung trình thành font-weight 400; status L03 dùng bảng con chữ thường, đường kẻ mảnh, không ô màu/ký hiệu; chốt 27/11 toàn bản in đen trắng, kiểm tra pixel RGB của PDF gốc; Sở chưa trình in đậm, Không phải trình in nghiêng, giữ nguyên text. Lịch sử hai cột Ghi chú/Tiến độ hiện tại và A+/A− chỉ Admin, kiểm thử guest/admin/signout. Khách vẫn dùng font bố cục chung và quyền sửa cột đã cấp. Xem [checkpoint](checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md). Lịch sử thô lồng trong record có public read; đây chưa phải migration server-side private audit, không sửa Rules/dữ liệu. Cần exact CI PASS, release gate và Pages/version đúng SHA trước khi ghi nhận phát hành.

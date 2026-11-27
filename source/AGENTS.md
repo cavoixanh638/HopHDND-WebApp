@@ -1,3 +1,10 @@
+## CHỈ THỊ 27/11/2026 — CHỐT TIẾN ĐỘ 3 KHÂU TRÊN BẢN IN
+
+- Thay riêng cách trình bày in của Tiến độ 3 khâu: mỗi khâu là một khung khép kín có vách ngăn dọc mảnh, nhãn bên trái (45%), trạng thái căn giữa bên phải (55%), khoảng cách dọc 0,9mm. Nền trắng, chữ đen; Sở chưa trình đậm, Không phải trình nghiêng/viền bao nét đứt. Chỉ thị này thay phần bố cục bảng con cũ dưới đây, giữ toàn bộ quy định Admin, dữ liệu, A4, quyền và release gate.
+- Kiểm thử Chromium phải đo đủ ba khâu mỗi hồ sơ: đủ bốn cạnh khung, vách dọc thật, tỷ lệ 45/55, không tràn, căn đều, không viền lồng; kiểm pixel PDF RGB mọi trang. Chỉ merge exact head đạt CI; không bypass gate, không thay Firebase production.
+
+---
+
 ## CHỈ THỊ 26/11/2026 — LỊCH SỬ VÀ CỠ CHỮ CHỈ ADMIN, BẢN IN A4
 
 - Nội dung trình in chữ thường, không đậm; Tiến độ 3 khâu in dạng bảng con tối giản: đường kẻ mảnh, không ô màu/ký hiệu, toàn bộ bản in chữ đen/nền trắng/đường kẻ trung tính, nhấn đậm Sở chưa trình, in nghiêng Không phải trình, giữ đúng text và ý nghĩa từng khâu. Xem [checkpoint](docs/checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md).
