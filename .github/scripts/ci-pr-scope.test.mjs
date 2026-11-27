@@ -128,3 +128,19 @@ test('depth-2 fetch of a merge commit can inspect its base parent',()=>{
     assert.deepEqual(changedPathsFromCheckout(clone),['README.md']);
   } finally {rmSync(upstream,{recursive:true,force:true});rmSync(clone,{recursive:true,force:true});}
 });
+
+test('UI contracts use the matching scoped suites without weakening executable QA guards',()=>{
+  for(const path of ['source/src/features/items/list-print.ts','source/src/presentation/print-layout.json','source/tests/list-print.test.ts']){
+    assert.equal(classifyPath(path),'print');
+    assert.equal(decideScope('list-browser',[path,'source/AGENTS.md']).run,true);
+    assert.equal(decideScope('list-ui-parity',[path]).run,true);
+    assert.equal(decideScope('status-cas',[path]).run,false);
+    assert.equal(decideScope('excel-schema',[path]).run,false);
+  }
+  assert.equal(classifyPath('source/src/presentation/ui-presentation.json'),'picker');
+  assert.equal(decideScope('guest-save',['source/src/presentation/ui-presentation.json']).run,true);
+  assert.equal(classifyPath('source/src/features/items/list-nowrap-widths.ts'),'presentation');
+  assert.equal(classifyPath('source/src/features/items/l03-width-geometry.ts'),'presentation');
+  assert.equal(classifyPath('source/scripts/pr95-clipboard-print-browser.mjs'),'critical');
+  assert.equal(decideScope('status-cas',['source/src/presentation/print-layout.json','source/scripts/pr95-clipboard-print-browser.mjs']).run,true);
+});

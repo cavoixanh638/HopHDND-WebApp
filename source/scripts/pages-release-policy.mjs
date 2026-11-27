@@ -92,12 +92,58 @@ export function isScopedAutopublishMigration(commit,baseline){
 // paths, handlers, URL/HTML payloads, storage keys or business-status aliases.
 // Each before/after blob is independently validated at every unpublished commit.
 export const uiPresentationPath='source/src/presentation/ui-presentation.json';
+export const printLayoutPath='source/src/presentation/print-layout.json';
+export const printQaPath='source/scripts/pr95-clipboard-print-browser.mjs';
 const uiLabelKeys=[
   'savedLayoutTrigger','savedLayoutHeading','savedLayoutUnnamed','columnOptions',
   'departmentSearch','otherSearch','departmentPlaceholder','otherPlaceholder','pickerEmpty',
 ];
 const hasExactKeys=(value,keys)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&
   Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+// Data-only visual contract. No executable input, URLs, selectors, skip flags,
+ // schema expansion, permission or status values are accepted.
+export function isSafePrintLayoutData(source){
+  if(typeof source!=='string'||source.length>2048)return false;
+  let value;
+  try{value=JSON.parse(source);}catch{return false;}
+  const number=(v,min,max)=>typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;
+  return hasExactKeys(value,['version','leftPercent','gapMm','minHeightMm','outlinePt','dividerPt','radiusMm'])&&
+    value.version===1&&Number.isInteger(value.leftPercent)&&number(value.leftPercent,35,65)&&
+    number(value.gapMm,.5,2)&&number(value.minHeightMm,4.8,8)&&
+    number(value.outlinePt,.35,.85)&&number(value.dividerPt,.25,value.outlinePt)&&
+    number(value.radiusMm,0,2);
+}
+export const isSafePrintLayoutChange=(before,after)=>isSafePrintLayoutData(before)&&isSafePrintLayoutData(after);
+
+// The existing local-only Chromium print harness is not part of the Pages
+// build/publisher. Only its stage-specific visual measurement and assertions
+// may evolve without owner approval. Preserve the remaining executable shell
+// byte-for-byte: imports, network isolation, clipboard, page/pixel QA,
+// cleanup, and file/command handling. This is a conservative lexical boundary,
+// not a sandbox; changes outside it still require review and full QA.
+function printVisualParts(source){
+  if(typeof source!=='string'||source.length>100000)return null;
+  const anchors=[
+    "    const stages=[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-stage-state')].map(badge=>{",
+    '    const neutral=(color)=>',
+    "  assert.deepEqual(renderInfo.nonMonochrome,[],'Print elements must be black text and neutral paper/grid');\n",
+    '  const pdf=await page.pdf(',
+  ];
+  if(anchors.some(anchor=>source.split(anchor).length!==2))return null;
+  const [a,b,c,e]=anchors.map(anchor=>source.indexOf(anchor));
+  const d=c+anchors[2].length;
+  if(!(a<b&&b<c&&d<e))return null;
+  return {fixed:source.slice(0,a)+source.slice(b,d)+source.slice(e),
+    visual:source.slice(a,b)+'\n'+source.slice(d,e)};
+}
+export function isSafePrintQaChange(before,after){
+  const a=printVisualParts(before),b=printVisualParts(after);
+  if(!a||!b||a.fixed!==b.fixed)return false;
+  const privileged=/\b(?:fetch|WebSocket|XMLHttpRequest|EventSource|localStorage|sessionStorage|indexedDB|globalThis|process|Function|eval|require|import|spawnSync|execFileSync|readFileSync|writeFileSync|createServer|constructor|__proto__|prototype|Proxy|Reflect|window|navigator|setTimeout|setInterval|exit|skip)\b|\bpage\s*\.|\bcontext\s*\.|\bbrowser\s*\.|dangerouslySetInnerHTML/;
+  return !privileged.test(b.visual)&&
+    b.visual.includes('getBoundingClientRect()')&&b.visual.includes('renderInfo.stages')&&
+    b.visual.includes('assert(')&&b.visual.includes('assert.equal(');
+}
 const validUiText=(value)=>typeof value==='string'&&value.length>0&&value.length<=180&&
   value.trim()===value&&value.normalize('NFC')===value&&!/[<>{}\p{C}\u2028\u2029]/u.test(value);
 export function isSafeUiPresentationData(source){
@@ -221,7 +267,9 @@ const uiJsonImport=/^import uiPresentation from ['"]\.\.\/\.\.\/presentation\/ui
 const uiAliasImport=/^import \{(?:displayOrganisationName|organisationSearchText|displayOrganisationName,\s*organisationSearchText|organisationSearchText,\s*displayOrganisationName)\} from ['"]\.\.\/\.\.\/domain\/organisation-display['"];?$/;
 function stripAuditedPresentationImports(path,imports){
   if(!/^source\/src\/features\/(?:items|reports)\//.test(path))return imports;
-  return imports.split('\n').filter(line=>!uiJsonImport.test(line)&&!uiAliasImport.test(line)).join('\n');
+  const printConfigImport=/^import printLayout from ['"]\.\.\/\.\.\/presentation\/print-layout\.json['"];?$/;
+  return imports.split('\n').filter(line=>!uiJsonImport.test(line)&&!uiAliasImport.test(line)&&
+    !(path==='source/src/features/items/list-print.ts'&&printConfigImport.test(line))).join('\n');
 }
 export function isSafeOrdinaryFeatureChange(path,before,after){
   if(!ordinaryPresentationModules.has(path)||
@@ -280,7 +328,8 @@ const uiModules=new Set([
 ]);
 
 export function isAutoUiPath(path){
-  return path===uiPresentationPath||/^source\/src\/[a-zA-Z0-9_./-]+\.css$/.test(path)||
+  return path===uiPresentationPath||path===printLayoutPath||path===printQaPath||
+    path==='source/AGENTS.md'||path==='AGENTS.md'||/^source\/src\/[a-zA-Z0-9_./-]+\.css$/.test(path)||
     /^source\/src\/[a-zA-Z0-9_./-]+\.(svg|png|webp|jpg|jpeg)$/.test(path)||
     /^source\/src\/qa\/[a-zA-Z0-9_./-]+\.(ts|tsx|css)$/.test(path)||
     /^source\/tests\/[a-zA-Z0-9_./-]+$/.test(path)||
@@ -356,6 +405,14 @@ export function classifyCommits({commits,baseline,head,approved,sourceContents={
     for(const file of commit.files??[]){
       sourceChanged=true;
       const change=commit.sourceChanges?.[file];
+      if(file===printLayoutPath){
+        if(!isSafePrintLayoutChange(change?.before,change?.after))blocked.push(file);
+        continue;
+      }
+      if(file===printQaPath){
+        if(!isSafePrintQaChange(change?.before,change?.after))blocked.push(file);
+        continue;
+      }
       if(file===uiPresentationPath){
         if(!isSafeUiPresentationChange(change?.before,change?.after))blocked.push(file);
         continue;
@@ -413,7 +470,8 @@ function readCommitChanges(baseline,head){
       .split('\n').filter(Boolean);
     const sourceChanges={};
     for(const file of files){
-      if(file!==uiPresentationPath&&!ordinaryPresentationModules.has(file)&&!qaSchedulingWorkflows.has(file))continue;
+      if(file!==uiPresentationPath&&file!==printLayoutPath&&file!==printQaPath&&
+        !ordinaryPresentationModules.has(file)&&!qaSchedulingWorkflows.has(file))continue;
       // Use immutable before/after blobs for this commit. Missing or deleted
       // paths stay HOLD; no reading from a mutable checkout.
       try{

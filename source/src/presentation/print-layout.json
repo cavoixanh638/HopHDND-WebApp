@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "leftPercent": 45,
+  "gapMm": 0.9,
+  "minHeightMm": 5,
+  "outlinePt": 0.55,
+  "dividerPt": 0.4,
+  "radiusMm": 1
+}

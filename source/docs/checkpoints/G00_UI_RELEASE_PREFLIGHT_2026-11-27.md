@@ -1,0 +1,11 @@
+# G00 — Release preflight, tự phát hành UI thông thường (27/11/2026)
+
+## Root cause
+[#245](https://github.com/cavoixanh638/HopHDND-WebApp/pull/245) 10/10 CI nhưng [publisher](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/46024161588) HOLD vì `source/AGENTS.md` và `source/scripts/pr95-clipboard-print-browser.mjs`. Việc phân loại quá muộn và hai policy release/CI chưa đồng bộ. [Issue #247](https://github.com/cavoixanh638/HopHDND-WebApp/issues/247).
+
+## Quy trình thống nhất
+- UI thuần: ưu tiên CSS, dữ liệu trình bày, module geometry đã duyệt, test UI; title fix(ui), feat(ui), style(ui), fix(print), feat(print) hoặc [AUTO-UI]. CI Verify source phân loại cả diff PR riêng và full history từ published SHA đọc tại base; nếu PR riêng auto thì bắt buộc full history auto dù title không đúng quy ước. Title UI chỉ siết kiểm tra, không cấp quyền. Nếu không auto thì FAIL sớm, không merge để rồi bắt owner Run workflow. PR lõi/migration phải được phân loại riêng, HOLD đúng.
+- Thông số in (tỷ lệ, khoảng cách, chiều cao, viền, bo góc) dùng print-layout.json có schema chính xác và giới hạn; không có skip, selector, code hoặc URL. Production CSS và Chromium cùng đọc hợp đồng; kiểm thử đo thật và vẫn bắt buộc 3 khâu/hồ sơ, text, chia ô, căn lề, PDF RGB, khổ giấy, pagination. Unit vẫn kiểm CSS thực tế.
+- Markdown AGENTS là tài liệu không triển khai. Runner print có hai vùng đo/assert hình học đã duyệt; trước/sau phải giữ nguyên toàn bộ shell bên ngoài, network block, dữ liệu, clipboard, PDF pixel, A4, cleanup, commands. Không whitelist arbitrary scripts. Guard lexical không phải sandbox; code mới chưa nhận diện hoặc thay shell phải HOLD. Executable runner edits vẫn full QA; config/print code-only chỉ chạy suite print và parity, không kéo theo Excel/CAS. Geometry/UI data scope đồng bộ.
+- Không đổi publisher, workflow owner approval, biến, Spark confirmation, Rules hash, quyền hay dữ liệu; migration policy vẫn cần owner approval một lần theo nguyên tắc cũ. Không tự phê duyệt. Sau migration phải có một lượt sửa UI thực tế auto + publish + Pages + version.json đúng SHA; không đánh đồng synthetic test với production.
+- Kiểm thử Node policy, scope contract, TypeScript, full QA và Chromium thật của chính migration trước merge. Theo dõi exact SHA qua PR; không báo PASS sớm.

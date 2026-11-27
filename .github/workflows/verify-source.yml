@@ -20,11 +20,37 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+      - name: Predict Pages release mode before merge (NO DEPLOY)
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        working-directory: .
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          PR_BASE="$(git rev-parse "$GITHUB_SHA^1")"
+          # Read the deployed receipt from the base, never a PR-modified version.json.
+          PUBLISHED_BASELINE="$(git show "$PR_BASE:version.json" | node --input-type=module -e 'import {readFileSync} from "node:fs"; const v=JSON.parse(readFileSync(0,"utf8")); if(v.mode!=="spark"||!/^[0-9a-f]{40}$/.test(v.source_sha))throw Error("Invalid published source"); console.log(v.source_sha)')"
+          PR_MODE="$(node source/scripts/pages-release-policy.mjs --baseline "$PR_BASE" --head "$GITHUB_SHA" --print-mode)"
+          echo "PAGES_PR_CHANGE_MODE=$PR_MODE"
+          node source/scripts/pages-release-policy.mjs --baseline "$PUBLISHED_BASELINE" --head "$GITHUB_SHA"
+          # Detect UI-only PRs from content, even if the title convention is missed.
+          # A UI title can only tighten the check; it never authorizes deployment.
+          REQUIRE_AUTO=false
+          if [ "$PR_MODE" = auto ]; then REQUIRE_AUTO=true; fi
+          case "$PR_TITLE" in
+            'fix(ui):'*|'feat(ui):'*|'style(ui):'*|'fix(print):'*|'feat(print):'*|'[AUTO-UI]'*) REQUIRE_AUTO=true ;;
+          esac
+          if [ "$REQUIRE_AUTO" = true ]; then
+            node source/scripts/pages-release-policy.mjs --baseline "$PUBLISHED_BASELINE" --head "$GITHUB_SHA" --assert-mode auto --print-mode
+          fi
       - name: Install exact dependencies
         run: npm ci
       - name: Typecheck

@@ -27,6 +27,8 @@ const safePresentationModules = new Set([
   'source/src/data/fit-table-columns.ts',
   'source/src/data/resize-last-column.ts',
   'source/src/features/items/compact-columns.ts',
+  'source/src/features/items/list-nowrap-widths.ts',
+  'source/src/features/items/l03-width-geometry.ts',
 ]);
 const pickerPresentationModules = new Set([
   'source/src/features/items/CellPickerPopupView.tsx',
@@ -40,7 +42,8 @@ export function classifyPath(path) {
   // Workflow / script / policy edits are ALWAYS full matrix, even for this script.
   if (path.startsWith('.github/') || path.startsWith('qa-standards/')) return 'critical';
   if (path === 'README.md' || path.startsWith('docs/') || path.startsWith('source/docs/') || path.endsWith('.md')) return 'docs';
-  if (path === 'source/src/features/items/list-print.ts') return 'print';
+  if (path === 'source/src/features/items/list-print.ts' || path === 'source/src/presentation/print-layout.json') return 'print';
+  if (path === 'source/src/presentation/ui-presentation.json') return 'picker';
   if (pickerPresentationModules.has(path)) return 'picker';
   if (safePresentationModules.has(path)) return 'presentation';
   // CSS cannot change Firebase Rules or write logic, but may change guest/admin affordances.

@@ -8,7 +8,8 @@ import {classifyCommits,isAutoUiPath,isPagesArtifactCommit,
   isBootstrapPolicyCommit,isSafePresentationSource,
   isVettedSingleTableUi,isScopedAutopublishMigration,reviewedUiTransition,
   isReviewedCiOptimization,reviewedCiOptimization,isSafeOrdinaryFeatureChange,isSafeQaSchedulingChange,
-  uiPresentationPath,isSafeUiPresentationData,isSafeUiPresentationChange}
+  uiPresentationPath,isSafeUiPresentationData,isSafeUiPresentationChange,
+  printLayoutPath,printQaPath,isSafePrintLayoutData,isSafePrintLayoutChange,isSafePrintQaChange}
   from './pages-release-policy.mjs';
 
 const baseline='cc81aee8114a969892f6a812f03ca37e44a6d5b7';
@@ -526,6 +527,60 @@ test('actual git history: valid UI-only push auto, invalid earlier change cannot
     const fifth=save('guarded mixed core');
     assert.deepEqual(decision(fourth,fifth).blocked,['source/src/features/items/CellPicker.tsx']);
     writeFileSync(p,after);const sixth=save('ordinary label after guarded edit');
-    assert.equal(decision(fourth,sixth).mode,'hold');
+    assert.equal(decision(fifth,sixth).mode,'auto','The ordinary PR itself is UI-only');
+    assert.equal(decision(fourth,sixth).mode,'hold','Unpublished guarded base still blocks the whole release');
   }finally{rmSync(temp,{recursive:true,force:true});}
+});
+
+test('ordinary print config plus documentation needs no owner approval; invalid data and mixed changes HOLD',()=>{
+  const before=readFileSync(new URL('../../'+printLayoutPath,import.meta.url),'utf8');
+  const after=JSON.stringify({...JSON.parse(before),leftPercent:46,gapMm:1});
+  assert.equal(isSafePrintLayoutData(before),true);
+  assert.equal(isSafePrintLayoutChange(before,after),true);
+  const files=[printLayoutPath,'source/AGENTS.md','source/docs/CURRENT_STATE.md','source/tests/list-print.test.ts'];
+  const dataCommit=commit(head,files,{sourceChanges:{[printLayoutPath]:{before,after}}});
+  assert.deepEqual(decide([dataCommit]),{allowed:true,mode:'auto',blocked:[]});
+  for(const bad of [undefined,'{}',JSON.stringify({...JSON.parse(before),leftPercent:99}),
+    JSON.stringify({...JSON.parse(before),skip:true}),JSON.stringify({...JSON.parse(before),dividerPt:2}),
+    JSON.stringify({...JSON.parse(before),gapMm:0}),JSON.stringify({...JSON.parse(before),radiusMm:'1;display:none'})]){
+    assert.equal(isSafePrintLayoutChange(before,bad),false);
+    assert.equal(decide([commit(head,[printLayoutPath],{sourceChanges:{[printLayoutPath]:{before,after:bad}}})]).mode,'hold');
+  }
+  for(const guarded of ['source/firebase/database.spark.rules.json','source/src/data/firebase-repository.ts',
+    'source/scripts/pages-release-policy.mjs','.github/workflows/verify-source.yml','source/scripts/unknown-qa.mjs']){
+    assert.deepEqual(decide([dataCommit,commit(head,[guarded])]),{allowed:false,mode:'hold',blocked:[guarded]});
+  }
+});
+test('print-only visual QA can evolve, but the real local browser and PDF acceptance shell is protected',()=>{
+  const before=readFileSync(new URL('../../'+printQaPath,import.meta.url),'utf8');
+  const after=before.replace("    assert(stage.labelStartsAtLeft,","    // geometry-only refinement\n    assert(stage.labelStartsAtLeft,");
+  assert.notEqual(before,after);
+  assert.equal(isSafePrintQaChange(before,after),true);
+  assert.deepEqual(decide([commit(head,[printQaPath,'source/AGENTS.md'],{sourceChanges:{[printQaPath]:{before,after}}})]),
+    {allowed:true,mode:'auto',blocked:[]});
+  for(const bad of [
+    after.replace("assert.equal(nonNeutral,0","assert.equal(nonNeutral,nonNeutral"),
+    after.replace("external.push(u.href);return route.abort();","return route.continue();"),
+    after.replace("  const pdf=await page.pdf(","  const pdf=await page.pdf(").replace("assert(pages>=2","assert(pages>=0"),
+    after.replace("    assert(stage.labelStartsAtLeft,","    fetch('https://example.invalid');\n    assert(stage.labelStartsAtLeft,"),
+    after.replace("    assert(stage.labelStartsAtLeft,","    process.exit(0);\n    assert(stage.labelStartsAtLeft,"),
+    after.replace("    assert(stage.labelStartsAtLeft,","    await page.goto('https://example.invalid');\n    assert(stage.labelStartsAtLeft,"),
+    '',
+  ]){
+    assert.equal(isSafePrintQaChange(before,bad),false);
+    assert.equal(decide([commit(head,[printQaPath],{sourceChanges:{[printQaPath]:{before,after:bad}}})]).mode,'hold');
+  }
+  assert.equal(decide([commit(head,[printQaPath])]).mode,'hold');
+});
+test('premerge source CI predicts the actual historical release mode, not just changed filenames',()=>{
+  const flow=readFileSync(new URL('../../.github/workflows/verify-source.yml',import.meta.url),'utf8');
+  assert.ok(flow.includes('fetch-depth: 0'));
+  assert.ok(flow.includes('persist-credentials: false'));
+  assert.ok(flow.includes('Predict Pages release mode before merge (NO DEPLOY)'));
+  assert.ok(flow.includes('--head "$GITHUB_SHA" --assert-mode auto'));
+  assert.ok(flow.includes("'fix(print):'*"));
+  assert.ok(flow.includes('github.event.pull_request.title'));
+  assert.ok(flow.includes('git show "$PR_BASE:version.json"'));
+  assert.ok(flow.includes('--baseline "$PR_BASE" --head "$GITHUB_SHA" --print-mode'));
+  assert.ok(flow.includes('if [ "$PR_MODE" = auto ]; then REQUIRE_AUTO=true; fi'));
 });
