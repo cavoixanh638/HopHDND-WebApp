@@ -4,6 +4,7 @@ import {catalogFromItems} from '../src/data/catalogs';
 import {defaultItemLayout} from '../src/data/item-preferences';
 import {ReportDetailGrid} from '../src/features/reports/ReportDetailGrid';
 import {ColumnResizeHandle} from '../src/components/ColumnResizeHandle';
+import {CellHistoryAction} from '../src/components/CellHistoryAction';
 import {CellPicker} from '../src/features/items/CellPicker';
 import {ContentEditor} from '../src/features/items/ContentEditor';
 import {InlineNoteEditor} from '../src/features/items/InlineNoteEditor';
@@ -45,7 +46,7 @@ beforeEach(()=>{
 afterEach(()=>vi.unstubAllGlobals());
 describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()=>{
   it('does not expose edits, presets, settings, resize handles or saving for anonymous guests even if list rights allow edits',()=>{
-    const props={...testProps(),readOnlyViewer:true};
+    const props={...testProps(),readOnlyViewer:true,onCellHistory:vi.fn()};
     hooks.begin();const tree=ReportDetailGrid(props);const all=nodes(tree);
     expect(text(tree)).not.toContain('Chỉnh sửa nháp');
     expect(text(tree)).not.toContain('Cấu hình popup / cột');
@@ -60,26 +61,38 @@ describe('Bảng chi tiết — khách chỉ xem và độ rộng cửa sổ',()
     expect(text(tree)).not.toContain('Xóa bộ lọc');
     expect(text(tree)).not.toContain('Rộng popup');
     expect(all.some(n=>n.type==='button'&&text(n)==='Mở Danh sách dữ liệu')).toBe(false);
-    expect(all.some(n=>n.props?.className==='cell-history-action')).toBe(false);
+    expect(all.some(n=>n.type===CellHistoryAction||n.props?.className==='cell-history-action')).toBe(false);
     expect(props.onUpdate).not.toHaveBeenCalled();
   });
   it('lets an anonymous visitor edit granted popup cells without exposing admin layout controls',()=>{
-    const props={...testProps(),guestViewer:true,readOnlyViewer:false};
+    const props={...testProps(),guestViewer:true,readOnlyViewer:false,onCellHistory:vi.fn()};
     props.canEditCell=vi.fn((_id:string,field:string)=>field==='note');
     hooks.begin();let tree=ReportDetailGrid(props);
     expect(text(tree)).toContain('Chỉnh sửa nháp');
     for(const term of ['Cấu hình popup / cột','Mẫu bảng popup','Hiện đủ cột Excel','Rộng popup']){
       expect(text(tree)).not.toContain(term);
     }
-    expect(nodes(tree).some(n=>n.type===ColumnResizeHandle)).toBe(false);
+    expect(nodes(tree).some(n=>n.type===ColumnResizeHandle||n.type===CellHistoryAction)).toBe(false);
     const edit=nodes(tree).find(n=>n.type==='button'&&text(n)==='Chỉnh sửa nháp');
     expect(edit).toBeDefined();edit!.props.onClick();
     hooks.begin();tree=ReportDetailGrid(props);
+    expect(nodes(tree).some(n=>n.type===CellHistoryAction)).toBe(false);
     const fields=nodes(tree).filter(n=>n.type===InlineNoteEditor);
     expect(fields).toHaveLength(2);
     expect(fields[0].props.onCommit('Khách không đăng nhập Google')).toBe(true);
     expect(props.onUpdate).toHaveBeenCalledWith(props.items[0].recordId,
       {note:'Khách không đăng nhập Google'});
+  });
+  it('allows only Admin to open history on note and specific progress, even with a callback supplied',()=>{
+    const props={...testProps(),canCustomizePopup:true,onCellHistory:vi.fn()};
+    hooks.begin();let tree=ReportDetailGrid(props);
+    const actions=nodes(tree).filter(n=>n.type===CellHistoryAction);
+    expect(actions).toHaveLength(props.items.length*2);
+    expect(actions.every(n=>/Ghi chú|Tiến độ hiện tại/.test(n.props.label))).toBe(true);
+    actions[0].props.onClick();
+    expect(props.onCellHistory).toHaveBeenCalledOnce();
+    hooks.begin();tree=ReportDetailGrid({...props,canCustomizePopup:false,guestViewer:true});
+    expect(nodes(tree).some(n=>n.type===CellHistoryAction)).toBe(false);
   });
   it('keeps a separate edit mode for a signed-in user and refuses save after permission is revoked',()=>{
     const props={...testProps(),readOnlyViewer:false};

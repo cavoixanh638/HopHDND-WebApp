@@ -146,7 +146,9 @@ describe.skipIf(!enabled)('Firebase FULL Rules Auth+Functions+RTDB: 14 business/
     const saved=(await a.save([request]))[0];
     expect(saved.ok,saved.message).toBe(true);
     expect((await received)[0].revision).toBe(2);
-    expect((await a.history('r1'))[0].changes.note).toBe('ghi chú mới');
+    await expect(a.history('r1')).rejects.toThrow('Chỉ quản trị');
+    await expect(b.history('r1')).rejects.toThrow('Chỉ quản trị');
+    expect((await repo('admin',true).history('r1'))[0].changes.note).toBe('ghi chú mới');
     const retry=(await a.save([request]))[0];
     expect(retry.ok,retry.message).toBe(true);
     expect((await a.list())[0].revision).toBe(2);
@@ -307,7 +309,8 @@ describe.skipIf(!enabled)('Firebase FULL Rules Auth+Functions+RTDB: 14 business/
       expect(saved.ok,saved.message+' index '+index).toBe(true);
       current=saved.item!;
     }
-    const history=await a.history('r1');
+    await expect(a.history('r1')).rejects.toThrow('Chỉ quản trị');
+    const history=await repo('admin',true).history('r1');
     expect(history).toHaveLength(50);
     expect(history[0].changes.note).toBe('lần 3');
     expect(history.at(-1)?.changes.note).toBe('lần 52');

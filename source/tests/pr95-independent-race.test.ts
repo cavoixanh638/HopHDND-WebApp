@@ -177,7 +177,9 @@ describe.skipIf(!activeEmulator)('PR95 L3 race/idempotency with REAL Firebase Em
         actor:editor.uid,changes:{note:changedNote},oldValues:{note:before!.note}
       });
       expect(history.at).toEqual(expect.any(Number));
-      expect(await repository.history(before!.recordId)).toEqual([
+      await expect(repository.history(before!.recordId)).rejects.toThrow('Chỉ quản trị');
+      const adminHistory=new FirebaseRepository(adminDb,()=>actor,()=>({columns:{}}),rowsPath,approval.expected);
+      expect(await adminHistory.history(before!.recordId)).toEqual([
         expect.objectContaining({
           operationId:patch!.operationId,recordId:before!.recordId,
           changes:{note:changedNote},oldValues:{note:before!.note}

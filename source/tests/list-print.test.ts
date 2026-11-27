@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
-import {LIST_A4_PRINT_CSS} from '../src/features/items/list-print';
+import {LIST_A4_PRINT_CSS,printStageTone} from '../src/features/items/list-print';
 describe('A4 print content contract',()=>{
   it('uses landscape A4 and only heading + copied visible table, no extra labels',()=>{
     expect(LIST_A4_PRINT_CSS).toContain('size:A4 landscape;');
@@ -23,5 +23,43 @@ describe('A4 print content contract',()=>{
   it('never prints an editable placeholder as business content',()=>{
     const source=readFileSync(new URL('../src/features/items/list-print.ts',import.meta.url),'utf8');
     expect(source).toContain("value.classList.contains('inline-note-empty')?'—':displayText(value)");
+  });
+});
+
+describe('Readable print status and normal content typography',()=>{
+  it('prints regular content and clean unboxed status text with grayscale-readable emphasis',()=>{
+    expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-document-main\{\s*font-weight:400!important/);
+    expect(LIST_A4_PRINT_CSS).not.toContain('data-marker');
+    expect(LIST_A4_PRINT_CSS).toContain('padding:0;border:0;background:transparent');
+    expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-submitted"\]\{\s*color:#[0-9a-f]+;font-weight:700/);
+    expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-required"\]\{\s*color:#[0-9a-f]+;font-style:italic/);
+    expect(LIST_A4_PRINT_CSS).toContain('minmax(0,43fr) minmax(0,57fr)');
+    for(const tone of ['not-submitted','not-required'])
+      expect(LIST_A4_PRINT_CSS).toContain('data-tone="'+tone+'"');
+    // All literal colors must have equal RGB channels (including shorthand).
+    for(const match of LIST_A4_PRINT_CSS.matchAll(/#[0-9a-f]{3,6}(?![0-9a-z-])/gi)){
+      const hex=match[0].slice(1);const rgb=hex.length===3?[...hex]:hex.match(/../g)!;
+      expect(new Set(rgb).size,match[0]).toBe(1);
+    }
+    expect(LIST_A4_PRINT_CSS).toContain('background:#fff!important');
+  });
+  it('classifies each known milestone within its own stage and preserves neutral unknowns',()=>{
+    for(const field of ['progressParty','progressBuild','progressCouncil']){
+      expect(printStageTone(field,'Sở chưa trình')).toBe('not-submitted');
+      expect(printStageTone(field,'VP đang xử lý')).toBe('processing');
+      expect(printStageTone(field,'VP đang thực hiện')).toBe('processing');
+      expect(printStageTone(field,'Chưa xác minh')).toBe('neutral');
+    }
+    for(const text of ['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL'])
+      expect(printStageTone('progressParty',text)).toBe('waiting');
+    expect(printStageTone('progressBuild','Đã trình, chờ QĐ')).toBe('waiting');
+    expect(printStageTone('progressParty','Đã có TBKL')).toBe('completed');
+    expect(printStageTone('progressBuild','Đã có QĐ')).toBe('completed');
+    expect(printStageTone('progressCouncil','Hoàn thành')).toBe('completed');
+    expect(printStageTone('progressParty','Không phải trình')).toBe('not-required');
+    expect(printStageTone('progressBuild','Không phải trình')).toBe('not-required');
+    expect(printStageTone('progressBuild','Đã có TBKL')).toBe('neutral');
+    expect(printStageTone('progressParty','Hoàn thành')).toBe('neutral');
+    expect(printStageTone('progressCouncil','Không phải trình')).toBe('neutral');
   });
 });

@@ -1,3 +1,5 @@
+import {canonicalStatus} from '../../domain/status-contract';
+
 /** A4 landscape print snapshot of exactly the List heading and visible cells.
  * Preserve semantic L03/L04 rows, use original ID as one unbroken value,
  * and show a bare page number at the top only from page 2 onwards.
@@ -11,7 +13,7 @@ export const LIST_A4_PRINT_CSS=`
     content:counter(page);
     font-family:Arial,"Segoe UI",sans-serif;
     font-size:9pt;
-    color:#27313a;
+    color:#000;
   }
 }
 @page:first{@top-center{content:none}}
@@ -22,27 +24,27 @@ export const LIST_A4_PRINT_CSS=`
   body[data-hdnd-a4-print="true"]{margin:0!important;background:#fff!important}
   #hdnd-a4-print-root{
     display:block!important;position:static!important;margin:0!important;padding:0!important;
-    background:#fff!important;color:#18222c!important;
+    background:#fff!important;color:#000!important;
     font-family:Arial,"Segoe UI",sans-serif!important;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
+  #hdnd-a4-print-root *{color:#000!important;text-shadow:none!important;box-shadow:none!important}
   #hdnd-a4-print-root h1{
     font-size:14pt;font-weight:700;text-align:center;
     margin:0 0 4mm;padding:0;line-height:1.25;
   }
   #hdnd-a4-print-root table{
     border-collapse:collapse;border-spacing:0;width:100%;table-layout:fixed;
-    font-size:8.15pt;line-height:1.3;color:#18222c;
+    font-size:8.15pt;line-height:1.3;color:#000;
   }
   #hdnd-a4-print-root thead{display:table-header-group}
   #hdnd-a4-print-root tr{break-inside:avoid;page-break-inside:avoid}
   #hdnd-a4-print-root th,#hdnd-a4-print-root td{
-    border:.4pt solid #98a3ad;vertical-align:middle;padding:2mm 1.3mm;
+    border:.4pt solid #888;vertical-align:middle;padding:2mm 1.3mm;
     text-align:left;white-space:normal;overflow-wrap:break-word;word-break:normal;
-    background:#fff;color:#18222c;
+    background:#fff;color:#000;
   }
   #hdnd-a4-print-root th{
-    font-weight:700;text-align:center;background:#eef2f5!important;
+    font-weight:700;text-align:center;background:#fff!important;
     padding:2.3mm 1mm;
   }
   /* No line break inside original 4-character IDs (NQ01/BC03). The
@@ -53,38 +55,39 @@ export const LIST_A4_PRINT_CSS=`
     overflow-wrap:normal!important;
   }
   #hdnd-a4-print-root .hdnd-print-document-main{
-    font-weight:650;line-height:1.36;white-space:pre-line;
+    font-weight:400!important;line-height:1.36;white-space:pre-line;
   }
   #hdnd-a4-print-root .hdnd-print-document-meta{
-    margin-top:1mm;color:#536877;line-height:1.26;
+    margin-top:1mm;color:#000;line-height:1.26;
   }
-  /* Mirror the three L03 rails as explicit label/status pairs, never a
-     flattened concatenation. Entire stage rows are kept together. */
+  /* Monochrome administrative print: black text, white paper and neutral
+     grid lines only. Emphasize overdue submission and not-required text. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
-    display:grid;grid-template-columns:minmax(0,45%) minmax(0,55%);
-    align-items:center;gap:1.4mm;margin:1mm 0;
+    display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);
+    align-items:center;gap:1.4mm;padding:1mm 0;
     break-inside:avoid;page-break-inside:avoid;
   }
+  #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
+    border-top:.35pt solid #aaa;
+  }
   #hdnd-a4-print-root .hdnd-print-stage-label{
-    font-size:7.7pt;font-weight:650;line-height:1.26;
-    overflow-wrap:break-word;
+    font-size:7.7pt;font-weight:400;line-height:1.3;
+    min-width:0;overflow-wrap:anywhere;color:#000;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
-    display:block;min-width:0;padding:1.25mm 1mm;border-radius:1.2mm;
-    text-align:center;font-weight:600;font-size:7.7pt;line-height:1.25;
-    background:#e8eef4;color:#304a60;overflow-wrap:break-word;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    display:block;min-width:0;box-sizing:border-box;
+    padding:0;border:0;background:transparent;
+    text-align:left;font-weight:400;font-size:8pt;line-height:1.3;
+    color:#000;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
-    background:#fae3e9;color:#9e3045;
+    color:#000;font-weight:700;
   }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="processing"]{
-    background:#ffecd7;color:#8c5615;
+  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"]{
+    color:#000;font-style:italic;
   }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="completed"],
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="complete"],
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="approved"]{
-    background:#def2e5;color:#17683f;
+  #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
+    font-weight:400!important;
   }
   /* The L04 source has 4 independent office/room/staff lines. */
   #hdnd-a4-print-root .hdnd-print-staff-row{
@@ -93,9 +96,8 @@ export const LIST_A4_PRINT_CSS=`
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-staff-tag{
-    background:#ebf3f0;color:#4c7465;border-radius:1mm;
-    font-size:7pt;font-weight:700;text-align:center;padding:1mm .6mm;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    background:transparent;color:#000;
+    font-size:7pt;font-weight:700;text-align:left;padding:0 .6mm 0 0;
   }
   #hdnd-a4-print-root .hdnd-print-staff-value{
     font-size:8pt;white-space:pre-wrap;overflow-wrap:break-word;
@@ -122,6 +124,26 @@ function appendPart(parent:HTMLElement,tag:'div'|'span',className:string,value:s
   parent.appendChild(el);
   return el;
 }
+/** Print categories are derived from the exact known status, not the
+ * optional screen palette. Never label unfamiliar text as completed. */
+export type PrintStageTone='not-submitted'|'processing'|'waiting'|'completed'|'not-required'|'neutral';
+export function printStageTone(field:string,value:string):PrintStageTone{
+  if(field!=='progressParty'&&field!=='progressBuild'&&field!=='progressCouncil')return 'neutral';
+  const status=canonicalStatus(field,value);
+  if(status==='Sở chưa trình')return 'not-submitted';
+  if(status==='VP đang xử lý')return 'processing';
+  if(field!=='progressCouncil'&&status==='Không phải trình')return 'not-required';
+  if(field==='progressParty'){
+    if(status==='Đã có TBKL')return 'completed';
+    if(['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL'].includes(status))return 'waiting';
+  }
+  if(field==='progressBuild'){
+    if(status==='Đã có QĐ')return 'completed';
+    if(status==='Đã trình, chờ QĐ')return 'waiting';
+  }
+  if(field==='progressCouncil'&&status==='Hoàn thành')return 'completed';
+  return 'neutral';
+}
 function printStageRows(source:Element,target:HTMLTableCellElement):void {
   for(const row of Array.from(source.querySelectorAll('.compact-stage-row'))){
     const labelElement=row.querySelector('.compact-stage-title');
@@ -132,9 +154,11 @@ function printStageRows(source:Element,target:HTMLTableCellElement):void {
     const status=row.querySelector('.compact-stage-state');
     const line=appendPart(target,'div','hdnd-print-stage-row','');
     appendPart(line,'span','hdnd-print-stage-label',label);
-    const badge=appendPart(line,'span','hdnd-print-stage-state',displayText(status)||'—');
-    const tone=status?.getAttribute('data-progress-tone')??row.getAttribute('data-progress-tone');
-    if(tone)badge.dataset.tone=tone;
+    const shown=displayText(status)||'—';
+    const badge=appendPart(line,'span','hdnd-print-stage-state','');
+    appendPart(badge,'span','hdnd-print-stage-value',shown);
+    const tone=printStageTone(row.getAttribute('data-stage-field')??'',shown);
+    badge.dataset.tone=tone;
   }
 }
 function printStaffRows(source:Element,target:HTMLTableCellElement):void {

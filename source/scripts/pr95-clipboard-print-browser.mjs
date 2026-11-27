@@ -129,9 +129,52 @@ try{
   const renderInfo=await page.evaluate(()=>{
     const c=document.querySelector('#hdnd-a4-print-root td[data-print-kind="displayCode"]');
     const st=c?getComputedStyle(c):null;
-    return {noWrap:st?.whiteSpace,break:st?.wordBreak};
+    const main=document.querySelector('#hdnd-a4-print-root .hdnd-print-document-main');
+    const stages=[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-stage-state')].map(badge=>{
+      const value=badge.querySelector('.hdnd-print-stage-value');
+      const row=badge.closest('.hdnd-print-stage-row'),outer=badge.closest('td');
+      const b=badge.getBoundingClientRect(),t=outer.getBoundingClientRect();
+      const css=getComputedStyle(badge);
+      return {tone:badge.dataset.tone,background:css.backgroundColor,
+        border:css.borderTopWidth,weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,
+        pseudo:getComputedStyle(badge,'::before').content,
+        text:value?.textContent,overflow:b.right>t.right+1||b.left<t.left-1||
+          (value&&value.scrollWidth>value.clientWidth+2),
+        separated:row===row.parentElement.firstElementChild||
+          parseFloat(getComputedStyle(row).borderTopWidth)>0};
+    });
+    const neutral=(color)=>{
+      if(color==='transparent')return true;
+      const m=color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/);
+      return !!m&&m[1]===m[2]&&m[2]===m[3];
+    };
+    const root=document.getElementById('hdnd-a4-print-root');
+    const nonMonochrome=[root,...root.querySelectorAll('*')].flatMap(el=>{
+      const css=getComputedStyle(el);
+      return ['color','backgroundColor','borderTopColor','borderRightColor','borderBottomColor','borderLeftColor']
+        .filter(key=>!neutral(css[key])||(key==='color'&&css[key]!=='rgb(0, 0, 0)'))
+        .map(key=>({tag:el.tagName,className:el.className,key,value:css[key]}));
+    });
+    return {noWrap:st?.whiteSpace,break:st?.wordBreak,
+      contentWeight:main?getComputedStyle(main).fontWeight:null,stages,nonMonochrome};
   });
   assert.equal(renderInfo.noWrap,'nowrap','ID nowrap not effective in print');
+  assert.equal(renderInfo.contentWeight,'400','Nội dung trình must be regular weight in print');
+  assert.deepEqual(renderInfo.nonMonochrome,[],'Print elements must be black text and neutral paper/grid');
+  assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>s.text&&s.tone&&!s.overflow&&s.separated),
+    'Print stage rows overlap or lose content: '+JSON.stringify(renderInfo.stages));
+  for(const stage of renderInfo.stages){
+    assert.equal(stage.background,'rgba(0, 0, 0, 0)','Status text must have no colored box');
+    assert.equal(stage.color,'rgb(0, 0, 0)','All stages must use black text');
+    assert.equal(stage.border,'0px','Status text must have no individual border');
+    assert.equal(stage.pseudo,'none','Status text must have no pictogram');
+    assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
+    assert.equal(stage.fontStyle,stage.tone==='not-required'?'italic':'normal','Not required must be distinguishable in grayscale');
+  }
+  assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct status classes in fixture');
+  console.log('PRINT_REGULAR_CONTENT_AND_CLEAN_STAGE_TEXT_PASS '+JSON.stringify({
+    font:renderInfo.contentWeight,tones:[...new Set(renderInfo.stages.map(s=>s.tone))],
+    stageStyles:renderInfo.stages.map(({tone,weight,fontStyle,color})=>({tone,weight,fontStyle,color}))}));
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
   mkdirSync('qa-results/print-a4',{recursive:true});
   const pdfPath='qa-results/print-a4/hdnd-current-visible-a4.pdf';
@@ -143,6 +186,26 @@ try{
   assert(pages>=2,'Multipage PDF test requires at least 2 pages');
   assert(/Page size:\s*84[012]\.?\d* x 59[45]/.test(info.stdout),
     'Generated PDF not A4 landscape: '+info.stdout);
+  // Render the original PDF to RGB (NOT -gray) and inspect every page.
+  // This catches unexpected inherited colors and PDF margin/header colors
+  // that a grayscale preview or a DOM-only test would otherwise conceal.
+  for(let index=1;index<=pages;index++){
+    const raster=spawnSync('pdftoppm',['-f',String(index),'-l',String(index),'-r','72','-singlefile',pdfPath],
+      {maxBuffer:8*1024*1024});
+    assert.equal(raster.status,0,'Original PDF RGB render failed: '+String(raster.stderr??''));
+    const image=raster.stdout;
+    const header=image.subarray(0,128).toString('latin1').match(/^P6\s+(\d+)\s+(\d+)\s+255\r?\n/);
+    assert(header,'Invalid PPM header on print page '+index);
+    const count=Number(header[1])*Number(header[2])*3;
+    assert.equal(image.length-header[0].length,count,'Unexpected raster size');
+    let nonNeutral=0;
+    for(let i=header[0].length;i<image.length;i+=3){
+      // Allow one channel's rounding unit from the PDF rasterizer.
+      if(Math.max(image[i],image[i+1],image[i+2])-Math.min(image[i],image[i+1],image[i+2])>1)nonNeutral++;
+    }
+    assert.equal(nonNeutral,0,'Original PDF page contains non-gray pixels: '+index);
+  }
+  console.log('PRINT_MONOCHROME_ALL_PAGES_PASS '+JSON.stringify({pages}));
   const readPage=index=>{
     let result=spawnSync('pdftotext',
       ['-f',String(index),'-l',String(index),'-layout',pdfPath,'-'],
@@ -167,6 +230,10 @@ try{
     'qa-results/print-a4/hdnd-current-visible-a4.pdf',
     'qa-results/print-a4/page'],{encoding:'utf8'});
   assert.equal(png.status,0,'Unable to render the first two printed pages: '+(png.stderr??''));
+  const gray=spawnSync('pdftoppm',['-f','1','-l','1','-r','100','-gray','-png',
+    pdfPath,'qa-results/print-a4/page-gray'],{encoding:'utf8'});
+  assert.equal(gray.status,0,'Unable to render monochrome print page: '+(gray.stderr??''));
+  console.log('PRINT_GRAYSCALE_PAGE_RENDER_PASS');
   assert(!printed.content.includes('Tổng số nội dung'),'Added a summary into print');
   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Print DOM not cleaned');
