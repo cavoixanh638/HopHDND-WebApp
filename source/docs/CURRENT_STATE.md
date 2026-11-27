@@ -1,3 +1,9 @@
+## 27/11/2026 — Điều chỉnh bản in Tiến độ 3 khâu theo WebApp
+
+Chủ dự án xem PDF thực tế và yêu cầu quay về bố cục WebApp nhưng phân tách rõ các khâu. Thay các đường kẻ ngang chạy hết ô bằng ba hộp trạng thái riêng, nền trắng, chữ đen, viền mảnh xám/đen, cùng độ rộng, căn giữa trạng thái và cách nhau 0,9mm; nhãn khâu bên trái. Sở chưa trình đậm; Không phải trình nghiêng, viền nét đứt. Giữ chính xác dữ liệu, bố cục cột khác, chữ Nội dung trình 400, A4 ngang, số trang và quyền Admin. Chỉ sửa print presentation + QA; không sửa Rules, dữ liệu, chính sách phát hành. QA dedicated phải kiểm tra hộp riêng thay vì yêu cầu cũ không viền; không coi PASS hoặc phát hành trước bằng chứng. Bản đã phát hành trước đó source `7c734d490254626d1b06e253b590f7aaeb182e74`, Pages [45985479252](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45985479252).
+
+---
+
 ## 26/11/2026 — Yêu cầu mới: in PDF dễ đọc và công cụ chỉ Admin
 
 Đổi Nội dung trình thành font-weight 400; status L03 dùng bảng con chữ thường, đường kẻ mảnh, không ô màu/ký hiệu; chốt 27/11 toàn bản in đen trắng, kiểm tra pixel RGB của PDF gốc; Sở chưa trình in đậm, Không phải trình in nghiêng, giữ nguyên text. Lịch sử hai cột Ghi chú/Tiến độ hiện tại và A+/A− chỉ Admin, kiểm thử guest/admin/signout. Khách vẫn dùng font bố cục chung và quyền sửa cột đã cấp. Xem [checkpoint](checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md). Lịch sử thô lồng trong record có public read; đây chưa phải migration server-side private audit, không sửa Rules/dữ liệu. Cần exact CI PASS, release gate và Pages/version đúng SHA trước khi ghi nhận phát hành.

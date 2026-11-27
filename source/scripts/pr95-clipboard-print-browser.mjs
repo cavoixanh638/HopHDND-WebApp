@@ -135,13 +135,23 @@ try{
       const row=badge.closest('.hdnd-print-stage-row'),outer=badge.closest('td');
       const b=badge.getBoundingClientRect(),t=outer.getBoundingClientRect();
       const css=getComputedStyle(badge);
+      const label=row.querySelector('.hdnd-print-stage-label');
+      const l=label.getBoundingClientRect(),v=value?.getBoundingClientRect();
+      const previous=row.previousElementSibling?.querySelector('.hdnd-print-stage-state');
+      const before=previous?.getBoundingClientRect();
       return {tone:badge.dataset.tone,background:css.backgroundColor,
-        border:css.borderTopWidth,weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,
+        border:css.borderTopWidth,borderStyle:css.borderTopStyle,
+        weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,align:css.textAlign,
         pseudo:getComputedStyle(badge,'::before').content,
         text:value?.textContent,overflow:b.right>t.right+1||b.left<t.left-1||
-          (value&&value.scrollWidth>value.clientWidth+2),
-        separated:row===row.parentElement.firstElementChild||
-          parseFloat(getComputedStyle(row).borderTopWidth)>0};
+          l.right>b.left+1||!v||v.left<b.left-1||v.right>b.right+1||
+          value.scrollWidth>value.clientWidth+2,
+        centered:!!v&&Math.abs((v.left+v.right-b.left-b.right)/2)<=1&&
+          Math.abs((v.top+v.bottom-b.top-b.bottom)/2)<=1,
+        aligned:!before||(Math.abs(b.left-before.left)<=1&&Math.abs(b.right-before.right)<=1),
+        separated:!before||b.top-before.bottom>=1.5,
+        fullWidthRule:parseFloat(getComputedStyle(row).borderTopWidth)>0,
+        height:b.height,gap:before?b.top-before.bottom:null};
     });
     const neutral=(color)=>{
       if(color==='transparent')return true;
@@ -161,20 +171,28 @@ try{
   assert.equal(renderInfo.noWrap,'nowrap','ID nowrap not effective in print');
   assert.equal(renderInfo.contentWeight,'400','Nội dung trình must be regular weight in print');
   assert.deepEqual(renderInfo.nonMonochrome,[],'Print elements must be black text and neutral paper/grid');
-  assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>s.text&&s.tone&&!s.overflow&&s.separated),
-    'Print stage rows overlap or lose content: '+JSON.stringify(renderInfo.stages));
+  assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
+    s.text&&s.tone&&!s.overflow&&s.separated&&s.aligned&&s.centered&&!s.fullWidthRule&&s.height>=18),
+    'Print stage boxes must be aligned, independently spaced, centered and fully contained: '+JSON.stringify(renderInfo.stages));
   for(const stage of renderInfo.stages){
-    assert.equal(stage.background,'rgba(0, 0, 0, 0)','Status text must have no colored box');
+    assert.equal(stage.background,'rgb(255, 255, 255)','Status box must remain white paper');
     assert.equal(stage.color,'rgb(0, 0, 0)','All stages must use black text');
-    assert.equal(stage.border,'0px','Status text must have no individual border');
+    assert(parseFloat(stage.border)>0,'Each status must have a visible individual outline');
+    assert.equal(stage.borderStyle,stage.tone==='not-required'?'dashed':'solid',
+      'Not required uses a dashed outline, other states use a solid outline');
+    assert.equal(stage.align,'center','WebApp-style status labels must be centered');
     assert.equal(stage.pseudo,'none','Status text must have no pictogram');
     assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
     assert.equal(stage.fontStyle,stage.tone==='not-required'?'italic':'normal','Not required must be distinguishable in grayscale');
   }
   assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct status classes in fixture');
-  console.log('PRINT_REGULAR_CONTENT_AND_CLEAN_STAGE_TEXT_PASS '+JSON.stringify({
+  console.log('PRINT_WEBAPP_MONOCHROME_STAGE_BOXES_PASS '+JSON.stringify({
     font:renderInfo.contentWeight,tones:[...new Set(renderInfo.stages.map(s=>s.tone))],
-    stageStyles:renderInfo.stages.map(({tone,weight,fontStyle,color})=>({tone,weight,fontStyle,color}))}));
+    count:renderInfo.stages.length,
+    minGap:Math.min(...renderInfo.stages.map(s=>s.gap).filter(s=>s!==null)),
+    minHeight:Math.min(...renderInfo.stages.map(s=>s.height)),
+    allCentered:renderInfo.stages.every(s=>s.centered),
+    allAligned:renderInfo.stages.every(s=>s.aligned)}));
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
   mkdirSync('qa-results/print-a4',{recursive:true});
   const pdfPath='qa-results/print-a4/hdnd-current-visible-a4.pdf';
