@@ -137,6 +137,10 @@ try{
       const r=row.getBoundingClientRect(),t=outer.getBoundingClientRect();
       const b=badge.getBoundingClientRect(),l=label.getBoundingClientRect(),v=value?.getBoundingClientRect();
       const css=getComputedStyle(badge),rowCss=getComputedStyle(row),labelCss=getComputedStyle(label);
+      const labelRange=document.createRange();
+      labelRange.selectNodeContents(label);
+      const labelTextRect=labelRange.getBoundingClientRect();
+      const labelTextLeft=l.left+parseFloat(labelCss.paddingLeft)+parseFloat(labelCss.borderLeftWidth);
       const previous=row.previousElementSibling;
       const before=previous?.getBoundingClientRect();
       const borderWidths=['Top','Right','Bottom','Left'].map(side=>parseFloat(rowCss['border'+side+'Width']));
@@ -148,6 +152,7 @@ try{
         extraStateBorders:['Top','Right','Bottom'].map(side=>parseFloat(css['border'+side+'Width'])),
         weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,align:css.textAlign,
         labelAlign:labelCss.textAlign,labelJustify:labelCss.justifyContent,
+        labelStartsAtLeft:labelTextRect.width>0&&Math.abs(labelTextRect.left-labelTextLeft)<=1,
         pseudo:getComputedStyle(badge,'::before').content,
         label:label.textContent?.trim(),text:value?.textContent?.trim(),
         overflow:r.right>t.right+1||r.left<t.left-1||l.left<r.left-1||b.right>r.right+1||
@@ -196,7 +201,8 @@ try{
     assert(stage.divider<=Math.min(...stage.outerBorderWidths)+.01,'Internal divider must not be heavier than outline');
     assert(stage.extraStateBorders.every(width=>width===0),'Status must not have a separate nested outline');
     assert.equal(stage.labelAlign,'left','Stage label must align left');
-    assert.equal(stage.labelJustify,'flex-start','Label starts at the left edge');
+    // Chromium can serialize flex-start as flow-start; assert actual text geometry.
+    assert(stage.labelStartsAtLeft,'Label text must start at the inner left edge: '+JSON.stringify(stage));
     assert.equal(stage.align,'center','Status labels must be centered');
     assert.equal(stage.pseudo,'none','Status text must have no pictogram');
     assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
