@@ -1,3 +1,12 @@
+## CHỈ THỊ 27/11/2026 — KHÔNG YÊU CẦU OWNER RUN WORKFLOW CHO UI THÔNG THƯỜNG
+
+- Trước mọi PR thuần UI đặt title `fix(ui):`, `feat(ui):`, `fix(print):`, `feat(print):` hoặc `[AUTO-UI]`. Kiểm tra **Predict Pages release mode before merge** trên exact synthetic merge history và baseline đã phát hành. Nếu HOLD, sửa ranh giới hoặc tách phần lõi trước merge; không merge một PR UI rồi chuyển thao tác Run workflow sang chủ dự án.
+- Các thông số hình học in thường ngày dùng `src/presentation/print-layout.json` với schema giới hạn; CSS/module trình bày, test UI và Markdown hướng dẫn hợp lệ có thể auto. Phần đo/đối chiếu hình học ba khâu trong runner print được phép sửa trong hai vùng đã kiểm duyệt; phần browser/network/PDF/clipboard/command/cleanup còn lại giữ nguyên và thay đổi executable luôn chạy full QA. Không bỏ test hoặc whitelist toàn bộ scripts.
+- Phân biệt rõ UI-only tự phát hành và migration/chỉnh quyền/auth/Rules/dữ liệu/core/publisher/policy cần phê duyệt riêng. Không bật billing, không tự phê duyệt, không giả mạo owner hoặc sửa version.json để bỏ HOLD. Sau merge phải xác minh publish và version.json đúng SHA, không coi Pages static build là bản mới nếu publish skipped.
+- Chi tiết: [G00 release preflight](docs/checkpoints/G00_UI_RELEASE_PREFLIGHT_2026-11-27.md). Giữ các chỉ thị bảo mật trước đây.
+
+---
+
 ## CHỈ THỊ 27/11/2026 — CHỐT TIẾN ĐỘ 3 KHÂU TRÊN BẢN IN
 
 - Thay riêng cách trình bày in của Tiến độ 3 khâu: mỗi khâu là một khung khép kín có vách ngăn dọc mảnh, nhãn bên trái (45%), trạng thái căn giữa bên phải (55%), khoảng cách dọc 0,9mm. Nền trắng, chữ đen; Sở chưa trình đậm, Không phải trình nghiêng/viền bao nét đứt. Chỉ thị này thay phần bố cục bảng con cũ dưới đây, giữ toàn bộ quy định Admin, dữ liệu, A4, quyền và release gate.

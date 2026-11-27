@@ -20,11 +20,28 @@ jobs:
         working-directory: source
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: source/package-lock.json
+      - name: Predict Pages release mode before merge (NO DEPLOY)
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        working-directory: .
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          node source/scripts/pages-release-policy.mjs --head "$GITHUB_SHA"
+          # Title never authorizes a release; it only makes a claimed ordinary
+          # UI PR fail early when the actual history would require approval.
+          case "$PR_TITLE" in
+            'fix(ui):'*|'feat(ui):'*|'style(ui):'*|'fix(print):'*|'feat(print):'*|'[AUTO-UI]'*)
+              node source/scripts/pages-release-policy.mjs --head "$GITHUB_SHA" --assert-mode auto --print-mode ;;
+          esac
       - name: Install exact dependencies
         run: npm ci
       - name: Typecheck

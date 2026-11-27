@@ -6,6 +6,7 @@ import {spawnSync} from 'node:child_process';
 import {resolve,extname,sep} from 'node:path';
 import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
+const printLayout=JSON.parse(readFileSync(new URL('../src/presentation/print-layout.json',import.meta.url),'utf8'));
 const require=createRequire(import.meta.url);
 const {chromium}=require('../cell-edit-service/node_modules/playwright');
 const root=resolve('dist-compact-qa');
@@ -189,8 +190,10 @@ try{
   assert.equal(renderInfo.stages.length,printed.printRows*3,'Every printed record must preserve all three stage boxes');
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
     s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.separated&&s.aligned&&
-    s.centered&&s.sharedDivider&&Math.abs(s.leftRatio-.45)<=.015&&s.height>=18),
-    'Print stage compartments must align, use a 45/55 split, remain spaced and fully contain text: '+JSON.stringify(renderInfo.stages));
+    s.centered&&s.sharedDivider&&Math.abs(s.leftRatio-printLayout.leftPercent/100)<=.015&&
+    s.height>=printLayout.minHeightMm*96/25.4-.5&&
+    (s.gap===null||Math.abs(s.gap-printLayout.gapMm*96/25.4)<=.5)),
+    'Print stage compartments must align, use the configured split and spacing, and fully contain text: '+JSON.stringify(renderInfo.stages));
   for(const stage of renderInfo.stages){
     assert.equal(stage.background,'rgb(255, 255, 255)','Closed stage box must remain white paper');
     assert.equal(stage.color,'rgb(0, 0, 0)','All stages must use black text');

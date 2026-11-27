@@ -1,6 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {LIST_A4_PRINT_CSS,printStageTone} from '../src/features/items/list-print';
+import printLayout from '../src/presentation/print-layout.json';
 describe('A4 print content contract',()=>{
   it('uses landscape A4 and only heading + copied visible table, no extra labels',()=>{
     expect(LIST_A4_PRINT_CSS).toContain('size:A4 landscape;');
@@ -27,22 +28,22 @@ describe('A4 print content contract',()=>{
 });
 
 describe('Readable print status and normal content typography',()=>{
-  it('prints regular content and closed 45/55 monochrome stage compartments',()=>{
+  it('prints regular content and closed monochrome stage compartments',()=>{
     expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-document-main\{\s*font-weight:400!important/);
     expect(LIST_A4_PRINT_CSS).not.toContain('data-marker');
-    expect(LIST_A4_PRINT_CSS).toContain('min-height:5mm');
-    expect(LIST_A4_PRINT_CSS).toContain('border:.55pt solid #777;border-radius:1mm');
-    expect(LIST_A4_PRINT_CSS).toContain('border-left:.4pt solid #888');
+    expect(LIST_A4_PRINT_CSS).toContain(`min-height:${printLayout.minHeightMm}mm`);
+    expect(LIST_A4_PRINT_CSS).toContain(`border:${printLayout.outlinePt}pt solid #777;border-radius:${printLayout.radiusMm}mm`);
+    expect(LIST_A4_PRINT_CSS).toContain(`border-left:${printLayout.dividerPt}pt solid #888`);
     expect(LIST_A4_PRINT_CSS).toContain('background:transparent;text-align:center');
     expect(LIST_A4_PRINT_CSS).toContain('align-items:stretch;gap:0');
     expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-stage-row\[data-tone="not-required"\]\{\s*border-style:dashed/);
     const source=readFileSync(new URL('../src/features/items/list-print.ts',import.meta.url),'utf8');
     expect(source).toContain('line.dataset.tone=tone;');
-    expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-stage-row:not\(:first-child\)\{\s*margin-top:\.9mm;\s*\}/);
+    expect(LIST_A4_PRINT_CSS).toContain(`margin-top:${printLayout.gapMm}mm;`);
     expect(LIST_A4_PRINT_CSS).not.toContain('border-top:.35pt solid #aaa');
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-submitted"\]\{\s*color:#[0-9a-f]+;font-weight:700/);
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-required"\]\{\s*color:#[0-9a-f]+;font-style:italic/);
-    expect(LIST_A4_PRINT_CSS).toContain('minmax(0,45fr) minmax(0,55fr)');
+    expect(LIST_A4_PRINT_CSS).toContain(`minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr)`);
     for(const tone of ['not-submitted','not-required'])
       expect(LIST_A4_PRINT_CSS).toContain('data-tone="'+tone+'"');
     // All literal colors must have equal RGB channels (including shorthand).

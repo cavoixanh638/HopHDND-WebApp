@@ -1,4 +1,5 @@
 import {canonicalStatus} from '../../domain/status-contract';
+import printLayout from '../../presentation/print-layout.json';
 
 /** A4 landscape print snapshot of exactly the List heading and visible cells.
  * Preserve semantic L03/L04 rows, use original ID as one unbroken value,
@@ -64,13 +65,13 @@ export const LIST_A4_PRINT_CSS=`
      The thin internal divider separates a left label from a centered
      status; no colored fill or full-table-cell rules. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
-    display:grid;grid-template-columns:minmax(0,45fr) minmax(0,55fr);
-    align-items:stretch;gap:0;min-height:5mm;box-sizing:border-box;
-    border:.55pt solid #777;border-radius:1mm;background:#fff;
+    display:grid;grid-template-columns:minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr);
+    align-items:stretch;gap:0;min-height:${printLayout.minHeightMm}mm;box-sizing:border-box;
+    border:${printLayout.outlinePt}pt solid #777;border-radius:${printLayout.radiusMm}mm;background:#fff;
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
-    margin-top:.9mm;
+    margin-top:${printLayout.gapMm}mm;
   }
   #hdnd-a4-print-root .hdnd-print-stage-label{
     display:flex;align-items:center;justify-content:flex-start;
@@ -81,7 +82,7 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root .hdnd-print-stage-state{
     display:flex;align-items:center;justify-content:center;
     min-width:0;box-sizing:border-box;
-    padding:.65mm .8mm;border-left:.4pt solid #888;
+    padding:.65mm .8mm;border-left:${printLayout.dividerPt}pt solid #888;
     background:transparent;text-align:center;font-weight:400;font-size:8pt;line-height:1.3;
     color:#000;overflow-wrap:anywhere;
   }

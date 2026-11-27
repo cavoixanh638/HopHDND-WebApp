@@ -1,3 +1,9 @@
+## 27/11/2026 — Sửa nguyên tắc phát hành UI, ngăn HOLD sau merge
+
+PR #245 merge `5f9c0945f7621a8f0b01fc6e53bcd285c7db2e13`, exact head `e23c81f9cbf81e4faf0f6ff79d104cb2dd534191` 10/10 CI PASS; publisher [46024161588](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/46024161588) HOLD do AGENTS.md và script kiểm thử print. Website baseline vẫn `7c734d490254626d1b06e253b590f7aaeb182e74`. Chủ dự án yêu cầu xử lý dứt điểm quy trình, không yêu cầu Run workflow mỗi lần chỉnh UI. Migration này thêm premerge dự đoán release mode toàn history, nhận diện Markdown hướng dẫn, config in có schema, ranh giới kiểm thử hình học, đồng bộ CI scope; giữ bảo mật/publisher và kiểm thử bắt buộc. Xem [checkpoint](checkpoints/G00_UI_RELEASE_PREFLIGHT_2026-11-27.md). Chưa coi là đã phát hành trước bằng chứng. Privacy audit riêng [#246](https://github.com/cavoixanh638/HopHDND-WebApp/issues/246); không sửa Rules/dữ liệu.
+
+---
+
 ## 27/11/2026 — Chốt bản in Tiến độ 3 khâu: ba ô khép kín 45/55
 
 Chủ dự án đồng ý phương án cuối: mỗi khâu có một khung bao cả nhãn và trạng thái, vách dọc mảnh, nhãn trái 45% / trạng thái căn giữa 55%, khoảng cách đứng 0,9mm. Chữ đen/nền trắng/viền trung tính; Sở chưa trình đậm, Không phải trình nghiêng + viền bao nét đứt. Giữ nguyên nội dung, trạng thái, quyền, dữ liệu, màn hình, các cột khác và A4 ngang. [PR #245](https://github.com/cavoixanh638/HopHDND-WebApp/pull/245): CI cũ 10/10 PASS cho phương án hộp trạng thái riêng, **không tái sử dụng làm PASS cho thiết kế mới**. QA mới đo bốn cạnh ngoài, vách dọc chung, tỷ lệ 45/55, căn giữa, tràn chữ và khoảng cách của toàn bộ 3 khâu mỗi hồ sơ; giữ kiểm tra PDF RGB mọi trang, unit và smoke. Chờ exact-head CI, release gate, Pages và kiểm tra live riêng. Baseline đã phát hành source `7c734d490254626d1b06e253b590f7aaeb182e74`, Pages [45985479252](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/45985479252). Không sửa Rules, dữ liệu hoặc policy.
