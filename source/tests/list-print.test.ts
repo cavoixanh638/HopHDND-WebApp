@@ -28,13 +28,13 @@ describe('A4 print content contract',()=>{
 });
 
 describe('Readable print status and normal content typography',()=>{
-  it('prints regular content and monochrome stages with only a solid vertical divider',()=>{
+  it('prints regular content and a continuous monochrome three-stage grid',()=>{
     expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-document-main\{\s*font-weight:400!important/);
     expect(LIST_A4_PRINT_CSS).not.toContain('data-marker');
     expect(LIST_A4_PRINT_CSS).toContain(`min-height:${printLayout.minHeightMm}mm`);
     const stageRow=LIST_A4_PRINT_CSS.match(/\.hdnd-print-stage-row\{([^}]+)\}/)?.[1];
     expect(stageRow).toBeDefined();
-    expect(stageRow).toContain('border:0;border-radius:0');
+    expect(stageRow).toContain('margin:0;border:0;border-radius:0');
     expect(stageRow).not.toMatch(/border-(?:top|right|bottom|left|style|width):/);
     expect(LIST_A4_PRINT_CSS).toContain(`border-left:${printLayout.dividerPt}pt solid #888`);
     expect(LIST_A4_PRINT_CSS).toContain('background:transparent;text-align:center');
@@ -44,8 +44,8 @@ describe('Readable print status and normal content typography',()=>{
     expect(LIST_A4_PRINT_CSS).toContain(`border:0;border-left:${printLayout.dividerPt}pt solid #888`);
     const source=readFileSync(new URL('../src/features/items/list-print.ts',import.meta.url),'utf8');
     expect(source).toContain('line.dataset.tone=tone;');
-    expect(LIST_A4_PRINT_CSS).toContain(`margin-top:${printLayout.gapMm}mm;`);
-    expect(LIST_A4_PRINT_CSS).not.toContain('border-top:.35pt solid #aaa');
+    expect(LIST_A4_PRINT_CSS).not.toContain(`margin-top:${printLayout.gapMm}mm;`);
+    expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-stage-row \+ \.hdnd-print-stage-row > \.hdnd-print-stage-label,\s*#hdnd-a4-print-root \.hdnd-print-stage-row \+ \.hdnd-print-stage-row > \.hdnd-print-stage-state\{\s*border-top:\.35pt solid #aaa;\s*\}/);
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-submitted"\]\{\s*color:#[0-9a-f]+;font-weight:700/);
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-required"\]\{\s*color:#[0-9a-f]+;font-style:italic/);
     expect(LIST_A4_PRINT_CSS).toContain(`minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr)`);
