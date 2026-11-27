@@ -527,7 +527,8 @@ test('actual git history: valid UI-only push auto, invalid earlier change cannot
     const fifth=save('guarded mixed core');
     assert.deepEqual(decision(fourth,fifth).blocked,['source/src/features/items/CellPicker.tsx']);
     writeFileSync(p,after);const sixth=save('ordinary label after guarded edit');
-    assert.equal(decision(fourth,sixth).mode,'hold');
+    assert.equal(decision(fifth,sixth).mode,'auto','The ordinary PR itself is UI-only');
+    assert.equal(decision(fourth,sixth).mode,'hold','Unpublished guarded base still blocks the whole release');
   }finally{rmSync(temp,{recursive:true,force:true});}
 });
 
@@ -579,4 +580,7 @@ test('premerge source CI predicts the actual historical release mode, not just c
   assert.ok(flow.includes('--head "$GITHUB_SHA" --assert-mode auto'));
   assert.ok(flow.includes("'fix(print):'*"));
   assert.ok(flow.includes('github.event.pull_request.title'));
+  assert.ok(flow.includes('git show "$PR_BASE:version.json"'));
+  assert.ok(flow.includes('--baseline "$PR_BASE" --head "$GITHUB_SHA" --print-mode'));
+  assert.ok(flow.includes('if [ "$PR_MODE" = auto ]; then REQUIRE_AUTO=true; fi'));
 });
