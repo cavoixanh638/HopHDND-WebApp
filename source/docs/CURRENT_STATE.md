@@ -1,3 +1,9 @@
+## 27/11/2026 — Bản in Tiến độ 3 khâu tối giản (chỉ vách dọc)
+
+Theo phản hồi mới nhất, bỏ mọi khung bao riêng và nét đứt ở từng khâu; giữ vách dọc liền mảnh 45/55, nhãn trái/trạng thái căn giữa, khoảng cách 0,9mm, trắng đen và đậm/nghiêng như trước. Giữ viền bảng chính. Thay quy định khung kín ở mục lịch sử phía dưới. Kiểm thử thực tế yêu cầu 0px cả bốn cạnh ngoài, không viền nhãn/giá trị, không nét đứt, chỉ vách dọc liền; giữ kiểm thử căn chỉnh, không tràn, PDF RGB, A4 và clipboard. Không sửa chính sách, quyền, dữ liệu hoặc màn hình. Thay đổi tách riêng trên nhánh tiếp nối #248 để không ghi đè migration kiểm thử; chưa nghiệm thu hay phát hành.
+
+---
+
 ## 27/11/2026 — Sửa nguyên tắc phát hành UI, ngăn HOLD sau merge
 
 PR #245 merge `5f9c0945f7621a8f0b01fc6e53bcd285c7db2e13`, exact head `e23c81f9cbf81e4faf0f6ff79d104cb2dd534191` 10/10 CI PASS; publisher [46024161588](https://github.com/cavoixanh638/HopHDND-WebApp/actions/runs/46024161588) HOLD do AGENTS.md và script kiểm thử print. Website baseline vẫn `7c734d490254626d1b06e253b590f7aaeb182e74`. Chủ dự án yêu cầu xử lý dứt điểm quy trình, không yêu cầu Run workflow mỗi lần chỉnh UI. Migration này thêm premerge dự đoán release mode toàn history, nhận diện Markdown hướng dẫn, config in có schema, ranh giới kiểm thử hình học, đồng bộ CI scope; giữ bảo mật/publisher và kiểm thử bắt buộc. Xem [checkpoint](checkpoints/G00_UI_RELEASE_PREFLIGHT_2026-11-27.md). Chưa coi là đã phát hành trước bằng chứng. Privacy audit riêng [#246](https://github.com/cavoixanh638/HopHDND-WebApp/issues/246); không sửa Rules/dữ liệu.

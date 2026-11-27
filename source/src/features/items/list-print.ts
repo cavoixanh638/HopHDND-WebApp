@@ -61,13 +61,13 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root .hdnd-print-document-meta{
     margin-top:1mm;color:#000;line-height:1.26;
   }
-  /* Owner-approved 27/11: one closed two-compartment box per stage.
-     The thin internal divider separates a left label from a centered
-     status; no colored fill or full-table-cell rules. */
+  /* Owner revision 27/11: no enclosing stage boxes or dashed borders.
+     Keep only the thin solid vertical divider between label and status;
+     separate stages by whitespace, not horizontal rules. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
     display:grid;grid-template-columns:minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr);
     align-items:stretch;gap:0;min-height:${printLayout.minHeightMm}mm;box-sizing:border-box;
-    border:${printLayout.outlinePt}pt solid #777;border-radius:${printLayout.radiusMm}mm;background:#fff;
+    border:0;border-radius:0;background:#fff;
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
@@ -75,25 +75,19 @@ export const LIST_A4_PRINT_CSS=`
   }
   #hdnd-a4-print-root .hdnd-print-stage-label{
     display:flex;align-items:center;justify-content:flex-start;
-    padding:.65mm .8mm;min-width:0;box-sizing:border-box;
+    padding:.65mm .8mm;min-width:0;box-sizing:border-box;border:0;
     font-size:7.7pt;font-weight:600;line-height:1.3;
     text-align:left;overflow-wrap:anywhere;color:#000;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
     display:flex;align-items:center;justify-content:center;
     min-width:0;box-sizing:border-box;
-    padding:.65mm .8mm;border-left:${printLayout.dividerPt}pt solid #888;
+    padding:.65mm .8mm;border:0;border-left:${printLayout.dividerPt}pt solid #888;
     background:transparent;text-align:center;font-weight:400;font-size:8pt;line-height:1.3;
     color:#000;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-value{
-    display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;
-  }
-  #hdnd-a4-print-root .hdnd-print-stage-row[data-tone="not-submitted"]{
-    border-color:#444;
-  }
-  #hdnd-a4-print-root .hdnd-print-stage-row[data-tone="not-required"]{
-    border-style:dashed;
+    display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;border:0;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
     color:#000;font-weight:700;

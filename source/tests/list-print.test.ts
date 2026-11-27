@@ -28,15 +28,20 @@ describe('A4 print content contract',()=>{
 });
 
 describe('Readable print status and normal content typography',()=>{
-  it('prints regular content and closed monochrome stage compartments',()=>{
+  it('prints regular content and monochrome stages with only a solid vertical divider',()=>{
     expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-document-main\{\s*font-weight:400!important/);
     expect(LIST_A4_PRINT_CSS).not.toContain('data-marker');
     expect(LIST_A4_PRINT_CSS).toContain(`min-height:${printLayout.minHeightMm}mm`);
-    expect(LIST_A4_PRINT_CSS).toContain(`border:${printLayout.outlinePt}pt solid #777;border-radius:${printLayout.radiusMm}mm`);
+    const stageRow=LIST_A4_PRINT_CSS.match(/\.hdnd-print-stage-row\{([^}]+)\}/)?.[1];
+    expect(stageRow).toBeDefined();
+    expect(stageRow).toContain('border:0;border-radius:0');
+    expect(stageRow).not.toMatch(/border-(?:top|right|bottom|left|style|width):/);
     expect(LIST_A4_PRINT_CSS).toContain(`border-left:${printLayout.dividerPt}pt solid #888`);
     expect(LIST_A4_PRINT_CSS).toContain('background:transparent;text-align:center');
     expect(LIST_A4_PRINT_CSS).toContain('align-items:stretch;gap:0');
-    expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-stage-row\[data-tone="not-required"\]\{\s*border-style:dashed/);
+    expect(LIST_A4_PRINT_CSS).not.toMatch(/(?:^|[;{])\s*border[^:;{}]*:[^;{}]*\bdashed\b/);
+    expect(LIST_A4_PRINT_CSS).not.toMatch(/\.hdnd-print-stage-row\[data-tone=/);
+    expect(LIST_A4_PRINT_CSS).toContain(`border:0;border-left:${printLayout.dividerPt}pt solid #888`);
     const source=readFileSync(new URL('../src/features/items/list-print.ts',import.meta.url),'utf8');
     expect(source).toContain('line.dataset.tone=tone;');
     expect(LIST_A4_PRINT_CSS).toContain(`margin-top:${printLayout.gapMm}mm;`);
