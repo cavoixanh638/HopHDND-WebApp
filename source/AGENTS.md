@@ -1,6 +1,6 @@
 ## CHỈ THỊ 26/11/2026 — LỊCH SỬ VÀ CỠ CHỮ CHỈ ADMIN, BẢN IN A4
 
-- Nội dung trình in chữ thường, không đậm; Tiến độ 3 khâu in dạng bảng con tối giản: đường kẻ mảnh, không ô màu/ký hiệu, nhấn đậm Sở chưa trình, in nghiêng Không phải trình, giữ đúng text và ý nghĩa từng khâu. Xem [checkpoint](docs/checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md).
+- Nội dung trình in chữ thường, không đậm; Tiến độ 3 khâu in dạng bảng con tối giản: đường kẻ mảnh, không ô màu/ký hiệu, toàn bộ bản in chữ đen/nền trắng/đường kẻ trung tính, nhấn đậm Sở chưa trình, in nghiêng Không phải trình, giữ đúng text và ý nghĩa từng khâu. Xem [checkpoint](docs/checkpoints/G00_PRINT_AND_ADMIN_TOOLS_2026-11-26.md).
 - Quy định mới thay thế test guest history cũ: chỉ Admin thấy/mở lịch sử Ghi chú, Tiến độ hiện tại và chỉnh cỡ chữ. Khách vẫn kế thừa font chung và quyền sửa cột được cấp. Không giảm quyền ghi hoặc làm đổi dữ liệu.
 - Phân quyền giao diện/repository không đồng nghĩa private raw RTDB: lịch sử còn lồng trong record có read công khai. Không khẳng định bảo mật server hoặc tự đổi Rules/dữ liệu; tách audit cần đợt riêng.
 

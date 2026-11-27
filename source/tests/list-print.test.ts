@@ -34,8 +34,14 @@ describe('Readable print status and normal content typography',()=>{
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-submitted"\]\{\s*color:#[0-9a-f]+;font-weight:700/);
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-required"\]\{\s*color:#[0-9a-f]+;font-style:italic/);
     expect(LIST_A4_PRINT_CSS).toContain('minmax(0,43fr) minmax(0,57fr)');
-    for(const tone of ['not-submitted','processing','waiting','completed','not-required'])
+    for(const tone of ['not-submitted','not-required'])
       expect(LIST_A4_PRINT_CSS).toContain('data-tone="'+tone+'"');
+    // All literal colors must have equal RGB channels (including shorthand).
+    for(const match of LIST_A4_PRINT_CSS.matchAll(/#[0-9a-f]{3,6}(?![0-9a-z-])/gi)){
+      const hex=match[0].slice(1);const rgb=hex.length===3?[...hex]:hex.match(/../g)!;
+      expect(new Set(rgb).size,match[0]).toBe(1);
+    }
+    expect(LIST_A4_PRINT_CSS).toContain('background:#fff!important');
   });
   it('classifies each known milestone within its own stage and preserves neutral unknowns',()=>{
     for(const field of ['progressParty','progressBuild','progressCouncil']){

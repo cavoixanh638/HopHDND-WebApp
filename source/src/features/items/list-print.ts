@@ -13,7 +13,7 @@ export const LIST_A4_PRINT_CSS=`
     content:counter(page);
     font-family:Arial,"Segoe UI",sans-serif;
     font-size:9pt;
-    color:#27313a;
+    color:#000;
   }
 }
 @page:first{@top-center{content:none}}
@@ -24,27 +24,27 @@ export const LIST_A4_PRINT_CSS=`
   body[data-hdnd-a4-print="true"]{margin:0!important;background:#fff!important}
   #hdnd-a4-print-root{
     display:block!important;position:static!important;margin:0!important;padding:0!important;
-    background:#fff!important;color:#18222c!important;
+    background:#fff!important;color:#000!important;
     font-family:Arial,"Segoe UI",sans-serif!important;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
+  #hdnd-a4-print-root *{color:#000!important;text-shadow:none!important;box-shadow:none!important}
   #hdnd-a4-print-root h1{
     font-size:14pt;font-weight:700;text-align:center;
     margin:0 0 4mm;padding:0;line-height:1.25;
   }
   #hdnd-a4-print-root table{
     border-collapse:collapse;border-spacing:0;width:100%;table-layout:fixed;
-    font-size:8.15pt;line-height:1.3;color:#18222c;
+    font-size:8.15pt;line-height:1.3;color:#000;
   }
   #hdnd-a4-print-root thead{display:table-header-group}
   #hdnd-a4-print-root tr{break-inside:avoid;page-break-inside:avoid}
   #hdnd-a4-print-root th,#hdnd-a4-print-root td{
-    border:.4pt solid #98a3ad;vertical-align:middle;padding:2mm 1.3mm;
+    border:.4pt solid #888;vertical-align:middle;padding:2mm 1.3mm;
     text-align:left;white-space:normal;overflow-wrap:break-word;word-break:normal;
-    background:#fff;color:#18222c;
+    background:#fff;color:#000;
   }
   #hdnd-a4-print-root th{
-    font-weight:700;text-align:center;background:#eef2f5!important;
+    font-weight:700;text-align:center;background:#fff!important;
     padding:2.3mm 1mm;
   }
   /* No line break inside original 4-character IDs (NQ01/BC03). The
@@ -58,43 +58,33 @@ export const LIST_A4_PRINT_CSS=`
     font-weight:400!important;line-height:1.36;white-space:pre-line;
   }
   #hdnd-a4-print-root .hdnd-print-document-meta{
-    margin-top:1mm;color:#536877;line-height:1.26;
+    margin-top:1mm;color:#000;line-height:1.26;
   }
-  /* Compact administrative print table: no colored pills or pictograms.
-     Hairline separators, aligned text and emphasis on not-yet-submitted
-     statuses also work on grayscale printers. */
+  /* Monochrome administrative print: black text, white paper and neutral
+     grid lines only. Emphasize overdue submission and not-required text. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
     display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);
     align-items:center;gap:1.4mm;padding:1mm 0;
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
-    border-top:.35pt solid #bfc7ce;
+    border-top:.35pt solid #aaa;
   }
   #hdnd-a4-print-root .hdnd-print-stage-label{
     font-size:7.7pt;font-weight:400;line-height:1.3;
-    min-width:0;overflow-wrap:anywhere;color:#26323a;
+    min-width:0;overflow-wrap:anywhere;color:#000;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
     display:block;min-width:0;box-sizing:border-box;
     padding:0;border:0;background:transparent;
     text-align:left;font-weight:400;font-size:8pt;line-height:1.3;
-    color:#26323a;overflow-wrap:anywhere;
+    color:#000;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
-    color:#872b35;font-weight:700;
-  }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="processing"]{
-    color:#6b420e;
-  }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="waiting"]{
-    color:#254963;
-  }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="completed"]{
-    color:#265e42;
+    color:#000;font-weight:700;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"]{
-    color:#59636a;font-style:italic;
+    color:#000;font-style:italic;
   }
   #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
     font-weight:400!important;
@@ -106,9 +96,8 @@ export const LIST_A4_PRINT_CSS=`
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-staff-tag{
-    background:#ebf3f0;color:#4c7465;border-radius:1mm;
-    font-size:7pt;font-weight:700;text-align:center;padding:1mm .6mm;
-    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    background:transparent;color:#000;
+    font-size:7pt;font-weight:700;text-align:left;padding:0 .6mm 0 0;
   }
   #hdnd-a4-print-root .hdnd-print-staff-value{
     font-size:8pt;white-space:pre-wrap;overflow-wrap:break-word;
@@ -170,7 +159,6 @@ function printStageRows(source:Element,target:HTMLTableCellElement):void {
     appendPart(badge,'span','hdnd-print-stage-value',shown);
     const tone=printStageTone(row.getAttribute('data-stage-field')??'',shown);
     badge.dataset.tone=tone;
-
   }
 }
 function printStaffRows(source:Element,target:HTMLTableCellElement):void {
