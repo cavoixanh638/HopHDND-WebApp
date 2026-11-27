@@ -60,36 +60,45 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root .hdnd-print-document-meta{
     margin-top:1mm;color:#000;line-height:1.26;
   }
-  /* Owner revision 27/11: mirror the WebApp's three independent status
-     controls without colors or interactive affordances. Leave paper white,
-     separate the boxes with real spacing rather than full-cell rules. */
+  /* Owner-approved 27/11: one closed two-compartment box per stage.
+     The thin internal divider separates a left label from a centered
+     status; no colored fill or full-table-cell rules. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
-    display:grid;grid-template-columns:minmax(0,43fr) minmax(0,57fr);
-    align-items:center;gap:1.4mm;padding:0;
+    display:grid;grid-template-columns:minmax(0,45fr) minmax(0,55fr);
+    align-items:stretch;gap:0;min-height:5mm;box-sizing:border-box;
+    border:.55pt solid #777;border-radius:1mm;background:#fff;
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-stage-row:not(:first-child){
     margin-top:.9mm;
   }
   #hdnd-a4-print-root .hdnd-print-stage-label{
+    display:flex;align-items:center;justify-content:flex-start;
+    padding:.65mm .8mm;min-width:0;box-sizing:border-box;
     font-size:7.7pt;font-weight:600;line-height:1.3;
-    min-width:0;overflow-wrap:anywhere;color:#000;
+    text-align:left;overflow-wrap:anywhere;color:#000;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
     display:flex;align-items:center;justify-content:center;
-    min-width:0;min-height:5mm;box-sizing:border-box;
-    padding:.65mm .8mm;border:.55pt solid #777;border-radius:1mm;
-    background:#fff;text-align:center;font-weight:400;font-size:8pt;line-height:1.3;
+    min-width:0;box-sizing:border-box;
+    padding:.65mm .8mm;border-left:.4pt solid #888;
+    background:transparent;text-align:center;font-weight:400;font-size:8pt;line-height:1.3;
     color:#000;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-value{
     display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;
   }
+  #hdnd-a4-print-root .hdnd-print-stage-row[data-tone="not-submitted"]{
+    border-color:#444;
+  }
+  #hdnd-a4-print-root .hdnd-print-stage-row[data-tone="not-required"]{
+    border-style:dashed;
+  }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
-    color:#000;font-weight:700;border-color:#444;
+    color:#000;font-weight:700;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"]{
-    color:#000;font-style:italic;border-style:dashed;
+    color:#000;font-style:italic;
   }
   #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
     font-weight:400!important;
@@ -163,6 +172,7 @@ function printStageRows(source:Element,target:HTMLTableCellElement):void {
     const badge=appendPart(line,'span','hdnd-print-stage-state','');
     appendPart(badge,'span','hdnd-print-stage-value',shown);
     const tone=printStageTone(row.getAttribute('data-stage-field')??'',shown);
+    line.dataset.tone=tone;
     badge.dataset.tone=tone;
   }
 }
