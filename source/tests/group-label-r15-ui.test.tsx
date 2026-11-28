@@ -20,6 +20,7 @@ const hooks=vi.hoisted(()=>{
 });
 vi.mock('react',async importOriginal=>({...await importOriginal<typeof import('react')>(),useState:hooks.state,useRef:hooks.ref,useMemo:hooks.memo,
   useEffect:hooks.effect,useLayoutEffect:hooks.effect,useCallback:(fn:any,deps:any[])=>hooks.memo(()=>fn,deps)}));
+vi.mock('react-dom',async importOriginal=>({...await importOriginal<typeof import('react-dom')>(),createPortal:(child:any)=>child}));
 vi.mock('../src/components/useElementWidth',()=>({useElementWidth:()=>({ref:vi.fn(),width:1200})}));
 vi.mock('../src/components/SharedEditTooltip',()=>({mountSharedEditTooltip:()=>{}}));
 import {ItemList} from '../src/features/items/ItemList';
@@ -33,7 +34,7 @@ const inputs=(tree:any)=>nodes(tree).filter(n=>n.type==='input'&&
 const form=(tree:any)=>nodes(tree).find(n=>n.type==='form'&&
   n.props?.className==='modal-body group-label-quick-editor');
 const shortcut=(tree:any)=>nodes(tree).find(n=>n.type==='button'&&
-  n.props?.className?.includes('group-label-shortcut'));
+  n.props?.['data-group-label-edit']==='partyTogether');
 function propsFor(onPersistViewerLayout:any,initialLayout:ItemLayout){
   const items=createDemoItems(2);
   return {items,drafts:{},errors:{},busy:false,onUpdate:vi.fn(),onHistory:vi.fn(),
@@ -49,8 +50,8 @@ beforeEach(()=>{
     removeItem:(key:string)=>storage.delete(key)});
   vi.stubGlobal('window',{setInterval:()=>1,clearInterval:()=>{},
     setTimeout:()=>1,clearTimeout:()=>{},addEventListener:vi.fn(),
-    removeEventListener:vi.fn(),innerWidth:1280});
-  vi.stubGlobal('document',{hidden:false,addEventListener:vi.fn(),
+    removeEventListener:vi.fn(),innerWidth:1280,innerHeight:800,requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{}});
+  vi.stubGlobal('document',{hidden:false,body:{},addEventListener:vi.fn(),
     removeEventListener:vi.fn()});
 });
 afterEach(()=>vi.unstubAllGlobals());
@@ -59,13 +60,42 @@ const startLayoutEditing=(props:any)=>{
   const mode=nodes(tree).find(n=>n.type==='button'&&n.props?.className?.includes('inline-g01-mode-toggle'));
   expect(mode).toBeDefined();mode.props.onClick();
   tree=view(props);
+  const detail=nodes(tree).find(n=>n.type==='details'&&n.props?.className==='compact-columns-menu');
+  const summary=nodes(tree).find(n=>n.type==='summary'&&n.props?.['aria-controls']==='hdnd-compact-columns-popup');
+  expect(detail).toBeDefined();expect(summary).toBeDefined();
+  detail.props.ref.current={open:true};
+  summary.props.ref.current={getBoundingClientRect:()=>({top:80,bottom:110,right:600}),focus:vi.fn()};
+  detail.props.onToggle({currentTarget:{open:true}});
+  tree=view(props);tree=view(props);
   expect(shortcut(tree)).toBeDefined();
+  const pencils=nodes(tree).filter(n=>n.type==='button'&&n.props?.['data-group-label-edit']);
+  expect(pencils.map(n=>n.props['data-group-label-edit']).sort()).toEqual(['contentDetails','leadersTogether','partyTogether','roomSpecialist','teamTogether']);
   shortcut(tree).props.onClick();
   return view(props);
 };
 const saveLayout=(tree:any)=>nodes(tree).find(n=>n.type==='button'&&
   n.props?.className?.includes('inline-layout-save'));
 
+describe('Direct List eye stages visibility with a single click',()=>{
+  it('hides the displayed column without opening a menu or writing Firebase, then Cancel restores',()=>{
+    const saver=vi.fn(),props=propsFor(saver,defaultItemLayout());
+    let tree=view(props);
+    const eye=nodes(tree).find(n=>n.type==='button'&&n.props?.['data-direct-hide-column']==='note');
+    expect(eye).toBeDefined();
+    expect(nodes(tree).some(n=>n.props?.['data-direct-hide-column']==='displayCode')).toBe(false);
+    const stop=vi.fn();eye.props.onClick({stopPropagation:stop});
+    expect(stop).toHaveBeenCalledTimes(1);
+    tree=view(props);
+    expect(nodes(tree).some(n=>n.props?.columnKey==='note')).toBe(false);
+    expect(nodes(tree).some(n=>n.props?.className==='inline-g01-column-menu')).toBe(false);
+    expect(saver).not.toHaveBeenCalled();
+    const cancel=nodes(tree).find(n=>n.type==='button'&&n.props?.className?.includes('inline-layout-cancel'));
+    expect(cancel).toBeDefined();cancel.props.onClick();
+    tree=view(props);
+    expect(nodes(tree).some(n=>n.props?.columnKey==='note')).toBe(true);
+    expect(saver).not.toHaveBeenCalled();
+  });
+});
 describe('R15 grouped titles are staged with layout and retain two-tab CAS',()=>{
   it('stages group title until explicit Save, then resolves a competing edit',async()=>{
     const baseline=defaultItemLayout(),remote={...baseline,groupLabels:{partyTogether:'Tab B'}};

@@ -2713,7 +2713,7 @@ try{
   const compactMenuDesktop=await evaluate(`(()=>{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
-    const labels=[...panel?.querySelectorAll(':scope > label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
     return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===8&&
       !panel.querySelector('details.compact-more-options')&&
@@ -2733,6 +2733,16 @@ try{
   await eventually("!document.querySelector('th[data-column-key=note]') && !!document.querySelector('.inline-layout-cancel')",'Column visibility did not stage into the existing draft');
   await evaluate("document.querySelector('.column-options-checklist input[data-column-choice=note]').click()");
   await eventually("!!document.querySelector('th[data-column-key=note]')",'Unified menu did not restore Note');
+  // A source checkbox changes only that member. Group checkbox and the eye
+  // operate on the whole displayed group; hidden-bar clutter never mounts.
+  await evaluate("document.querySelector('input[data-column-choice=specialist]').click()");
+  await eventually("(()=>{const h=document.querySelector('th[data-column-key=room] .column-heading-label');const c=document.querySelector('td[data-col-key=room]');return h?.textContent.trim()==='Lãnh đạo / Phòng'&&c?.querySelector('[data-ui-reference-part=ubndLeader]')&&c.querySelector('[data-ui-reference-part=vpLeader]')&&c.querySelector('[data-ui-reference-part=room]')&&!c.querySelector('[data-ui-reference-part=specialist]')&&document.querySelector('input[data-group-choice=teamTogether]')?.indeterminate;})()",'Partial staff group lost its remaining fields or retained an obsolete heading');
+  if(await evaluate("!!document.querySelector('.inline-excel-hidden-bar')"))throw Error('Obsolete hidden-column counter still mounted');
+  await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
+  await eventually("!document.querySelector('th[data-column-key=room],th[data-column-key=specialist],th[data-column-key=vpLeader],th[data-column-key=ubndLeader]')&&!document.querySelector('input[data-group-choice=teamTogether]')?.checked",'Hide group did not hide every staff member');
+  await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
+  await eventually("(()=>{const c=document.querySelector('td[data-col-key=room]');return ['ubndLeader','vpLeader','room','specialist'].every(k=>c?.querySelector('[data-ui-reference-part='+k+']'))&&document.querySelector('input[data-group-choice=teamTogether]')?.checked&&!document.querySelector('input[data-group-choice=teamTogether]')?.indeterminate;})()",'Hidden group did not restore all four members');
+  console.log('ADMIN_GROUP_VISIBILITY_PARTIAL_AND_FULL_RESTORE_PASS');
   await evaluate("document.querySelector('.inline-layout-cancel').click()");
   await eventually("!document.querySelector('.inline-layout-cancel')",'Visibility draft cancel did not restore view');
   await evaluate("document.querySelector('.compact-columns-menu').open=true");
@@ -2796,7 +2806,7 @@ try{
     const viewport=document.querySelector('.item-table-scroll');
     const rect=panel?.getBoundingClientRect();
     const html=document.scrollingElement;
-    const labels=[...panel?.querySelectorAll(':scope > label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
@@ -4428,13 +4438,20 @@ try{
   await eventually("!!document.querySelector('.inline-g01-mode-toggle:not(:disabled)')",
     'R12 List layout editor entry missing');
   await evaluate("document.querySelector('.inline-g01-mode-toggle').click()");
-  await eventually("!!document.querySelector('.group-label-shortcut:not(:disabled)')",
-    'R12 layout-editor header rename shortcut missing');
-  await evaluate("document.querySelector('.group-label-shortcut').click()");
+  await evaluate("document.querySelector('.compact-columns-menu').open=true");
+  await eventually("!!document.querySelector('[data-group-label-edit=partyTogether]:not(:disabled)')",
+    'R12 group rename pencil missing from column options');
+  const groupPencils=await evaluate("[...document.querySelectorAll('.compact-columns-options-floating [data-group-label-edit]')].map(b=>b.dataset.groupLabelEdit)");
+  if(groupPencils.length!==5||new Set(groupPencils).size!==5)throw Error('Expected one rename pencil per group: '+JSON.stringify(groupPencils));
+  await evaluate("document.querySelector('[data-group-label-edit=partyTogether]').click()");
+  await eventually("!document.querySelector('.compact-columns-options-floating')",
+    'Column options should close when the targeted name editor opens');
   // A native dialog mounts its form before React's showModal() effect runs.
   // Focus must wait for the dialog's real open state; closed dialogs are inert.
   await eventually("!!document.querySelector('dialog.modal[open] .group-label-quick-editor input[aria-label=\\\"Đổi tên cột gộp partyTogether\\\"]')",
     'R12 header rename dialog not yet open');
+  if(await evaluate("document.querySelectorAll('.group-label-quick-editor input[type=text]').length!==1"))
+    throw Error('Rename pencil must open exactly one group title field');
   const quickNameFocus=await evaluate(`(()=>{
     const input=document.querySelector('.group-label-quick-editor input[aria-label="Đổi tên cột gộp partyTogether"]');
     input?.focus();return document.activeElement===input;
@@ -4462,7 +4479,7 @@ try{
     'R12 guest table failed to load');
   if(await evaluate("!!document.querySelector('.guest-compact-menu-bar,.compact-columns-menu')"))
     throw Error('R12 guest personal column menu unexpectedly present');
-  if(await evaluate("!!document.querySelector('.group-label-shortcut')"))
+  if(await evaluate("!!document.querySelector('.group-label-pencil,.group-label-shortcut')"))
     throw Error('R12 guest received admin-only group-title edit control');
   console.log('R12_MAIN_LIST_GROUP_RENAME_SHORTCUT_PASS',JSON.stringify(quickRename));
 
@@ -4557,10 +4574,11 @@ try{
   if(singleTable.tableCount!==1||singleTable.advanced||!singleTable.hasSave||
      !singleTable.hasCancel||!singleTable.initiallyClean)
     throw Error('G00 single-table edit mode invalid: '+JSON.stringify(singleTable));
-  await evaluate("document.querySelector('th[data-column-key=content] .inline-g01-column-menu-trigger').click()");
-  await eventually("!!document.querySelector('th[data-column-key=content] .inline-g01-column-menu')",
-    'G00 column eye menu failed to open in List');
-  await evaluate("document.querySelector('th[data-column-key=content] .inline-g01-column-menu button[aria-label^=\\\"Ẩn cột\\\"]').click()");
+  await evaluate("document.querySelector('th[data-column-key=content] .inline-g01-column-direct-hide').click()");
+  await eventually("!document.querySelector('th[data-column-key=content]')",
+    'One click on the eye must hide the column immediately');
+  if(await evaluate("!!document.querySelector('.inline-g01-column-menu')"))
+    throw Error('Eye unexpectedly opened an intermediate menu');
   await eventually("!!document.querySelector('.inline-layout-save:not(:disabled)')",
     'G00 hiding a column did not mark layout as a draft');
   if(await evaluate("!!document.querySelector('th[data-column-key=content]')"))
@@ -4732,6 +4750,22 @@ try{
       await eventually("!!document.querySelector('th[data-column-key=type]') && !document.querySelector('th[data-column-key=department]')",'Type split not independent');
       await pointerClick(deptToggle);
       await eventually("!!document.querySelector('th[data-column-key=type]') && !!document.querySelector('th[data-column-key=department]')",'Both document fields should be separate');
+      const headingSpace=await evaluate(`(['type','department'].map(key=>{
+        const cell=document.querySelector('th[data-column-key='+key+']');
+        const label=cell.querySelector('.column-heading-label');
+        const content=cell.querySelector('.column-heading-content');
+        const c=cell.getBoundingClientRect(),l=label.getBoundingClientRect();
+        const css=getComputedStyle(content),style=getComputedStyle(label);
+        const textNode=[...label.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());
+        const range=document.createRange();range.selectNodeContents(textNode);
+        const lines=range.getClientRects().length;
+        const saved=label.style.whiteSpace;label.style.whiteSpace='nowrap';
+        const naturalWidth=range.getBoundingClientRect().width;label.style.whiteSpace=saved;
+        return {key,cellWidth:c.width,labelWidth:l.width,padding:parseFloat(css.paddingLeft)+parseFloat(css.paddingRight),lines,naturalWidth,
+          ok:l.width>=c.width-14&&parseFloat(css.paddingLeft)+parseFloat(css.paddingRight)<=1&&style.wordBreak==='normal'&&(naturalWidth>l.width+1||lines===1)};
+      }))`);
+      if(headingSpace.some(x=>!x.ok))throw Error('Admin split heading wastes space: '+JSON.stringify(headingSpace));
+      console.log('ADMIN_SPLIT_HEADINGS_FULL_WIDTH_PASS',JSON.stringify(headingSpace));
       await pointerClick(typeToggle);
       await eventually("!document.querySelector('th[data-column-key=type]') && !!document.querySelector('th[data-column-key=department]')",'Department split not independent');
       await pointerClick(deptToggle);

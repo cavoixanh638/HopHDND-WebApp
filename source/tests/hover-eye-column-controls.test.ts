@@ -23,6 +23,9 @@ describe('Admin hover-eye column controls (presentation only)',()=>{
     expect(reportCss).not.toContain("content:'⋯'");
     // The existing controls must keep descriptive labels and menu callbacks.
     expect(headerTsx).toContain("aria-label={'Tùy chọn cột '");
+    expect(listTsx).toContain('className="inline-g01-column-menu-trigger inline-g01-column-direct-hide"');
+    expect(listTsx).toContain("aria-label={'Ẩn cột '+column.label}");
+    expect(listTsx).toContain('if(!viewSaving)hideDisplayedColumn(column.key)');
     expect(reportTsx).toContain('aria-label={`Tùy chọn ẩn hiện cột ${column}`}');
   });
 
@@ -38,6 +41,9 @@ describe('Admin hover-eye column controls (presentation only)',()=>{
     expect(popupCss).toContain('.inline-g04-heading-action.inline-g04-hide');
     expect(popupCss).toMatch(/\.inline-g04-heading-action\.inline-g04-hide\s*\{\s*display:none;/);
     expect(listCss).toContain('padding-right:30px');
+    expect(listCss).toContain('padding-inline:5px;');
+    expect(listCss).toContain('padding-inline:0;min-width:0;width:100%;');
+    expect(listCss).toContain('word-break:normal;overflow-wrap:break-word;');
     expect(reportCss).toContain('padding-right:32px');
   });
 
@@ -57,7 +63,8 @@ describe('Admin hover-eye column controls (presentation only)',()=>{
   it('retains Admin-only access and a restore choice but removes persistent instruction clutter',()=>{
     expect(headerTsx).toContain('const visibilityEnabled=inlineEditing||quickVisibility');
     expect(reportTsx).toContain('const quickAllowed = quickVisibility');
-    expect(listTsx).toContain('hiddenQuickColumns.length>0&&<div className="inline-excel-hidden-bar"');
+    expect(listTsx).not.toContain('className="inline-excel-hidden-bar"');
+    expect(listTsx).toContain('data-group-choice={group.variant}');
     expect(listTsx).not.toContain('Admin: nhấp chuột phải hoặc bấm ⋯');
     expect(listTsx).toContain('Hiện tất cả');
     expect(reportTsx).toContain('Hiện cột ẩn');

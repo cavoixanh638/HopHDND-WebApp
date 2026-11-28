@@ -197,3 +197,43 @@
 .inline-layout-save-actions{width:100%}.inline-layout-save-actions>.button{flex:1}}
 @media print{.inline-layout-savebar{display:none!important}}
 
+
+/* 28/11: absolute corner tools must not also consume heading text width. */
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools):not([data-column-key="displayCode"]){
+  padding-inline:5px;
+}
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools):not([data-column-key="displayCode"])>.column-heading-content,
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools):not([data-column-key="displayCode"])>.column-heading-content.has-sort{
+  padding-inline:0;min-width:0;width:100%;
+}
+.item-data-table thead .item-heading-row th:has(.inline-g01-column-tools):not([data-column-key="displayCode"]) .column-heading-label{
+  max-width:none;white-space:normal;word-break:normal;overflow-wrap:break-word;
+}
+/* List owns the direct action; the shared header still provides its
+   context-menu and keyboard actions. No duplicate eye or menu on click. */
+.item-data-table .item-heading-row th>.column-heading-content>.inline-g01-column-tools>.inline-g01-column-menu-trigger{
+  display:none;
+}
+.item-data-table .item-heading-row th>.column-heading-content>.inline-g01-column-tools:not(:has(.inline-g01-column-menu,.inline-g01-column-rename)){
+  pointer-events:none;
+}
+.item-data-table .item-heading-row th .inline-g01-direct-hide-tools{
+  z-index:9;bottom:auto;height:18px;
+}
+.item-data-table .item-heading-row th:has(.inline-g01-column-menu,.inline-g01-column-rename) .inline-g01-direct-hide-tools{
+  display:none;
+}
+.item-data-table .inline-g01-column-direct-hide:disabled{visibility:hidden}
+.compact-columns-options .column-options-merge-row{display:flex;align-items:flex-start;gap:4px;min-width:0}
+.compact-columns-options .column-options-merge-row>label{display:flex;gap:9px;align-items:flex-start;flex:1;min-width:0;padding:6px 3px;border-radius:5px;cursor:pointer;font-size:12px}
+.compact-columns-options .column-options-merge-row>label:hover{background:#f3f8f5}
+.compact-columns-options .column-options-group-name{display:flex;align-items:center;gap:4px;font-size:12px;min-width:0;padding:2px 3px}
+.compact-columns-options .column-options-group-name strong{flex:1;overflow-wrap:anywhere}
+.compact-columns-options .group-label-pencil{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;min-height:24px;margin:0;padding:0;border:1px solid transparent;border-radius:4px;background:transparent;color:#416b58;cursor:pointer;font-size:15px;line-height:1}
+.compact-columns-options .group-label-pencil:is(:hover,:focus-visible){background:#e5f1e9;border-color:#a6c7b4;outline-offset:1px}
+.compact-columns-options .group-label-pencil:disabled{opacity:.4;cursor:not-allowed}
+
+/* Group visibility is independent of the merge configuration below it. */
+.column-options-group-visibility-title{font-size:12px;margin-top:2px}
+.column-options-group-checklist{max-height:none}
+.column-options-group-checklist input{accent-color:#287852}

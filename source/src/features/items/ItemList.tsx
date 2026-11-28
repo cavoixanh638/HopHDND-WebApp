@@ -306,6 +306,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [saving,setSaving] = useState(false);
   const [viewSaving,setViewSaving]=useState(false);
   const [editingGroupLabels,setEditingGroupLabels]=useState<CompactGroupLabels|null>(null);
+  const [editingGroupKey,setEditingGroupKey]=useState<keyof CompactGroupLabels>('partyTogether');
   // Immutable baseline captured when the rename dialog opens, not when Save is
   // pressed. A second tab can refresh initialLayout while this draft is open.
   const [groupLabelBaseline,setGroupLabelBaseline]=useState<ItemLayout|null>(null);
@@ -904,6 +905,20 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const hiddenQuickColumns=activeLayout.columns.filter(column=>
     !column.removed&&!column.visible&&column.key!=='stt');
+  // Derive configured groups even when all their source columns are hidden.
+  // Group visibility is the existing per-source layout visibility, not a new
+  // schema or business-data flag. Selecting a hidden group restores all members.
+  const configuredGroups=compactOn?activeCompactPairs(activeLayout.columns
+    .filter(column=>!column.removed).map(column=>({...column,visible:true})),compactDisplay):[];
+  const changeGroupVisibility=(members:readonly string[],visible:boolean)=>{
+    if(!canEditListSettings||showAllSourceColumns||viewSaving)return;
+    stageInlineLayout(base=>members.reduce((next,key)=>setInlineColumnVisibility(next,key,visible),base));
+  };
+  const hideDisplayedColumn=(key:string)=>{
+    const group=compactPairs.find(pair=>pair.anchor===key);
+    if(group){changeGroupVisibility(group.memberFields,false);return;}
+    changeHeaderColumnVisibility(key,false);
+  };
   // Keep the two persistence paths distinct: draft in Customize, CAS in View.
   const changeHeaderColumnVisibility=(key:string,visible:boolean)=>{
     if(canDraftEditHeaders){
@@ -966,9 +981,14 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     setEditingGroupLabels(null);setGroupLabelBaseline(null);
     setGroupLabelConflicts([]);setGroupLabelChoices({});setGroupLabelsError('');
   };
-  const openGroupLabelEditor=()=>{
-    if(!canViewerArrange)return;
+  const openGroupLabelEditor=(key:keyof CompactGroupLabels)=>{
+    if(!canViewerArrange||viewSavingRef.current)return;
     const snapshot=validateItemLayout(activeLayout);
+    setEditingGroupKey(key);
+    if(compactDetailsRef.current)compactDetailsRef.current.open=false;
+    setCompactMenuOpen(false);setCompactMenuPlacement(null);
+    // Start the shared visual draft before opening, preserving its CAS baseline.
+    if(!inlineMode)stageInlineLayout();
     setGroupLabelBaseline(snapshot);
     setEditingGroupLabels({...snapshot.groupLabels});
     setGroupLabelConflicts([]);setGroupLabelChoices({});setGroupLabelsError('');
@@ -1091,6 +1111,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // Keep the column options in the always-visible title row (or filter toolbar
   // when shared layout is unavailable), never inside that hidden header.
   const columnMenuInHeading=adminControls&&(!!onPersistViewerLayout||isRamAdminList);
+  const groupLabelPencil=(key:keyof CompactGroupLabels)=>canViewerArrange&&<button type="button"
+    className="group-label-pencil" data-group-label-edit={key}
+    aria-label={'Đổi tên cột gộp '+COMPACT_GROUP_DEFAULT_LABELS[key]}
+    title={'Đổi tên '+(activeLayout.groupLabels?.[key]??COMPACT_GROUP_DEFAULT_LABELS[key])}
+    disabled={viewSaving||locked} onClick={()=>openGroupLabelEditor(key)}>✎</button>;
   const compactMenu=adminControls&&compactOn&&!customizing&&(shareCompact||allowPersonalCompact)&&
     (<>
       <details className="compact-columns-menu" ref={compactDetailsRef}
@@ -1126,16 +1151,39 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                   onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}/>
                 <span>{column.label}{column.key==='displayCode'?' (cố định)':''}</span>
               </label>)}</div>
-            <small>Các cột nguồn vẫn được giữ nguyên khi ẩn hoặc gộp.</small>
+            {configuredGroups.length>0&&<>
+              <strong className="column-options-group-visibility-title">Cột gộp</strong>
+              <div className="column-options-checklist column-options-group-checklist">{configuredGroups.map(group=>{
+                const visibleMembers=group.memberFields.filter(key=>activeLayout.columns.some(column=>column.key===key&&column.visible&&!column.removed));
+                const anyVisible=visibleMembers.length>0;
+                const mixed=anyVisible&&visibleMembers.length<group.memberFields.length;
+                const groupLabel=activeLayout.groupLabels?.[group.variant as keyof CompactGroupLabels]??group.label;
+                return <label key={group.variant} title={mixed?'Đang hiện một phần; bỏ chọn để ẩn cả nhóm':groupLabel}>
+                  <input type="checkbox" data-group-choice={group.variant} checked={anyVisible}
+                    ref={input=>{if(input)input.indeterminate=mixed;}}
+                    aria-checked={mixed?'mixed':anyVisible} aria-label={'Hiện cột gộp '+groupLabel}
+                    disabled={viewSaving||locked} onChange={event=>changeGroupVisibility(group.memberFields,event.currentTarget.checked)}/>
+                  <span>{groupLabel}</span>
+                </label>;
+              })}</div>
+            </>}
+            <small>Cột thường: ẩn từng thành phần. Cột gộp: ẩn cả nhóm hoặc hiện lại tất cả thành phần.</small>
           </div>}
           <strong>Gộp cột</strong>
-          <small className="column-options-note">Gộp Loại văn bản và Đơn vị chủ trì độc lập. Tiến độ 3 khâu luôn gộp.</small>
+          <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.contentDetails??COMPACT_GROUP_DEFAULT_LABELS.contentDetails}</strong>{groupLabelPencil('contentDetails')}</div>
           {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
-            (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=><label key={option.key}>
-            <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??false}
-              disabled={viewSaving||locked} onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
-            <span>{option.label}<small>{option.detail}</small></span>
-          </label>)}
+            (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=>{
+              const renameKey=option.key==='leadersTogether'||option.key==='roomSpecialist'||option.key==='teamTogether'?option.key:undefined;
+              return <div className="column-options-merge-row" key={option.key}>
+                <label>
+                  <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??false}
+                    disabled={viewSaving||locked} onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+                  <span>{option.label}<small>{option.detail}{renameKey&&activeLayout.groupLabels?.[renameKey]?' · Tên cột: '+activeLayout.groupLabels[renameKey]:''}</small></span>
+                </label>
+                {renameKey&&groupLabelPencil(renameKey)}
+              </div>;
+            })}
+          <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.partyTogether??COMPACT_GROUP_DEFAULT_LABELS.partyTogether} <small className="column-options-note">(luôn gộp)</small></strong>{groupLabelPencil('partyTogether')}</div>
           <strong className="column-options-name-heading">Viết tắt tên</strong>
           {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
             <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]}
@@ -1333,13 +1381,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
     {adminControls&&<div className="card-header">
     <div className="item-header-actions">
-      {inlineMode&&!customizing&&compactOn&&onPersistViewerLayout&&<button type="button"
-        className="button ghost group-label-shortcut"
-        disabled={!canViewerArrange}
-        title={personalViewActive?'Đóng giao diện cá nhân để sửa tên cột dùng chung':!canViewerArrange?'Chờ bố cục dùng chung tải xong':'Đổi tiêu đề cột gộp, không đổi dữ liệu Excel'}
-        onClick={openGroupLabelEditor}>
-        Đổi tên cột gộp
-      </button>}
       {!customizing&&statusPaletteStore&&onStatusPaletteChange&&
         <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
       {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
@@ -1469,13 +1510,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       <ActiveListFilters conditions={activeConditions} visibleCount={filtered.length}
         sourceCount={items.length} onRemove={removeOneCondition} onClearAll={clearAllListFilters}/>
     </>}
-    {<>{canEditListSettings&&!showAllSourceColumns&&hiddenQuickColumns.length>0&&<div className="inline-excel-hidden-bar" role="group" aria-label="Hiện lại cột đã ẩn">
-       {hiddenQuickColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenQuickColumns.length})</summary>
-         <div>{hiddenQuickColumns.map(column=><button key={column.key} type="button" disabled={viewSaving}
-           onClick={()=>changeInlineColumnVisibility(column.key,true)}>+ Hiện {column.label}</button>)}
-           {hiddenQuickColumns.length>1&&<button type="button" disabled={viewSaving} onClick={showAllInlineColumns}>Hiện tất cả</button>}
-         </div></details>}
-     </div>}<div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-list-nowrap="true" data-list-font-override={explicitFontSize!==undefined?'true':undefined} data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',...(explicitFontSize!==undefined?{'--table-font-size':`${explicitFontSize}px`}:{}),
+    {<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-list-nowrap="true" data-list-font-override={explicitFontSize!==undefined?'true':undefined} data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',...(explicitFontSize!==undefined?{'--table-font-size':`${explicitFontSize}px`}:{}),
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} data-protected-column={contentMinimums.columns[column.key]!==undefined?column.key:undefined} data-content-minimum={contentMinimums.columns[column.key]!==undefined?projectedPhysicalLimits(column.key,groupExtras,compactOn,contentMinimums.columns).min:undefined} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls?cycleSort:undefined}
@@ -1483,7 +1518,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
    saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1}
    hiddenColumns={hiddenQuickColumns.map(({key,label})=>({key,label}))}
    onShow={key=>changeHeaderColumnVisibility(key,true)} onShowAll={showAllHeaderColumns}
-   onRename={changeHeaderColumnName} onHide={key=>changeHeaderColumnVisibility(key,false)}
+   onRename={changeHeaderColumnName} onHide={hideDisplayedColumn}
    onOpenColumnSettings={canDraftEditHeaders
      ?key=>{
        setRequestedColumnFocus(key);
@@ -1493,7 +1528,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
      :inlineReady?onOpenCatalog:undefined}
   disabled={!(customizing&&!locked&&adminControls||canViewerArrange)}
   previousKey={displayedColumns[index-1]?.key} nextKey={displayedColumns[index+1]?.key}
-  onMove={moveColumn}>{column.label}{((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
+  onMove={moveColumn}>{column.label}
+  {(headerInlineEditing||headerQuickVisibility)&&canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1&&
+    <span className="inline-g01-column-tools inline-g01-direct-hide-tools">
+      <button type="button" className="inline-g01-column-menu-trigger inline-g01-column-direct-hide"
+        data-direct-hide-column={column.key} aria-label={'Ẩn cột '+column.label}
+        title="Ẩn cột (không xóa); hiện lại trong Tùy chọn cột" disabled={viewSaving}
+        onPointerDown={event=>event.stopPropagation()}
+        onClick={event=>{event.stopPropagation();if(!viewSaving)hideDisplayedColumn(column.key);}}/>
+    </span>}
+  {((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
     // L03 itself is changed only via its five-track editor. A handle next to
     // L03 may resize the ordinary column on its far side without changing L03.
@@ -1656,10 +1700,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     {bulkPasteOpen&&denseChrome&&onBulkApply&&<BulkPasteModal rows={rows} live={sourceKind==='firebase'}
       canEdit={(id,field)=>!locked&&!!canEditCell?.(id,field)}
       onApply={onBulkApply} onClose={()=>setBulkPasteOpen(false)}/>}
-    {editingGroupLabels!==null&&<Modal title="Đổi tên cột gộp dùng chung" onClose={closeGroupLabelEditor}>
+    {editingGroupLabels!==null&&<Modal title={'Đổi tên '+COMPACT_GROUP_DEFAULT_LABELS[editingGroupKey]} onClose={closeGroupLabelEditor}>
       <form className="modal-body group-label-quick-editor" onSubmit={event=>{event.preventDefault();void saveGroupLabels();}}>
         <p className="muted">Chỉ đổi tiêu đề các cột gộp. Không đổi dữ liệu, quyền sửa hoặc tên trường Excel. Bỏ trống để dùng tên mặc định.</p>
-        {COMPACT_GROUP_LABEL_KEYS.map(key=><div className="group-label-editor-row" key={key}>
+        {COMPACT_GROUP_LABEL_KEYS.filter(key=>key===editingGroupKey).map(key=><div className="group-label-editor-row" key={key}>
           <label className="field">{COMPACT_GROUP_DEFAULT_LABELS[key]}
             <input type="text" maxLength={100} value={editingGroupLabels[key]??''}
               aria-label={'Đổi tên cột gộp '+key}
@@ -1684,7 +1728,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             onClick={closeGroupLabelEditor}>Hủy</button>
           <button type="submit" className="button primary"
             disabled={viewSaving||!canViewerArrange||groupLabelConflicts.length>0}>
-            {viewSaving?'Đang lưu…':'Lưu tên cột dùng chung'}
+            {viewSaving?'Đang lưu…':'Áp dụng tên cột'}
           </button>
         </div>
       </form>
