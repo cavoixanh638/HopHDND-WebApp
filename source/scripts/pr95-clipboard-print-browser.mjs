@@ -178,6 +178,10 @@ try{
           !!previousState&&Math.abs(b.left-previousState.left)<=1),
         adjacentTracks:Math.abs(l.right-b.left)<=1&&Math.abs(l.top-b.top)<=1&&Math.abs(l.bottom-b.bottom)<=1,
         leftRatio:l.width/(l.width+b.width),
+        labelLines:labelRange.getClientRects().length,statusLines:statusRange.getClientRects().length,
+        labelSlack:l.right-labelTextRect.right-parseFloat(labelCss.paddingRight),
+        statusSlack:b.right-statusTextRect.right-parseFloat(css.paddingRight),
+        labelTrack:l.width,stateTrack:b.width,cellWidth:t.width,
         contiguous:!before||Math.abs(r.top-before.bottom)<=.25,
         height:r.height,gap:before?r.top-before.bottom:null};
     });
@@ -202,10 +206,20 @@ try{
   assert.equal(renderInfo.stages.length,printed.printRows*3,'Every printed record must preserve all three stage rows');
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
     s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.contiguous&&s.joined&&s.aligned&&
-    s.statusStartsAtLeft&&s.verticallyCentered&&s.adjacentTracks&&s.ruleInset>1&&Math.abs(s.leftRatio-printLayout.leftPercent/100)<=.015&&
+    s.statusStartsAtLeft&&s.verticallyCentered&&s.adjacentTracks&&s.ruleInset>1&&
+    s.labelLines===1&&s.statusLines===1&&
     s.height>=printLayout.minHeightMm*96/25.4-.5&&
     (s.gap===null||Math.abs(s.gap)<=.25)),
     'Print stage rows must align and touch, keep horizontal rules inset, and fully contain text: '+JSON.stringify(renderInfo.stages));
+  // Actual print-size DOM: the longest label and longest status must each
+  // fit on one line with just the tiny rounding margin. This catches both
+  // wasted space and too-narrow clipping even when screen widths are huge.
+  const labelSlack=Math.min(...renderInfo.stages.map(s=>s.labelSlack));
+  const statusSlack=Math.min(...renderInfo.stages.map(s=>s.statusSlack));
+  assert(labelSlack>=-.8&&labelSlack<=4.5,'Stage label rail is not content-fit: '+labelSlack);
+  assert(statusSlack>=-.8&&statusSlack<=6.5,'Stage state rail is not content-fit: '+statusSlack);
+  assert(renderInfo.stages.every(s=>Math.abs(s.labelTrack-renderInfo.stages[0].labelTrack)<=1&&
+    Math.abs(s.stateTrack-renderInfo.stages[0].stateTrack)<=1),'All rows must share the same fitted rails');
   for(const stage of renderInfo.stages){
     assert.equal(stage.background,'rgb(255, 255, 255)','Stage row must remain white paper');
     assert.equal(stage.color,'rgb(0, 0, 0)','All stages must use black text');
@@ -238,6 +252,8 @@ try{
     count:renderInfo.stages.length,
     minGap:Math.min(...renderInfo.stages.map(s=>s.gap).filter(s=>s!==null)),
     minHeight:Math.min(...renderInfo.stages.map(s=>s.height)),
+    labelSlack,statusSlack,stageColumnWidth:renderInfo.stages[0].cellWidth,
+    allSingleLine:renderInfo.stages.every(s=>s.labelLines===1&&s.statusLines===1),
     minLeftRatio:Math.min(...renderInfo.stages.map(s=>s.leftRatio)),
     maxLeftRatio:Math.max(...renderInfo.stages.map(s=>s.leftRatio)),
     allStatusLeftAligned:renderInfo.stages.every(s=>s.statusStartsAtLeft),

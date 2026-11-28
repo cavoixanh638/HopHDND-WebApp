@@ -34,7 +34,7 @@ export const LIST_A4_PRINT_CSS=`
     margin:0 0 4mm;padding:0;line-height:1.25;
   }
   #hdnd-a4-print-root table{
-    border-collapse:collapse;border-spacing:0;width:100%;table-layout:fixed;
+    border-collapse:collapse;border-spacing:0;width:100%;max-width:281mm;table-layout:fixed;
     font-size:8.15pt;line-height:1.3;color:#000;
   }
   #hdnd-a4-print-root thead{display:table-header-group}
@@ -64,9 +64,10 @@ export const LIST_A4_PRINT_CSS=`
   /* Owner-approved 28/11 final print design: three contiguous rows,
      two thin horizontal separators inset by the table cell padding.
      No vertical divider, nested borders, dashed lines or status fills.
-     Labels and statuses retain their independent left-aligned tracks. */
+     Labels and statuses retain aligned tracks, sized to the longest visible
+     text in the actual print snapshot rather than the screen layout. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
-    display:grid;grid-template-columns:minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr);
+    display:grid;grid-template-columns:minmax(0,var(--hdnd-print-stage-label-width,${printLayout.leftPercent}%)) minmax(0,1fr);
     align-items:stretch;gap:0;min-height:${printLayout.minHeightMm}mm;box-sizing:border-box;
     margin:0;border:0;border-radius:0;background:#fff;
     break-inside:avoid;page-break-inside:avoid;
@@ -216,6 +217,54 @@ function renderPrintCell(cell:HTMLTableCellElement,target:HTMLTableCellElement):
   }
 }
 
+// CSS absolute units on A4 landscape (297mm minus two 8mm margins).
+const PRINT_PX_PER_MM=96/25.4;
+const PRINT_PAGE_WIDTH=281*PRINT_PX_PER_MM;
+const PRINT_CELL_PADDING=2*1.3*PRINT_PX_PER_MM+1.5;
+const PRINT_TRACK_PADDING=2*.8*PRINT_PX_PER_MM+2;
+
+/** Reallocate only print columns, preserving the fixed ID and other columns'
+ * relative widths. Do not hide text or shrink fonts when a very long legacy
+ * value cannot fit: leave room for the other visible columns and wrap safely. */
+export function fitPrintStageColumn(shares:readonly number[],stageIndex:number,codeIndex:number,
+  labelTextPx:number,statusTextPx:number):{shares:number[];labelWidthPx?:number}{
+  const result=[...shares];
+  const others=shares.map((_,index)=>index).filter(index=>index!==stageIndex&&index!==codeIndex);
+  if(stageIndex<0||stageIndex>=shares.length||stageIndex===codeIndex||
+     !Number.isFinite(labelTextPx)||!Number.isFinite(statusTextPx)||labelTextPx<0||statusTextPx<0)
+    return {shares:result};
+  const labelWidthPx=Math.ceil(labelTextPx+PRINT_TRACK_PADDING);
+  const stateWidthPx=Math.ceil(statusTextPx+PRINT_TRACK_PADDING);
+  const needed=(labelWidthPx+stateWidthPx+PRINT_CELL_PADDING)/PRINT_PAGE_WIDTH*100;
+  const free=100-(codeIndex<0?0:shares[codeIndex]);
+  // Retain at least 12mm per other displayed column when possible.
+  const reserve=Math.min(free*.55,others.length*12/281*100);
+  const target=others.length?Math.min(needed,free-reserve):free;
+  const total=others.reduce((sum,index)=>sum+shares[index],0);
+  result[stageIndex]=target;
+  for(const index of others)result[index]=(free-target)*(total>0?shares[index]/total:1/others.length);
+  return {shares:result,labelWidthPx:target+1e-6>=needed?labelWidthPx:undefined};
+}
+function measurePrintStageText(tbody:HTMLTableSectionElement):{index:number;labelPx:number;statePx:number}|null{
+  const row=tbody.querySelector('.hdnd-print-stage-row');
+  const index=row?.closest('td')?.cellIndex??-1;
+  if(index<0)return null;
+  const canvas=document.createElement('canvas');
+  const ctx=canvas.getContext('2d');
+  if(!ctx)return null;
+  let labelPx=0,statePx=0;
+  for(const stage of Array.from(tbody.querySelectorAll('.hdnd-print-stage-row'))){
+    const label=stage.querySelector('.hdnd-print-stage-label')?.textContent??'';
+    const state=stage.querySelector('.hdnd-print-stage-state');
+    const tone=state?.getAttribute('data-tone');
+    ctx.font='600 7.7pt Arial, "Segoe UI", sans-serif';
+    labelPx=Math.max(labelPx,ctx.measureText(label).width);
+    ctx.font=(tone==='not-required'?'italic ':tone==='not-submitted'?'700 ':'400 ')+'8pt Arial, "Segoe UI", sans-serif';
+    statePx=Math.max(statePx,ctx.measureText(state?.textContent??'').width);
+  }
+  return {index,labelPx,statePx};
+}
+
 const DOM_ID='hdnd-a4-print-root';
 export function printVisibleListA4(title:string,table:HTMLTableElement,headers:readonly string[]):void{
   if(!title.trim()||!table.tBodies.length||headers.length<1)
@@ -234,11 +283,11 @@ export function printVisibleListA4(title:string,table:HTMLTableElement,headers:r
   const codeShare=codeIndex<0?0:100*15/(297-16); // 15 mm ID rail on A4 landscape
   const otherTotal=sizes.reduce((total,width,index)=>
     total+(index===codeIndex?0:width),0)||1;
+  const shares=headers.map((_,i)=>i===codeIndex?codeShare:
+    (100-codeShare)*(sizes[i]??1)/otherTotal);
   for(let i=0;i<headers.length;i++){
     const col=document.createElement('col');
-    const proportion=i===codeIndex?codeShare:
-      (100-codeShare)*(sizes[i]??1)/otherTotal;
-    col.style.width=proportion.toFixed(3)+'%';
+    col.style.width=shares[i].toFixed(3)+'%';
     if(i===codeIndex)col.className='hdnd-print-id-col';
     cols.appendChild(col);
   }
@@ -255,6 +304,17 @@ export function printVisibleListA4(title:string,table:HTMLTableElement,headers:r
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
+  }
+  // Compute once for all printed rows, not once per record/page. The left
+  // rail stays aligned and the reclaimed width is available to other columns.
+  const stageMeasure=measurePrintStageText(tbody);
+  if(stageMeasure){
+    const fitted=fitPrintStageColumn(shares,stageMeasure.index,codeIndex,stageMeasure.labelPx,stageMeasure.statePx);
+    Array.from(cols.children).forEach((col,index)=>{
+      (col as HTMLTableColElement).style.width=fitted.shares[index].toFixed(3)+'%';
+    });
+    if(fitted.labelWidthPx!==undefined)
+      printed.style.setProperty('--hdnd-print-stage-label-width',fitted.labelWidthPx+'px');
   }
   printed.appendChild(tbody);root.appendChild(printed);
   const style=document.createElement('style');style.id=DOM_ID+'-style';

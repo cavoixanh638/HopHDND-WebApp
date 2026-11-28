@@ -1,3 +1,9 @@
+## 28/11/2026 — Bản in Tiến độ 3 khâu: thu hẹp vừa đủ nội dung
+
+Theo ảnh in của chủ dự án: cột rộng theo màn hình và tỷ lệ 45/55 gây khoảng trắng thừa. Candidate thay bằng đo độ rộng chữ dài nhất của hai rail từ đúng snapshot hiển thị, phân bổ theo chiều rộng giấy A4 ngang, chuyển phần tiết kiệm được cho các cột còn lại. Giữ tiêu đề, ID 15mm, chữ đậm/nghiêng theo trạng thái, hai đường ngang mảnh (PR #250), không đường dọc và không thay nội dung/quyền/dữ liệu. Có wrap an toàn nếu text bất thường vượt khả năng A4. Kiểm thử exact SHA bằng unit và Chromium (số dòng, slack, đồng trục, PDF RGB/A4/pagination); chưa coi là phát hành trước bằng chứng CI/publisher/Pages. Mô tả 45/55 và vách dọc cũ bên dưới đã bị thay thế.
+
+---
+
 ## 27/11/2026 — Bản in Tiến độ 3 khâu tối giản, đường kẻ liền mạch
 
 Theo phản hồi mới nhất, bỏ mọi khung bao riêng và nét đứt ở từng khâu; giữ vách dọc liền mạch 45/55, nhãn trái/trạng thái căn giữa, hai đường ngang liền mảnh .35pt giữa ba khâu, không khoảng hở. Giữ trắng đen và đậm/nghiêng như trước, giữ viền bảng chính. Thay quy định khung kín ở mục lịch sử phía dưới. Kiểm thử thực tế yêu cầu bốn cạnh hàng 0px, đường ngang chỉ giữa khâu, vách dọc cùng trục không hở, không nét đứt; giữ kiểm thử căn chỉnh, không tràn, PDF RGB, A4 và clipboard. Dùng margin 0 cố định theo chỉ thị; các trường gapMm/outlinePt/radiusMm cũ trong schema #248 không còn điều khiển các hàng này, giữ nguyên để không thay đổi chính sách đang được rà soát. Không sửa quyền, dữ liệu hoặc màn hình. PR #249 tiếp nối #248; chưa nghiệm thu hay phát hành.
