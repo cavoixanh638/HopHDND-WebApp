@@ -2738,7 +2738,12 @@ try{
   // operate on the whole displayed group; hidden-bar clutter never mounts.
   await evaluate("document.querySelector('input[data-column-choice=specialist]').click()");
   await eventually("(()=>{const h=document.querySelector('th[data-column-key=room] .column-heading-label');const c=document.querySelector('td[data-col-key=room]');return h?.textContent.trim()==='Lãnh đạo / Phòng'&&c?.querySelector('[data-ui-reference-part=ubndLeader]')&&c.querySelector('[data-ui-reference-part=vpLeader]')&&c.querySelector('[data-ui-reference-part=room]')&&!c.querySelector('[data-ui-reference-part=specialist]')&&document.querySelector('input[data-group-choice=teamTogether]')?.indeterminate;})()",'Partial staff group lost its remaining fields or retained an obsolete heading');
-  if(await evaluate("!!document.querySelector('.inline-excel-hidden-bar')"))throw Error('Obsolete hidden-column counter still mounted');
+  const redundantAdminStrip=await evaluate(`(()=>{
+    const root=document.querySelector('.item-list-card');
+    return [...root.querySelectorAll('.inline-excel-hidden-bar,.admin-column-arrange-hint,.inline-g01-restore-columns,.source-column-visibility')].map(el=>el.className);
+  })()`);
+  if(redundantAdminStrip.length)throw Error('Obsolete Admin strip still mounted during layout editing: '+JSON.stringify(redundantAdminStrip));
+  console.log('ADMIN_REDUNDANT_STRIP_REMOVED_PASS');
   await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
   await eventually("!document.querySelector('th[data-column-key=room],th[data-column-key=specialist],th[data-column-key=vpLeader],th[data-column-key=ubndLeader]')&&!document.querySelector('input[data-group-choice=teamTogether]')?.checked",'Hide group did not hide every staff member');
   await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
@@ -3580,8 +3585,12 @@ try{
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-review-r03-after.png',Buffer.from(r03shot.data,'base64'));
-  await evaluate(`[...document.querySelectorAll('.source-column-visibility button')]
-    .find(x=>x.textContent.includes('Hiện đủ cột Excel'))?.click()`);
+  // Source inspection remains an optional popup action, never a permanent strip.
+  if(await evaluate("!!document.querySelector('.source-column-visibility,.admin-column-arrange-hint,.inline-g01-restore-columns,[data-source-view-toggle]')"))
+    throw Error('Redundant Admin strip or source action visible outside column options');
+  await evaluate("document.querySelector('.compact-columns-menu').open=true");
+  await eventually("!!document.querySelector('.compact-columns-options-floating [data-source-view-toggle]')",'Source inspection missing inside column options');
+  await evaluate("document.querySelector('.compact-columns-options-floating [data-source-view-toggle]').click()");
   await eventually("!!document.querySelector('td[data-col-key=department]')",
     'R03 source comparison did not ungroup');
   const sourceColor=await evaluate(`(()=>{
@@ -3590,6 +3599,13 @@ try{
   })()`);
   if(sourceColor!=='rgb(204, 0, 0)')
     throw Error('R03 original source rule changed: '+sourceColor);
+  await eventually("!document.querySelector('.compact-columns-options-floating') && !!document.querySelector('.compact-columns-menu')",'Source view must keep the column options reachable without an open popup');
+  await evaluate("document.querySelector('.compact-columns-menu').open=true");
+  await eventually("document.querySelector('.compact-columns-options-floating [data-source-view-toggle]')?.getAttribute('aria-pressed')==='true'",'Source comparison return control missing');
+  if(await evaluate("!!document.querySelector('.compact-columns-options-floating input[data-column-choice]')"))throw Error('Source preview should not edit stored visibility');
+  await evaluate("document.querySelector('.compact-columns-options-floating [data-source-view-toggle]').click()");
+  await eventually("!!document.querySelector('.compact-document-group') && !document.querySelector('td[data-col-key=department]')",'Source preview did not return to selected columns');
+  console.log('ADMIN_SOURCE_VIEW_IN_MENU_ROUNDTRIP_PASS');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&hide-dept=1'});
   await eventually("!!document.querySelector('.compact-document-group')",
     'R03 hidden member fixture missing');

@@ -1,3 +1,11 @@
+## CHỈ THỊ 28/11/2026 — BỎ DẢI THÔNG TIN ADMIN THỪA TRÊN DANH SÁCH
+
+- Xóa hẳn dòng hướng dẫn kéo tiêu đề/đường phân cách, nút Thẻ ẩn (n), Cột ẩn (n), số cột đang hiện/tổng cột và nút Hiện đủ cột Excel khỏi dải giao diện bảng, cả khi xem và khi chỉnh giao diện; không để wrapper trống. Giữ hành động thực sự độc lập (bảng màu nếu được cấp).
+- Khôi phục thẻ tại Chỉnh giao diện → Hiện/ẩn thẻ tổng hợp; khôi phục cột thường/cột gộp tại Tùy chọn cột hiện có. Quyền xem đối chiếu cột nguồn Excel không mất: chỉ đặt thao tác Xem cột nguồn Excel bên trong popup Tùy chọn cột, có đường trở về cùng popup, không xuất hiện thường trực và không ghi bố cục. Giữ Save/Cancel và phản hồi lỗi/lưu thực sự; không thay dữ liệu/Rules/bản in.
+- Chromium kiểm không còn dải thừa ở view/draft, ẩn/hiện qua các menu chính, đối chiếu Excel round-trip không ghi layout. Không bypass release gate; merge exact SHA khi CI + auto preflight PASS.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — BẢN IN CỘT NHÂN SỰ MỘT DÒNG, ID VÀ NHÂN SỰ CHỮ THƯỜNG
 
 - Bản in A4 tự co đồng thời Tiến độ 3 khâu và các nhóm nhân sự đang hiển thị, độc lập tỷ lệ màn hình. Nhãn UBND/VP/Phòng/CV và tên tương ứng giữ một dòng cho dữ liệu đủ sức chứa A4; đo dài nhất theo font in thực tế, giảm rail/gap thừa, dành đủ chỗ cho cả hai nhóm. Giữ mọi thành phần đang hiện, không giảm font, không cắt chữ; nếu nội dung bất thường vượt giấy thì wrap an toàn.
