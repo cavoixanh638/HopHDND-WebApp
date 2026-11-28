@@ -1,3 +1,10 @@
+## CHỈ THỊ 28/11/2026 — BẢN IN TIẾN ĐỘ 3 KHÂU TỰ CO VỪA CHỮ
+
+- Thay tỷ lệ cố định 45/55 và độ rộng lấy theo bảng màn hình: bản in A4 ngang đo chữ dài nhất ở từng rail nhãn/trạng thái trên toàn bộ hồ sơ đang in, gồm đúng cỡ/chữ đậm/nghiêng; cột chỉ rộng đủ hai dòng chữ dài nhất + đệm nhỏ, chuyển phần chiều rộng còn lại cho các cột khác. Giữ ID 15mm, hai rail căn trái, hai đường ngang mảnh, không đường dọc/khung/nền riêng; không giảm font, không cắt chữ. Nếu giá trị bất thường dài quá sức chứa A4, ưu tiên wrap an toàn thay vì mất nội dung. Không đổi màn hình, quyền, Firebase hoặc release policy.
+- Kiểm thử Chromium ở đúng chiều rộng in: mọi nhãn/trạng thái mẫu 1 dòng, cùng trục giữa các hồ sơ, slack ở chuỗi dài nhất mỗi rail chỉ vài px; giữ toàn bộ kiểm thử PDF RGB, A4, phân trang, clipboard và network isolation. Quy định 45/55 bên dưới chỉ là lịch sử, không áp dụng lại.
+
+---
+
 ## CHỈ THỊ 27/11/2026 — KHÔNG YÊU CẦU OWNER RUN WORKFLOW CHO UI THÔNG THƯỜNG
 
 - Trước mọi PR thuần UI đặt title `fix(ui):`, `feat(ui):`, `fix(print):`, `feat(print):` hoặc `[AUTO-UI]`. Kiểm tra **Predict Pages release mode before merge** trên exact synthetic merge history và baseline đã phát hành đọc từ base (không lấy từ PR). CI tự nhận diện PR thuần UI theo nội dung dù thiếu quy ước title. Nếu HOLD, sửa ranh giới hoặc tách phần lõi trước merge; không merge một PR UI rồi chuyển thao tác Run workflow sang chủ dự án.

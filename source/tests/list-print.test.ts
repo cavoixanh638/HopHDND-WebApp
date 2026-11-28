@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
-import {LIST_A4_PRINT_CSS,printStageTone} from '../src/features/items/list-print';
+import {LIST_A4_PRINT_CSS,printStageTone,fitPrintStageColumn} from '../src/features/items/list-print';
 import printLayout from '../src/presentation/print-layout.json';
 describe('A4 print content contract',()=>{
   it('uses landscape A4 and only heading + copied visible table, no extra labels',()=>{
@@ -57,7 +57,8 @@ describe('Readable print status and normal content typography',()=>{
     expect(LIST_A4_PRINT_CSS).not.toMatch(/\.hdnd-print-stage-row \+ \.hdnd-print-stage-row\s*>/);
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-submitted"\]\{\s*color:#[0-9a-f]+;font-weight:700/);
     expect(LIST_A4_PRINT_CSS).toMatch(/data-tone="not-required"\]\{\s*color:#[0-9a-f]+;font-style:italic/);
-    expect(LIST_A4_PRINT_CSS).toContain(`minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr)`);
+    expect(LIST_A4_PRINT_CSS).toContain(`minmax(0,var(--hdnd-print-stage-label-width,${printLayout.leftPercent}%)) minmax(0,1fr)`);
+    expect(LIST_A4_PRINT_CSS).toContain('max-width:281mm');
     for(const tone of ['not-submitted','not-required'])
       expect(LIST_A4_PRINT_CSS).toContain('data-tone="'+tone+'"');
     // All literal colors must have equal RGB channels (including shorthand).
@@ -85,5 +86,33 @@ describe('Readable print status and normal content typography',()=>{
     expect(printStageTone('progressBuild','Đã có TBKL')).toBe('neutral');
     expect(printStageTone('progressParty','Hoàn thành')).toBe('neutral');
     expect(printStageTone('progressCouncil','Không phải trình')).toBe('neutral');
+  });
+});
+
+describe('Print-only stage column autofit',()=>{
+  it('reserves only measured label+status tracks and transfers spare width to the other columns',()=>{
+    const initial=[5.338,36.662,30,10,18];
+    const fitted=fitPrintStageColumn(initial,2,0,92,116);
+    expect(fitted.shares[0]).toBe(initial[0]);
+    expect(fitted.shares[2]).toBeLessThan(initial[2]);
+    expect(fitted.shares[1]).toBeGreaterThan(initial[1]);
+    expect(fitted.shares[3]/fitted.shares[4]).toBeCloseTo(initial[3]/initial[4]);
+    expect(fitted.shares.reduce((a,b)=>a+b,0)).toBeCloseTo(100,8);
+    expect(fitted.labelWidthPx).toBeGreaterThan(92);
+    expect(fitted.labelWidthPx).toBeLessThan(103);
+    expect(initial[2]).toBe(30);
+  });
+  it('widens too-narrow screen projection and safely wraps exceptionally long values',()=>{
+    const small=fitPrintStageColumn([5,80,15],2,0,112,140);
+    expect(small.shares[2]).toBeGreaterThan(15);
+    expect(small.labelWidthPx).toBeDefined();
+    const huge=fitPrintStageColumn([5,80,15],2,0,4000,6000);
+    expect(huge.labelWidthPx).toBeUndefined();
+    expect(huge.shares[1]).toBeGreaterThan(0);
+    expect(huge.shares.reduce((a,b)=>a+b,0)).toBeCloseTo(100);
+  });
+  it('does not invent extra columns or consume a fixed ID',()=>{
+    expect(fitPrintStageColumn([5,95],1,0,92,116).shares).toEqual([5,95]);
+    expect(fitPrintStageColumn([5,95],-1,0,92,116).shares).toEqual([5,95]);
   });
 });
