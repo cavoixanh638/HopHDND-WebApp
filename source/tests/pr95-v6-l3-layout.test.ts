@@ -29,7 +29,7 @@ describe('PR95 UI V6 L3 — owner-only layout changes',()=>{
     expect((item.match(/<ItemSummaryCards /g)||[])).toHaveLength(1);
     const summary=item.indexOf('<ItemSummaryCards items={items}');
     const title=item.indexOf('<h2 className="item-list-page-title">');
-    const adminControls=item.indexOf('{adminControls&&<div className="card-header">');
+    const adminControls=item.indexOf('{adminControls&&!customizing&&statusPaletteStore&&onStatusPaletteChange&&');
     const toolbar=item.indexOf('<div className="list-filter-toolbar"');
     const table=item.indexOf('className="table-wrap item-table-scroll"');
     expect(summary).toBeGreaterThan(0);
