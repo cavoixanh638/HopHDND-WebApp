@@ -10,6 +10,7 @@ describe('Admin compact display is part of the saved shared layout',()=>{
    expect(migrated.compactDisplay?.mergeTypeIntoContent).toBe(true);
    expect(migrated.compactDisplay?.mergeDepartmentIntoContent).toBe(true);
    expect(migrated.compactDisplay?.showStaffLabels).toBe(true);
+   expect(migrated.compactDisplay?.mergeProgressStages).toBe(true);
    expect(Object.entries(migrated.compactDisplay??{}).filter(([key])=>!key.startsWith('merge')&&key!=='showStaffLabels').every(([,flag])=>!flag)).toBe(true);
  });
  it('admin merging a pair preserves unrelated remote edits',()=>{
@@ -19,6 +20,14 @@ describe('Admin compact display is part of the saved shared layout',()=>{
    const result=mergeItemLayout(base,local,remote);
    expect(result.compactDisplay?.leadersTogether).toBe(true);
    expect(result.columns.find(c=>c.key==='room')?.width).toBe(130);
+ });
+ it('persists an explicit split through layout CAS with an unrelated remote change',()=>{
+   const base=defaultItemLayout();
+   const local={...base,compactDisplay:{...base.compactDisplay!,mergeProgressStages:false}};
+   const remote={...base,compactDisplay:{...base.compactDisplay!,showStaffLabels:false}};
+   const result=mergeItemLayout(base,local,remote);
+   expect(result.compactDisplay?.mergeProgressStages).toBe(false);
+   expect(result.compactDisplay?.showStaffLabels).toBe(false);
  });
  it('conflicting shared compact edits use CAS conflict resolution',()=>{
    const base=defaultItemLayout();

@@ -2527,7 +2527,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelector('[data-qa=compact-real-itemlist] .item-heading-row')!==null",
     'Real ItemList compact QA did not mount');
-  // U01/U02 mandatory in the REAL ItemList, irrespective of legacy stored flags.
+  // U01/U02 retain their grouped default in legacy layouts.
   const desktopGroups=await evaluate(`(()=>{
     const table=document.querySelector('.item-data-table');
     const columns=[...document.querySelectorAll('.item-heading-row th')]
@@ -2716,7 +2716,7 @@ try{
     const rect=panel?.getBoundingClientRect();
     const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
-    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===9&&
+    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===10&&
       !panel.querySelector('details.compact-more-options')&&
       nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&
       nameBoxes.some(box=>box.dataset.compactChoice==='shortSpecialist')&&
@@ -2726,6 +2726,30 @@ try{
       count:labels.length,rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
   if(!compactMenuDesktop.ok)throw Error('Staff menu geometry/options regression: '+JSON.stringify(compactMenuDesktop));
+  // The stage group is a real reversible option, not raw-source preview.
+  const progressToggle='input[data-compact-choice=mergeProgressStages]';
+  const groupedStages=await evaluate(`(()=>{const box=document.querySelector('${progressToggle}');return {
+    checked:box?.checked,headers:[...document.querySelectorAll('.item-heading-row th')].map(th=>th.dataset.columnKey),
+    stageCount:document.querySelector('.item-data-table tbody tr .compact-stages')?.querySelectorAll('.compact-stage-row').length};})()`);
+  if(!groupedStages.checked||groupedStages.stageCount!==3)throw Error('Legacy progress group default missing: '+JSON.stringify(groupedStages));
+  await evaluate("document.querySelector('input[data-compact-choice=mergeProgressStages]').click()");
+  await eventually("['partyLevel','progressParty','progressBuild','progressCouncil'].every(k=>document.querySelector('th[data-column-key='+k+']')&&document.querySelector('td[data-col-key='+k+']')) && !document.querySelector('.item-data-table .compact-stages') && !!document.querySelector('.compact-document-group') && !!document.querySelector('.compact-pair-lines') && !document.querySelector('input[data-group-choice=partyTogether]')",
+    'Progress split lost a source field or changed an independent group');
+  const splitNotRequired=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')].filter(row=>row.querySelector('td[data-col-key=partyLevel]')?.textContent.trim()==='Không');
+    return {count:rows.length,ok:rows.every(row=>{
+      const status=row.querySelector('td[data-col-key=progressParty]');
+      return status?.textContent.trim()==='Không phải trình'&&!!status.querySelector('[data-level-not-required=true]')&&!status.querySelector('.cell-picker-trigger')&&!status.classList.contains('editable-cell');
+    })};
+  })()`);
+  if(!splitNotRequired.count||!splitNotRequired.ok)throw Error('Split progress must preserve derived no-submission state: '+JSON.stringify(splitNotRequired));
+  await evaluate("document.querySelector('input[data-column-choice=progressBuild]').click()");
+  await eventually("!document.querySelector('th[data-column-key=progressBuild]')",'Individual stage visibility lost in split view');
+  await evaluate("document.querySelector('input[data-compact-choice=mergeProgressStages]').click()");
+  await eventually("!!document.querySelector('.item-data-table .compact-stages') && !document.querySelector('.compact-stages [data-stage-field=progressBuild]') && document.querySelector('input[data-group-choice=partyTogether]')?.indeterminate",'Regrouping reintroduced a hidden stage');
+  await evaluate("document.querySelector('input[data-column-choice=progressBuild]').click()");
+  await eventually("!!document.querySelector('.compact-stages [data-stage-field=progressBuild]') && !document.querySelector('th[data-column-key=progressBuild]')",'Progress group failed to restore');
+  console.log('ADMIN_PROGRESS_GROUP_SPLIT_REGROUP_PASS');
   // Staff labels are display-only, and removing them must remove the width
   // of the label rail without changing any member or its edit grant.
   const staffLabelState=()=>evaluate(`(()=>{
@@ -2841,7 +2865,7 @@ try{
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
-      labels.length===9&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
+      labels.length===10&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
       html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
@@ -4794,6 +4818,7 @@ try{
         panel.textContent.includes('Gộp cột')&&names.length===2&&
         !!panel.querySelector('input[data-compact-choice=mergeTypeIntoContent]')&&
         !!panel.querySelector('input[data-compact-choice=mergeDepartmentIntoContent]')&&
+        !!panel.querySelector('input[data-compact-choice=mergeProgressStages]')&&
         names.every(x=>!x.closest('details')&&x.getClientRects().length>0)&&
         !document.querySelector('.inline-layout-savebar'),rect:{left:r.left,top:r.top,width:r.width,height:r.height}};
     })()`);

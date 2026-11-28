@@ -398,6 +398,38 @@ try{
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Second print DOM not cleaned');
   console.log('PRINT_WEB_STAFF_LABEL_INDEPENDENCE_PASS '+JSON.stringify({staffRows:withoutWebLabels.values.length}));
 
+  // A third print snapshot must respect the selected separate source columns.
+  await page.evaluate(()=>{document.querySelector('.compact-columns-menu').open=true;});
+  const progressToggle=page.locator('input[data-compact-choice=mergeProgressStages]');
+  await progressToggle.waitFor();
+  assert.equal(await progressToggle.isChecked(),true,'Existing layouts must stay grouped by default');
+  await progressToggle.uncheck();
+  await page.locator('th[data-column-key=progressCouncil]').waitFor();
+  assert.equal(await page.locator('.item-data-table .compact-stages').count(),0,'Split progress still grouped on screen');
+  await page.locator('.column-options-close').click();
+  await page.getByRole('button',{name:'In hoặc lưu PDF A4 ngang'}).click();
+  const splitPrint=await page.evaluate(()=>{
+    const table=document.querySelector('.item-data-table'),root=document.querySelector('#hdnd-a4-print-root');
+    const keys=['partyLevel','progressParty','progressBuild','progressCouncil'];
+    const read=cell=>(cell?.querySelector('.cell-picker-value-text')?.textContent??cell?.textContent??'').replace(/\s+/gu,' ').trim();
+    return {
+      screenHeaders:[...table.querySelectorAll('.item-heading-row th .column-heading-label')].map(node=>node.textContent.trim()),
+      printHeaders:[...root.querySelectorAll('thead th')].map(node=>node.textContent.trim()),
+      screenRows:[...table.tBodies[0].rows].map(row=>keys.map(key=>read(row.querySelector('td[data-col-key="'+key+'"]')))),
+      printRows:[...root.querySelectorAll('tbody tr')].map(row=>keys.map(key=>read(row.querySelector('td[data-print-kind="'+key+'"]')))),
+      grouped:root.querySelectorAll('.hdnd-print-stage-row').length,
+      staffTags:root.querySelectorAll('.hdnd-print-staff-tag').length
+    };
+  });
+  assert.equal(splitPrint.grouped,0,'PDF silently regrouped the separated stages');
+  assert.equal(splitPrint.staffTags,0,'PDF reintroduced personnel labels');
+  assert.deepEqual(splitPrint.printHeaders,splitPrint.screenHeaders,'PDF lost split source headings');
+  assert.deepEqual(splitPrint.printRows,splitPrint.screenRows,'PDF lost split stage values');
+  assert.equal(splitPrint.printRows.length,printed.printRows,'PDF lost records in split mode');
+  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+  assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Split print DOM not cleaned');
+  console.log('PRINT_PROGRESS_SPLIT_COLUMNS_PASS '+JSON.stringify({records:splitPrint.printRows.length,columns:splitPrint.printHeaders.length}));
+
   assert.deepEqual(external,[],'External network request from isolated preview');
   console.log('HDND_CLIPBOARD_A4_CHROME_PASS '+JSON.stringify({
     initialRows:initial,searchColumns:count,bulkRows:2,

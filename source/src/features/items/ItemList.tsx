@@ -33,6 +33,7 @@ import {COMPACT_OPTIONS,activeCompactPairs,
 import { CellPicker } from './CellPicker';
 import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from './status-display';
 import {selectablePartyProgress,partyProgressEditIssue} from '../../domain/party-progress-edit';
+import {isNotRequiredStatus} from '../../domain/status-contract';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {activateEditableCell} from './activate-editable-cell';
@@ -1196,7 +1197,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.contentDetails??COMPACT_GROUP_DEFAULT_LABELS.contentDetails}</strong>{groupLabelPencil('contentDetails')}</div>
           {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
             (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=>{
-              const renameKey=option.key==='leadersTogether'||option.key==='roomSpecialist'||option.key==='teamTogether'?option.key:undefined;
+              const renameKey=option.key==='mergeProgressStages'?'partyTogether':
+                option.key==='leadersTogether'||option.key==='roomSpecialist'||option.key==='teamTogether'?option.key:undefined;
               return <div className="column-options-merge-row" key={option.key}>
                 <label>
                   <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??false}
@@ -1206,8 +1208,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                 {renameKey&&groupLabelPencil(renameKey)}
               </div>;
             })}
-          <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.partyTogether??COMPACT_GROUP_DEFAULT_LABELS.partyTogether} <small className="column-options-note">(luôn gộp)</small></strong>{groupLabelPencil('partyTogether')}</div>
-          <strong className="column-options-name-heading">Hiển thị nhân sự</strong>
+           <strong className="column-options-name-heading">Hiển thị nhân sự</strong>
           {COMPACT_OPTIONS.filter(option=>option.section==='staff').map(option=><label key={option.key} className="column-options-staff-labels">
             <input type="checkbox" data-compact-choice={option.key}
               checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??true}
@@ -1372,7 +1373,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset></details>
-        {canEditListSettings&&<details className="admin-control-section admin-control-section-l03"><summary>Nâng cao · 5 thông số độ rộng L03</summary><div className="admin-l03-widths">
+        {canEditListSettings&&l03Key&&<details className="admin-control-section admin-control-section-l03"><summary>Nâng cao · 5 thông số độ rộng L03</summary><div className="admin-l03-widths">
           <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
             aria-controls="admin-l03-width-editor" disabled={viewSaving} onClick={()=>{
               if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
@@ -1656,13 +1657,18 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         if(column.key==='partyMeeting'||column.key==='examined')
           return <td key={column.key} data-col-key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
-        const writable=editableField(item,key);
+        // Splitting the visual group must not expose an editor for the
+        // server-derived party status when the level is "Không".
+        // Raw-source inspection remains separate and unmodified.
+        const splitPartyLocked=compactOn&&compactDisplay.mergeProgressStages===false&&
+          key==='progressParty'&&isNotRequiredStatus('partyLevel',item.partyLevel);
+        const writable=editableField(item,key)&&!splitPartyLocked;
         return <td key={column.key} data-col-key={column.key}
            data-ui-reference-part={key==='note'||key==='specificProgress'?key:undefined}
-          data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
+          data-progress-tone={splitPartyLocked?'neutral':key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',adminControls&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable&&key!=='note'&&key!=='specificProgress'?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='type'
+          style={cellHighlightStyle(splitPartyLocked?'Không phải trình':effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{splitPartyLocked?<span className="workflow-status-value" data-level-not-required="true">Không phải trình</span>:key==='type'
           ?<span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
             data-editable={writable?'true':undefined}
             style={cellHighlightStyle(item.type,'type',activeLayout.cellHighlights)}>

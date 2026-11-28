@@ -8,7 +8,7 @@ import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,co
   from '../src/features/items/compact-columns';
 
 afterEach(()=>vi.unstubAllGlobals());
-describe('Mandatory document/stage projection and optional staff groups are read-only presentation',()=>{
+describe('Optional document, stage and staff projection is read-only presentation',()=>{
   const all={...DEFAULT_COMPACT_DISPLAY,typeInContent:true,leadersTogether:true,
     roomSpecialist:true,shortSpecialist:true};
   it('does not remove or mutate the 15 Excel source columns',()=>{
@@ -214,10 +214,11 @@ describe('Mandatory document/stage projection and optional staff groups are read
     expect(readPersonalCompactDisplay('x')).toBeNull();
   });
 
-  it('U01/U02 cannot be disabled by old saved flags or missing new flags',()=>{
+  it('old saved flags and missing new flags retain the previous grouped defaults',()=>{
     const source=defaultItemLayout().columns;
     const legacy={...DEFAULT_COMPACT_DISPLAY,typeInContent:false,contentDetails:false,
       partyTogether:false,councilTogether:false};
+    delete legacy.mergeProgressStages;
     expect(activeCompactPairs(source,legacy).map(p=>p.variant)).toEqual(['contentDetails','partyTogether']);
     const allFalse=compactVisibleColumns(source,legacy);
     expect(allFalse.some(c=>c.key==='department'||c.key==='type'||c.key==='progressBuild'||c.key==='progressCouncil')).toBe(false);
@@ -237,9 +238,14 @@ describe('Mandatory document/stage projection and optional staff groups are read
     const old={...DEFAULT_COMPACT_DISPLAY,teamTogether:true};
     delete (old as Partial<typeof old>).cvRoomInline;
     delete old.showStaffLabels;
+    delete old.mergeProgressStages;
     values.set('hdnd.viewer-compact.v1:'+a,JSON.stringify(old));
     expect(readPersonalCompactDisplay(a)?.cvRoomInline).toBe(false);
     expect(readPersonalCompactDisplay(a)?.showStaffLabels).toBe(true);
+    expect(readPersonalCompactDisplay(a)?.mergeProgressStages).toBe(true);
+    const split=toggleCompactOption(readPersonalCompactDisplay(a)!,'mergeProgressStages',false);
+    expect(writePersonalCompactDisplay(a,split)).toBe(true);
+    expect(readPersonalCompactDisplay(a)?.mergeProgressStages).toBe(false);
     const withoutTags=toggleCompactOption(readPersonalCompactDisplay(a)!,'showStaffLabels',false);
     expect(withoutTags.teamTogether).toBe(true);
     expect(writePersonalCompactDisplay(a,withoutTags)).toBe(true);
@@ -273,5 +279,34 @@ describe('Independent document group options',()=>{
     const pairs=activeCompactPairs(source,prefs);
     expect(pairs.some(p=>p.variant==='contentDetails')).toBe(false);
     expect(compactVisibleColumns(source,prefs).some(c=>c.key==='department')).toBe(true);
+  });
+});
+
+describe('Independent progress grouping',()=>{
+  const stageKeys=['partyLevel','progressParty','progressBuild','progressCouncil'];
+  it('splits exactly the four source columns and restores the same named group',()=>{
+    const source=defaultItemLayout().columns;
+    const prefs={...DEFAULT_COMPACT_DISPLAY,teamTogether:true};
+    const original=JSON.stringify(source);
+    const split=toggleCompactOption(prefs,'mergeProgressStages',false);
+    expect(activeCompactPairs(source,split).map(p=>p.variant)).toEqual(['contentDetails','teamTogether']);
+    expect(compactVisibleColumns(source,split).filter(c=>stageKeys.includes(c.key)))
+      .toEqual(source.filter(c=>stageKeys.includes(c.key)));
+    const regrouped=toggleCompactOption(split,'mergeProgressStages',true);
+    expect(activeCompactPairs(source,regrouped).find(p=>p.variant==='partyTogether')?.memberFields).toEqual(stageKeys);
+    expect(compactVisibleColumns(source,regrouped,{partyTogether:'Tiến độ tùy chỉnh'}).find(c=>c.key==='partyLevel')?.label)
+      .toBe('Tiến độ tùy chỉnh');
+    expect(regrouped).toEqual(prefs);
+    expect(JSON.stringify(source)).toBe(original);
+  });
+  it('never restores an individually hidden or removed stage merely because grouping changes',()=>{
+    const source=defaultItemLayout().columns.map(c=>c.key==='progressBuild'?{...c,visible:false}:c)
+      .filter(c=>c.key!=='progressCouncil');
+    const visible=source.filter(c=>c.visible&&!c.removed);
+    const split=toggleCompactOption(DEFAULT_COMPACT_DISPLAY,'mergeProgressStages',false);
+    expect(compactVisibleColumns(visible,split).filter(c=>stageKeys.includes(c.key)).map(c=>c.key))
+      .toEqual(['partyLevel','progressParty']);
+    expect(activeCompactPairs(visible,toggleCompactOption(split,'mergeProgressStages',true))
+      .find(p=>p.variant==='partyTogether')?.memberFields).toEqual(['partyLevel','progressParty']);
   });
 });

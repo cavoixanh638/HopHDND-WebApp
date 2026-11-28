@@ -1,3 +1,10 @@
+## CHỈ THỊ 28/11/2026 — TIẾN ĐỘ 3 KHÂU GỘP/TÁCH TÙY CHỌN
+
+- Bỏ quy định U02 luôn gộp. Tùy chọn cột → Gộp cột có checkbox “Gộp Tiến độ 3 khâu”, mặc định true để giữ bố cục đang dùng. Bỏ chọn thì hiển thị các cột nguồn đang được phép hiện: Cấp trình, tiến độ xin ý kiến Thành ủy, tiến độ trình HĐND xây dựng NQ và tiến độ trình HĐND ban hành NQ/BC. Bật lại giữ tên nhóm tùy chỉnh, dữ liệu và cấu hình ẩn/hiện riêng; không tự hiện lại cột ẩn/xóa. Không ảnh hưởng các nhóm khác.
+- Dùng cờ mergeProgressStages tùy chọn, đọc bố cục cũ mặc định gộp (partyTogether/councilTogether là cờ legacy, không dùng làm mặc định mới). Lưu/Hủy và bố cục cá nhân qua luồng cũ, giữ quyền chỉnh sửa và khóa dữ liệu. WebApp, popup và PDF theo lựa chọn; PDF không ép gộp lại, vẫn không có nhãn nhân sự. Công cụ 5 rail L03 chỉ khi đang gộp. CI kiểm bật/tắt, cột ẩn, lưu/CAS, PDF snapshot tách và hồi quy gộp. Không đổi policy/Rules/dữ liệu; release gate theo phạm vi bố cục.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — TÙY CHỌN HIỆN NHÃN NHÂN SỰ CHỈ TRÊN WEBAPP
 
 - Thêm checkbox “Hiện nhãn UBND / VP / Phòng / CV” trong Tùy chọn cột → Hiển thị nhân sự. Mặc định bật để tương thích mọi bố cục đã lưu. Lưu/Hủy và cấu hình cá nhân theo luồng gộp cột hiện hành; không đổi quyền hoặc giá trị hồ sơ. Tắt phải bỏ hẳn rail và gap, đo lại chiều rộng thực tế, giữ đủ các trường đang hiện, bao gồm chế độ CV/Phòng cùng dòng và nhóm tách. Danh sách và popup chi tiết báo cáo dùng cùng tùy chọn hiển thị nhân sự; chế độ sửa cấu hình cột nguồn vẫn giữ nguyên.
