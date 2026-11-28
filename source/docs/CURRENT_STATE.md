@@ -1,3 +1,9 @@
+## 28/11/2026 — Danh sách WebApp tự co cột Tiến độ và nhân sự
+
+Candidate: bỏ saved width làm sàn cứng của nhóm khi auto, dùng text metrics của toàn bộ hàng đang hiển thị (bao gồm chrome nút sửa), giữ trục chung và mép phải L03 khi quyền xen kẽ; L04 dùng tag/value rail đo thực tế. Nhóm auto không hấp thụ spare width hay bị resize gián tiếp; text columns nhận phần dư. Mặc định auto, manual opt-out chỉ trong phiên Admin để giữ các thao tác đã có. Không ghi độ rộng đo được vào cấu hình, không đổi quyền/dữ liệu/popup/print. CI chưa xác nhận cho candidate; cần xác minh exact head, publisher và version.json trước khi báo đã phát hành.
+
+---
+
 ## 28/11/2026 — Bản in Tiến độ 3 khâu: thu hẹp vừa đủ nội dung
 
 Theo ảnh in của chủ dự án: cột rộng theo màn hình và tỷ lệ 45/55 gây khoảng trắng thừa. Candidate thay bằng đo độ rộng chữ dài nhất của hai rail từ đúng snapshot hiển thị, phân bổ theo chiều rộng giấy A4 ngang, chuyển phần tiết kiệm được cho các cột còn lại. Giữ tiêu đề, ID 15mm, chữ đậm/nghiêng theo trạng thái, hai đường ngang mảnh (PR #250), không đường dọc và không thay nội dung/quyền/dữ liệu. Có wrap an toàn nếu text bất thường vượt khả năng A4. Kiểm thử exact SHA bằng unit và Chromium (số dòng, slack, đồng trục, PDF RGB/A4/pagination); chưa coi là phát hành trước bằng chứng CI/publisher/Pages. Mô tả 45/55 và vách dọc cũ bên dưới đã bị thay thế.

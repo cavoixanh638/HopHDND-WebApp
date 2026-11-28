@@ -962,8 +962,9 @@ try{
     const spread=xs=>Math.max(...xs)-Math.min(...xs);
     const sizes=[];
     try{
-      for(const px of [11,13,16,20]){
-        table.style.setProperty('--table-font-size',px+'px');
+      const auto=table.dataset.listGroupWidths==='auto';
+      for(const px of auto?[Number.parseFloat(getComputedStyle(table).fontSize)]:[11,13,16,20]){
+        if(!auto)table.style.setProperty('--table-font-size',px+'px');
         const groups=[...table.querySelectorAll('tbody .compact-pair-lines')].map(group=>{
           const rows=[...group.children].map(row=>{
             const tag=row.querySelector('.compact-pair-tag');
@@ -3834,6 +3835,15 @@ try{
     }
     throw Error('R02 failed to move '+key+' to last');
   };
+  // Explicitly select the real Admin manual mode for historical drag tests.
+  // Default auto-fit groups are intentionally not resize reservoirs anymore.
+  const selectManualGroupWidths=async()=>{
+    await evaluate("document.querySelector('.compact-columns-menu').open=true");
+    await eventually("!!document.querySelector('input[data-auto-group-widths]')",'Auto/manual width control missing');
+    await evaluate("(()=>{const box=document.querySelector('input[data-auto-group-widths]');if(box.checked)box.click();})()");
+    await eventually("document.querySelector('.item-data-table')?.dataset.listGroupWidths==='manual'",'Manual grouped widths were not enabled');
+    await evaluate("document.querySelector('.column-options-close').click()");
+  };
   const assertSameTotal=(before,after,label)=>{
     if(Math.abs(before.total-after.total)>1||Math.abs(before.table-after.table)>1)
       throw Error(label+' changed physical total '+JSON.stringify({before,after}));
@@ -3841,6 +3851,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'R02 baseline list missing');
+  await selectManualGroupWidths();
   // The column immediately LEFT of L03 now has a valid drag handle.
   // It must compensate using the next NON-L03 column; L03 itself still has
   // no handle and its owner-selected two/three-stage widths remain fixed.
@@ -3903,6 +3914,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 fallback baseline missing');
+  await selectManualGroupWidths();
   await moveLast('partyLevel');
   await moveLast('displayCode');
   const fallbackBefore=await widthSnapshot();
@@ -3938,6 +3950,7 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?custom-id=1'});
   await eventually("document.querySelector('.item-data-table td[data-col-key=displayCode]')?.getBoundingClientRect().width>=95",
     'R02 custom ID source width 125 not projected');
+  await selectManualGroupWidths();
   await moveLast('partyLevel');
   await moveLast('displayCode');
   const customBefore=await widthSnapshot();
@@ -3953,6 +3966,7 @@ try{
 
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",'R02 grouped fixture missing');
+  await selectManualGroupWidths();
   await moveLast('partyLevel');
   const groupedBefore=await widthSnapshot();
   await evaluate("document.querySelector('th[data-column-key=content] .column-resizer')?.focus()");
@@ -3974,6 +3988,7 @@ try{
     '/compact-qa/compact-qa.html?progress-before-staff=1'});
   await eventually("document.querySelectorAll('.item-heading-row th').length===6",
     'L019 reported column order missing');
+  await selectManualGroupWidths();
   const reportedBefore=await widthSnapshot();
   const progressIndex=reportedBefore.keys.indexOf('specificProgress');
   if(progressIndex<0||reportedBefore.keys[progressIndex+1]!=='room'||
@@ -4038,6 +4053,7 @@ try{
     '/compact-qa/compact-qa.html?progress-before-staff=1&edit=1'});
   await eventually("document.querySelector('th[data-column-key=specificProgress] .column-resizer')!==null",
     'L023 visible divider fixture missing');
+  await selectManualGroupWidths();
   const textGeometry=await evaluate(`(()=>{
     const style=selector=>{const node=document.querySelector(selector);
       return node?getComputedStyle(node):null;};
@@ -4144,7 +4160,7 @@ try{
       'L03 legacy width fixture did not mount');
     const before=await widthSnapshot();
     const l03Viewport=await evaluate("document.querySelector('.item-table-scroll')?.clientWidth");
-    if(before.party<276||Math.abs(before.total-l03Viewport)>1||
+    if(before.party<=0||Math.abs(before.total-l03Viewport)>1||
       (l03LegacyWidths.length&&JSON.stringify(before.widths)!==
         JSON.stringify(l03LegacyWidths[0].before.widths))||
       await evaluate("!!document.querySelector('th[data-column-key=partyLevel] .column-resizer')"))
@@ -4859,6 +4875,20 @@ try{
       await evaluate("document.querySelector('.column-options-close').click()");
       await eventually("!!document.querySelector('.compact-staff-inline-values')",'Full-name specialist + room fixture not rendered');
       // Actual font controls, not just a synthetic CSS variable override.
+      const groupWidths=()=>evaluate(`(()=>{
+        const table=document.querySelector('.item-data-table');
+        const h=[...table.querySelectorAll('thead .item-heading-row th')],cols=[...table.querySelectorAll('colgroup col')];
+        const entries=h.map((th,i)=>({key:th.dataset.columnKey,width:cols[i].getBoundingClientRect().width,auto:cols[i].dataset.autoGroupWidth==='true'}));
+        const stageCells=[...table.querySelectorAll('td[data-l03-layout]')].map(td=>{
+          const stages=td.querySelector('.compact-stages[data-rev2=true]');const t=td.getBoundingClientRect(),s=stages?.getBoundingClientRect();
+          return s?{left:s.left-t.left,right:t.right-s.right,scroll:stages.scrollWidth-stages.clientWidth}:null;
+        }).filter(Boolean);
+        return {entries,stageCells,mode:table.dataset.listGroupWidths};
+      })()`);
+      const smallWidths=await groupWidths();
+      if(smallWidths.mode!=='auto'||smallWidths.entries.filter(c=>c.auto).length!==2||
+        smallWidths.stageCells.some(c=>c.left>13||c.right>14||c.scroll>2))
+        throw Error('Default grouped widths are not snug: '+JSON.stringify(smallWidths));
       const fontAudit=String.raw`(()=>{
         const table=document.querySelector('.item-data-table');
         const groups=[...table.querySelectorAll('.compact-pair-lines,.compact-stages[data-rev2=true]')];
@@ -4885,6 +4915,11 @@ try{
       }
       await eventually("document.querySelector('.list-font-controls output')?.textContent==='20px'",'A+ did not reach 20px');
       const large=await evaluate(fontAudit);
+      const largeWidths=await groupWidths();
+      for(const col of smallWidths.entries.filter(c=>c.auto)){
+        const after=largeWidths.entries.find(c=>c.key===col.key);
+        if(!after||!after.auto||after.width<=col.width)throw Error('Auto group did not grow with font: '+JSON.stringify({col,after}));
+      }
       if(!large.groups||large.fonts.some(f=>f!=='20px')||large.textFonts.some(f=>f!=='20px')||large.failures.length)
         throw Error('Font 20px protected one-line contract failed: '+JSON.stringify(large));
       await pointerClick('.inline-layout-save-as');
@@ -4901,6 +4936,12 @@ try{
       const originalChoice=await evaluate("Array.from(document.querySelectorAll('.saved-layout-choice')).find(b=>b.textContent.includes('QA đổi tên')).closest('[data-layout-id]').dataset.layoutId");
       await pointerClick('.saved-layout-row[data-layout-id="'+originalChoice+'"] .saved-layout-choice');
       await eventually("document.querySelector('.list-font-controls output')?.textContent==='13px' && !document.querySelector('.compact-staff-inline-values')",'Save As mutated original font or CV/room grouping');
+      const restoredWidths=await groupWidths();
+      for(const col of largeWidths.entries.filter(c=>c.auto)){
+        const after=restoredWidths.entries.find(c=>c.key===col.key);
+        if(!after||!after.auto||after.width>=col.width)throw Error('Auto group did not shrink after returning to smaller font: '+JSON.stringify({col,after}));
+      }
+      console.log('LIST_GROUP_AUTO_WIDTH_GROW_SHRINK_PASS',JSON.stringify({smallWidths,largeWidths,restoredWidths}));
       await evaluate("document.querySelector('.list-font-controls button[aria-label=\"Tăng cỡ chữ bảng\"]').click()");
       await eventually("document.querySelector('.list-font-controls output')?.textContent==='14px'",'Font draft did not change');
       await pointerClick('.inline-layout-cancel');

@@ -72,7 +72,7 @@ import {placeCompactMenu, type CompactMenuPlacement} from './compact-menu-placem
 import {canHideInlineColumn,renameInlineColumn,setInlineColumnVisibility,setInlineSummaryVisibility} from './inline-g01-layout';
 import './inline-g01-list.css';
 import {SavedLayoutMenu} from './SavedLayoutMenu';
-import {emptyListContentMinimums,measureListContentMinimums,withPartyContentMinimums,preserveListContentMinimums,type ListContentMinimums} from './list-nowrap-widths';
+import {emptyListContentMinimums,measureListContentMinimums,withPartyContentMinimums,preserveListContentMinimums,fitMeasuredPartyWidths,staffContentWidth,type ListContentMinimums} from './list-nowrap-widths';
 import './list-nowrap-widths.css';
 
 export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, onCellHistory, readOnly = false, sourceKind, customizing = false, sourceKey, catalog, onClose, onSaveData, onDiscardData, onLayoutSaved,initialLayout,onPersistLayout,canEditDraft=true,layoutSaveLabel='Lưu cách hiển thị',saveDataHint='',onKeepDraft,canEditCell,allowLayout=true,dataSaving=false,sourceLabel,draftOnly=false,permissions,onSavePermissions,onFrameWidthChange,anonymousViewer=false,onDirtyChange,exitRequest=0,onOpenCatalog,focusColumnKey,onPersistCatalog,statusPaletteStore,onStatusPaletteChange,onPersistViewerLayout,leaseManager,directStatusCasActive=false,viewerScope='browser',allowPersonalCompact=false,compactPreview=false,compactChrome=false,defaultTableFontSize=13,onBulkApply }: { items: Item[]; drafts: Record<string, Patch>; errors: Record<string, string>; savingRows?:ReadonlySet<string>; busy: boolean; onUpdate: (id: string, changes: Changes) => boolean|void; onHistory: (item: Item) => void; onCellHistory?:(item:Item,field:TextField)=>void; readOnly?: boolean; sourceKind?: 'demo'|'google'|'firebase'; customizing?: boolean; sourceKey:string; catalog:CatalogConfig; onClose:()=>void; onSaveData:()=>Promise<boolean>; onDiscardData:()=>void; onLayoutSaved:(message:string)=>void;initialLayout?:ItemLayout;onPersistLayout?:(layout:ItemLayout,baseline?:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;canEditDraft?:boolean;layoutSaveLabel?:string;saveDataHint?:string;onKeepDraft?:()=>boolean;canEditCell?:(id:string,field:EditableField)=>boolean;allowLayout?:boolean;dataSaving?:boolean;sourceLabel?:string;draftOnly?:boolean;permissions?:CellPermissions;onSavePermissions?:(next:CellPermissions,expected:CellPermissions)=>Promise<void>;onFrameWidthChange?:(width:'auto'|number)=>void; anonymousViewer?:boolean;onDirtyChange?:(dirty:boolean)=>void;exitRequest?:number;onOpenCatalog?:(key:string)=>void;focusColumnKey?:string|null;onPersistCatalog?:(next:CatalogConfig)=>Promise<void>;statusPaletteStore?:StatusPaletteStore;onStatusPaletteChange?:(next:StatusPaletteStore)=>boolean;onPersistViewerLayout?:(layout:ItemLayout,baseline:ItemLayout,choices?:LayoutConflictChoices)=>Promise<ItemLayout|void>;leaseManager?:CellEditSessionManager;directStatusCasActive?:boolean;viewerScope?:string;allowPersonalCompact?:boolean;compactPreview?:boolean;compactChrome?:boolean;defaultTableFontSize?:number;onBulkApply?:(patches:readonly BulkPatch[])=>Promise<void>|void }) {
@@ -112,6 +112,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const [listTitleDraft,setListTitleDraft]=useState<string|null>(null);
   const [titleEditorOpen,setTitleEditorOpen]=useState(false);
   const [inlineMode,setInlineMode]=useState(false);
+  // Auto is the normal List behavior; Admin can explicitly opt out for
+  // legacy manual layout work in this tab only. Never persist measured pixels.
+  const [manualGroupedWidths,setManualGroupedWidths]=useState(false);
+  const autoGroupWidths=!adminControls||!manualGroupedWidths;
   // The ordinary List owns the only visible data table. Layout edits stay in
   // this local draft until the Admin explicitly chooses Save (one shared CAS).
   const [inlineDraft,setInlineDraft]=useState<ItemLayout|null>(null);
@@ -564,7 +568,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // the other columns or reduce the L03 physical width merely by opening edit.
   const contentMeasureSignature=JSON.stringify([chosenFontSize,explicitFontSize!==undefined,
     Object.entries(compactDisplay).sort(([a],[b])=>a.localeCompare(b)),
-    activeLayout.columns.filter(c=>c.visible&&!c.removed).map(c=>c.key).sort(),showAllSourceColumns]);
+    activeLayout.columns.filter(c=>c.visible&&!c.removed).map(c=>c.key).sort(),showAllSourceColumns,autoGroupWidths,
+    rows.map(row=>[row.recordId,row.partyLevel,row.progressParty,row.progressBuild,row.progressCouncil,
+      row.ubndLeader,row.vpLeader,row.room,row.specialist])]);
   // The minimum is a live screen projection, not a persisted layout mutation.
   // Re-measure after font/permission/row changes and after delayed web-font loads.
   useLayoutEffect(()=>{
@@ -682,7 +688,8 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const l03Pair=compactPairs.find(pair=>pair.variant==='partyTogether');
   const l03Key=l03Pair?.anchor;
   const savedL03Widths=resolvedPartyTrackWidths(activeLayout);
-  const l03Widths=withPartyContentMinimums(savedL03Widths,contentMinimums.party);
+  const l03Widths=autoGroupWidths?fitMeasuredPartyWidths(savedL03Widths,contentMinimums.party):
+    withPartyContentMinimums(savedL03Widths,contentMinimums.party);
   // Layout editing freezes *business interaction*, not the physical width
   // contract of the surrounding table. The L03 grouped column must retain
   // its 3-track editable width while a layout draft is open; otherwise the
@@ -693,17 +700,26 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   const hasEditablePartyLevel=!!l03Pair&&l03Pair.memberFields.includes('partyLevel')&&
     rows.some(item=>partyLevelPotentiallyEditable&&!locked&&
       (!canEditCell||canEditCell(item.recordId,'partyLevel')));
-  const l03PhysicalWidth=partyTrackPhysicalWidth(l03Widths,hasEditablePartyLevel);
+  const measuredRead=contentMinimums.party.readonly.label>0||contentMinimums.party.readonly.status>0;
+  const measuredEdit=contentMinimums.party.editable.label>0||contentMinimums.party.editable.status>0||contentMinimums.party.editable.level>0;
+  const l03PhysicalWidth=autoGroupWidths&&(measuredRead||measuredEdit)
+    ?partyTrackModeWidth(l03Widths,measuredEdit?'editable':'readonly')
+    :partyTrackPhysicalWidth(l03Widths,hasEditablePartyLevel);
+  const staffAutoKeys=new Set(autoGroupWidths?compactPairs.filter(pair=>
+    pair.variant==='teamTogether'||pair.variant==='leadersTogether'||pair.variant==='roomSpecialist').map(pair=>pair.anchor):[]);
+  const fixedWidthKeys=new Set([...(l03Key?[l03Key]:[]),...staffAutoKeys]);
   const baseWidths=displayedColumns.map(c=>({key:c.key,
-    width:l03Key===c.key?l03PhysicalWidth:Math.max(baseVisualWidth(c.width,c.key),contentMinimums.columns[c.key]??0)}));
+    width:l03Key===c.key?l03PhysicalWidth:staffAutoKeys.has(c.key)&&contentMinimums.staff[c.key]
+      ?staffContentWidth(contentMinimums.staff[c.key])
+      :Math.max(baseVisualWidth(c.width,c.key),contentMinimums.columns[c.key]??0)}));
   const fitWeights=Object.fromEntries(compactPairs.map(pair=>[pair.anchor,
     pair.variant==='contentDetails'||pair.variant==='partyTogether'?3:2]));
   const weights:Record<string,number>={content:3,specificProgress:2,...fitWeights};
   const fitGrowth=useRef<{signature:string;growth:Record<string,number>}|null>(null);
   const fitSignature=JSON.stringify(baseWidths.map(c=>[c.key,c.width,weights[c.key]??1,contentMinimums.columns[c.key]??0]));
-  // L03 is an explicit shared setting, never a flexible 1fr viewport filler.
-  // Give any spare viewport pixels to OTHER columns while respecting their cap.
-  const flexibleWidths=baseWidths.filter(c=>c.key!==l03Key);
+  // Both auto-fit groups are intrinsically sized, never viewport fillers.
+  // In manual mode the original staff resize behavior is still available.
+  const flexibleWidths=baseWidths.filter(c=>!fixedWidthKeys.has(c.key));
   const priorGrowth=fitGrowth.current?.signature===fitSignature
     ?Object.fromEntries(flexibleWidths.map(c=>[c.key,fitGrowth.current!.growth[c.key]??0])):undefined;
   // Project the saved configuration into the ACTUAL scroll viewport. Grow or
@@ -718,12 +734,13 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     };
     return [c.key,Math.min(c.width,Math.max(contentMinimums.columns[c.key]??0,60+extra,readableFloor[c.key]??80))];
   }));
+  const fixedWidths=baseWidths.filter(c=>fixedWidthKeys.has(c.key));
+  const fixedTotal=fixedWidths.reduce((sum,c)=>sum+c.width,0);
   const fitViewport=!customizing&&!showAllSourceColumns&&viewportWidth>0
-    ?Math.max(0,viewportWidth-(l03Key?l03PhysicalWidth:0)):0;
+    ?Math.max(1,viewportWidth-fixedTotal):0;
   const fittedOther=fitTableColumnsResponsive(flexibleWidths,fitViewport,
     weights,priorGrowth,fitMinimums);
-  const fittedWidths=l03Key
-    ?{...fittedOther,[l03Key]:l03PhysicalWidth}:fittedOther;
+  const fittedWidths={...fittedOther,...Object.fromEntries(fixedWidths.map(c=>[c.key,c.width]))};
   fitGrowth.current={signature:fitSignature,growth:Object.fromEntries(baseWidths.map(c=>
     [c.key,fittedWidths[c.key]-c.width]))};
   const visualWidth=(value:number,key?:string)=>key&&fittedWidths[key]!==undefined
@@ -737,7 +754,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   // Do not let L03 become a resize reservoir: its widths belong only to the two
   // explicit administrator modes. Ordinary columns still resize against their
   // next physical neighbor and the final *other* column as backup.
-  const resizeKeys=displayedColumns.filter(c=>c.key!==l03Key&&(contentMinimums.columns[c.key]??0)<=1600).map(c=>c.key);
+  const resizeKeys=displayedColumns.filter(c=>!fixedWidthKeys.has(c.key)&&(contentMinimums.columns[c.key]??0)<=1600).map(c=>c.key);
   const shownWidth=displayedColumns.reduce((sum,column)=>sum+visualWidth(column.width,column.key),0);
   const tableWidth=compactOn?shownWidth:
     Math.max(Math.min(6000,Math.max(500,Number.isFinite(activeLayout.tableWidth)?activeLayout.tableWidth:1500)),shownWidth);
@@ -1168,6 +1185,11 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               })}</div>
             </>}
             <small>Cột thường: ẩn từng thành phần. Cột gộp: ẩn cả nhóm hoặc hiện lại tất cả thành phần.</small>
+            <label className="column-options-auto-widths">
+              <input type="checkbox" data-auto-group-widths checked={autoGroupWidths}
+                disabled={viewSaving||locked} onChange={event=>setManualGroupedWidths(!event.currentTarget.checked)}/>
+              <span>Tự co độ rộng cột tiến độ và nhân sự<small>Tắt tạm để chỉnh tay trong phiên này.</small></span>
+            </label>
           </div>}
           <strong>Gộp cột</strong>
           <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.contentDetails??COMPACT_GROUP_DEFAULT_LABELS.contentDetails}</strong>{groupLabelPencil('contentDetails')}</div>
@@ -1336,10 +1358,10 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
             aria-controls="admin-l03-width-editor" disabled={viewSaving} onClick={()=>{
               if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}
-              else openL03WidthEditor();
+              else {setManualGroupedWidths(true);openL03WidthEditor();}
             }}>L03 · Chỉnh 5 độ rộng cột nhỏ</button>
-          <span className="admin-l03-width-summary">Chỉ xem: {partyTrackModeWidth(l03Widths,'readonly')}px · Được sửa: {partyTrackModeWidth(l03Widths,'editable')}px</span>
-          {inlineReady&&<p className="muted">Kéo ranh giới ngay trong ô “Tiến độ 3 khâu” ở hàng đầu tiên hoặc dùng năm ô nhập chính xác bên dưới. Chỉ lưu cấu hình khi thả kéo hoặc bấm Enter.</p>}
+          <span className="admin-l03-width-summary">{autoGroupWidths?'Tự co theo nội dung · ':''}Chỉ xem: {partyTrackModeWidth(l03Widths,'readonly')}px · Được sửa: {partyTrackModeWidth(l03Widths,'editable')}px</span>
+          {inlineReady&&<p className="muted">{autoGroupWidths?'Đang tự co theo nội dung. Mở chỉnh 5 độ rộng để chuyển sang chế độ thủ công.':'Kéo ranh giới ngay trong ô “Tiến độ 3 khâu” ở hàng đầu tiên hoặc dùng năm ô nhập chính xác bên dưới. Chỉ lưu cấu hình khi thả kéo hoặc bấm Enter.'}</p>}
           {l03WidthEditorOpen&&<form noValidate id="admin-l03-width-editor" className="admin-l03-width-editor"
             onSubmit={event=>{event.preventDefault();void saveL03Widths();}}>
             {(['readonly','editable'] as const).map(mode=><fieldset className="admin-l03-mode" key={mode}>
@@ -1510,9 +1532,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       <ActiveListFilters conditions={activeConditions} visibleCount={filtered.length}
         sourceCount={items.length} onRemove={removeOneCondition} onClearAll={clearAllListFilters}/>
     </>}
-    {<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-list-nowrap="true" data-list-font-override={explicitFontSize!==undefined?'true':undefined} data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',...(explicitFontSize!==undefined?{'--table-font-size':`${explicitFontSize}px`}:{}),
+    {<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-list-group-widths={autoGroupWidths?'auto':'manual'} data-list-nowrap="true" data-list-font-override={explicitFontSize!==undefined?'true':undefined} data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',...(explicitFontSize!==undefined?{'--table-font-size':`${explicitFontSize}px`}:{}),
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
-  '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} data-protected-column={contentMinimums.columns[column.key]!==undefined?column.key:undefined} data-content-minimum={contentMinimums.columns[column.key]!==undefined?projectedPhysicalLimits(column.key,groupExtras,compactOn,contentMinimums.columns).min:undefined} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
+  '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} data-auto-group-width={autoGroupWidths&&fixedWidthKeys.has(column.key)?'true':undefined} data-protected-column={contentMinimums.columns[column.key]!==undefined?column.key:undefined} data-content-minimum={contentMinimums.columns[column.key]!==undefined?projectedPhysicalLimits(column.key,groupExtras,compactOn,contentMinimums.columns).min:undefined} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls?cycleSort:undefined}
    inlineEditing={headerInlineEditing} quickVisibility={headerQuickVisibility}
    saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1}
@@ -1594,7 +1616,9 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               ?editableField(item,'partyLevel')?'editable':'readonly':undefined}
             className={anyEditable?'editable-cell compact-merged-cell':'compact-merged-cell'} onClick={activateEditableCell}
             data-edit-hint={anyEditable?'Bấm để sửa':undefined}
-            style={pair.variant==='partyTogether'?{
+            style={staffAutoKeys.has(column.key)&&contentMinimums.staff[column.key]?{
+              '--hdnd-list-staff-label-width':contentMinimums.staff[column.key].label+'px'
+            } as CSSProperties:pair.variant==='partyTogether'?{
                '--hdnd-l03-label-track':`${editableField(item,'partyLevel')?l03Widths.editable.label:l03Widths.readonly.label}px`,
                '--hdnd-l03-level-track':`${l03Widths.editable.level}px`,
                '--hdnd-l03-status-track':`${editableField(item,'partyLevel')?l03Widths.editable.status:l03Widths.readonly.status}px`,
@@ -1605,7 +1629,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
               highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,activeLayout.cellHighlights)}
               cvRoomInline={compactDisplay.cvRoomInline}
-              l03InlineEditor={pair.variant==='partyTogether'&&inlineReady&&
+              l03InlineEditor={pair.variant==='partyTogether'&&!autoGroupWidths&&inlineReady&&
                 item.recordId===rows[0]?.recordId?{
                   verifiedAdmin:canEditListSettings,
                   layoutEditing:true,dataEditing:false,disabled:viewSaving,
