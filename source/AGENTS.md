@@ -1,3 +1,10 @@
+## CHỈ THỊ 28/11/2026 — BẢN IN CỘT NHÂN SỰ MỘT DÒNG, ID VÀ NHÂN SỰ CHỮ THƯỜNG
+
+- Bản in A4 tự co đồng thời Tiến độ 3 khâu và các nhóm nhân sự đang hiển thị, độc lập tỷ lệ màn hình. Nhãn UBND/VP/Phòng/CV và tên tương ứng giữ một dòng cho dữ liệu đủ sức chứa A4; đo dài nhất theo font in thực tế, giảm rail/gap thừa, dành đủ chỗ cho cả hai nhóm. Giữ mọi thành phần đang hiện, không giảm font, không cắt chữ; nếu nội dung bất thường vượt giấy thì wrap an toàn.
+- ID trong dữ liệu (giữ nguyên ID, căn giữa, 15mm), nhãn và tên nhân sự đều font-weight 400; giữ hàng tiêu đề bảng đậm đồng nhất. Không thay quy ước đậm/nghiêng của Tiến độ 3 khâu hay bố cục WebApp. Chromium kiểm tra tất cả ID và nhân sự regular, một dòng, đồng trục, slack nhỏ, cùng các kiểm tra L03/PDF RGB/A4/pagination hiện có. Không đổi policy/Rules/dữ liệu.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — WEBAPP TỰ CO ĐỘ RỘNG HAI CỘT GỘP
 
 - Mặc định Danh sách L03 (Tiến độ 3 khâu) và các nhóm nhân sự L04 dùng đúng nội dung dài nhất đang hiển thị, theo font, chế độ viết tắt/gộp, lọc, quyền sửa và dữ liệu hiện hành; tính cả padding, viền và caret thực của editor. Hai cột không nhận phần chiều rộng dư và không làm kho bù resize. Nếu có hàng được sửa cấp trình và hàng chỉ xem xen kẽ, cùng trục trạng thái và mép phải. Các cột khác nhận phần dư; khi không đủ viewport, cuộn ngang nội bộ, không cắt chữ hoặc giảm font.

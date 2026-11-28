@@ -51,7 +51,7 @@ export const LIST_A4_PRINT_CSS=`
   /* No line break inside original 4-character IDs (NQ01/BC03). The
      colgroup also reserves 15mm regardless of its desktop screen ratio. */
   #hdnd-a4-print-root td[data-print-kind="displayCode"]{
-    text-align:center;font-weight:700;font-size:8pt;
+    text-align:center;font-weight:400;font-size:8pt;
     white-space:nowrap!important;word-break:keep-all!important;
     overflow-wrap:normal!important;
   }
@@ -100,18 +100,23 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
     font-weight:400!important;
   }
-  /* The L04 source has 4 independent office/room/staff lines. */
+  /* Keep the actual visible staff rows (including partial/combined groups).
+     The print-specific tag rail and value rail are measured together with L03. */
   #hdnd-a4-print-root .hdnd-print-staff-row{
-    display:grid;grid-template-columns:12mm minmax(0,1fr);
-    align-items:center;gap:1.6mm;margin:.75mm 0;
+    display:grid;grid-template-columns:minmax(0,var(--hdnd-print-staff-label-width,35%)) minmax(0,1fr);
+    align-items:center;gap:.8mm;margin:.75mm 0;
     break-inside:avoid;page-break-inside:avoid;
   }
   #hdnd-a4-print-root .hdnd-print-staff-tag{
     background:transparent;color:#000;
-    font-size:7pt;font-weight:700;text-align:left;padding:0 .6mm 0 0;
+    font-size:7pt;font-weight:400!important;text-align:left;padding:0 .6mm 0 0;
+    min-width:0;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-staff-value{
-    font-size:8pt;white-space:pre-wrap;overflow-wrap:break-word;
+    font-size:8pt;font-weight:400!important;min-width:0;white-space:normal;overflow-wrap:anywhere;
+  }
+  #hdnd-a4-print-root td[data-print-kind="displayCode"] .hdnd-print-plain{
+    font-weight:400!important;white-space:nowrap!important;
   }
   #hdnd-a4-print-root .hdnd-print-plain{
     white-space:pre-wrap;overflow-wrap:break-word;
@@ -223,27 +228,50 @@ const PRINT_PAGE_WIDTH=281*PRINT_PX_PER_MM;
 const PRINT_CELL_PADDING=2*1.3*PRINT_PX_PER_MM+1.5;
 const PRINT_TRACK_PADDING=2*.8*PRINT_PX_PER_MM+2;
 
-/** Reallocate only print columns, preserving the fixed ID and other columns'
- * relative widths. Do not hide text or shrink fonts when a very long legacy
- * value cannot fit: leave room for the other visible columns and wrap safely. */
+/** Widths are CSS pixels in the print font, not projected screen pixels. */
+export type PrintGroupMeasure={index:number;kind:'stage'|'staff';labelPx:number;valuePx:number};
+function printGroupNeed(group:PrintGroupMeasure):{labelWidthPx:number;needed:number}{
+  const stage=group.kind==='stage';
+  const labelWidthPx=Math.ceil(group.labelPx+(stage?PRINT_TRACK_PADDING:.6*PRINT_PX_PER_MM+2));
+  const valueWidthPx=Math.ceil(group.valuePx+(stage?PRINT_TRACK_PADDING:2));
+  const needed=(labelWidthPx+valueWidthPx+(stage?0:.8*PRINT_PX_PER_MM)+PRINT_CELL_PADDING)/PRINT_PAGE_WIDTH*100;
+  return {labelWidthPx,needed};
+}
+/** Allocate both compact groups in a single pass. Neither can steal the other
+ * group's required width when ordinary names/statuses fit the page. Keep the
+ * fixed ID and reserve space for other visible columns. If an extraordinary
+ * value exceeds the paper budget, wrap rather than clip or shrink the font. */
+export function fitPrintGroupColumns(shares:readonly number[],codeIndex:number,
+  groups:readonly PrintGroupMeasure[]):{shares:number[];labelWidths:Record<number,number>}{
+  const result=[...shares],labelWidths:Record<number,number>={};
+  const seen=new Set<number>();
+  const fixed=groups.filter(g=>{
+    if(!Number.isInteger(g.index)||g.index<0||g.index>=shares.length||g.index===codeIndex||
+       seen.has(g.index)||!Number.isFinite(g.labelPx)||!Number.isFinite(g.valuePx)||g.labelPx<0||g.valuePx<0)return false;
+    seen.add(g.index);return true;
+  }).map(group=>({...group,...printGroupNeed(group)}));
+  if(!fixed.length)return {shares:result,labelWidths};
+  const others=shares.map((_,i)=>i).filter(i=>i!==codeIndex&&!seen.has(i));
+  const free=100-(codeIndex>=0&&codeIndex<shares.length?shares[codeIndex]:0);
+  const reserve=others.length?Math.min(free*.55,others.length*12/281*100):0;
+  const budget=free-reserve;
+  const required=fixed.reduce((sum,g)=>sum+g.needed,0);
+  const used=others.length?Math.min(required,budget):free;
+  // All ordinary groups get their natural width. On an impossible page,
+  // share the remaining budget proportionally; the CSS fallback can wrap.
+  for(const g of fixed){
+    const target=required>0?used*g.needed/required:used/fixed.length;
+    result[g.index]=target;
+    if(target+1e-6>=g.needed)labelWidths[g.index]=g.labelWidthPx;
+  }
+  const total=others.reduce((sum,i)=>sum+shares[i],0);
+  for(const i of others)result[i]=(free-used)*(total>0?shares[i]/total:1/others.length);
+  return {shares:result,labelWidths};
+}
 export function fitPrintStageColumn(shares:readonly number[],stageIndex:number,codeIndex:number,
   labelTextPx:number,statusTextPx:number):{shares:number[];labelWidthPx?:number}{
-  const result=[...shares];
-  const others=shares.map((_,index)=>index).filter(index=>index!==stageIndex&&index!==codeIndex);
-  if(stageIndex<0||stageIndex>=shares.length||stageIndex===codeIndex||
-     !Number.isFinite(labelTextPx)||!Number.isFinite(statusTextPx)||labelTextPx<0||statusTextPx<0)
-    return {shares:result};
-  const labelWidthPx=Math.ceil(labelTextPx+PRINT_TRACK_PADDING);
-  const stateWidthPx=Math.ceil(statusTextPx+PRINT_TRACK_PADDING);
-  const needed=(labelWidthPx+stateWidthPx+PRINT_CELL_PADDING)/PRINT_PAGE_WIDTH*100;
-  const free=100-(codeIndex<0?0:shares[codeIndex]);
-  // Retain at least 12mm per other displayed column when possible.
-  const reserve=Math.min(free*.55,others.length*12/281*100);
-  const target=others.length?Math.min(needed,free-reserve):free;
-  const total=others.reduce((sum,index)=>sum+shares[index],0);
-  result[stageIndex]=target;
-  for(const index of others)result[index]=(free-target)*(total>0?shares[index]/total:1/others.length);
-  return {shares:result,labelWidthPx:target+1e-6>=needed?labelWidthPx:undefined};
+  const fit=fitPrintGroupColumns(shares,codeIndex,[{index:stageIndex,kind:'stage',labelPx:labelTextPx,valuePx:statusTextPx}]);
+  return {shares:fit.shares,labelWidthPx:fit.labelWidths[stageIndex]};
 }
 function measurePrintStageText(tbody:HTMLTableSectionElement):{index:number;labelPx:number;statePx:number}|null{
   const row=tbody.querySelector('.hdnd-print-stage-row');
@@ -263,6 +291,24 @@ function measurePrintStageText(tbody:HTMLTableSectionElement):{index:number;labe
     statePx=Math.max(statePx,ctx.measureText(state?.textContent??'').width);
   }
   return {index,labelPx,statePx};
+}
+
+function measurePrintStaffText(tbody:HTMLTableSectionElement):PrintGroupMeasure[]{
+  const canvas=tbody.ownerDocument.createElement('canvas');
+  const ctx=canvas.getContext('2d');
+  if(!ctx)return [];
+  const groups=new Map<number,PrintGroupMeasure>();
+  for(const row of Array.from(tbody.querySelectorAll('.hdnd-print-staff-row'))){
+    const index=row.closest('td')?.cellIndex??-1;
+    if(index<0)continue;
+    const group=groups.get(index)??{index,kind:'staff',labelPx:0,valuePx:0};
+    ctx.font='400 7pt Arial, "Segoe UI", sans-serif';
+    group.labelPx=Math.max(group.labelPx,ctx.measureText(row.querySelector('.hdnd-print-staff-tag')?.textContent??'').width);
+    ctx.font='400 8pt Arial, "Segoe UI", sans-serif';
+    group.valuePx=Math.max(group.valuePx,ctx.measureText(row.querySelector('.hdnd-print-staff-value')?.textContent??'').width);
+    groups.set(index,group);
+  }
+  return [...groups.values()];
 }
 
 const DOM_ID='hdnd-a4-print-root';
@@ -308,13 +354,23 @@ export function printVisibleListA4(title:string,table:HTMLTableElement,headers:r
   // Compute once for all printed rows, not once per record/page. The left
   // rail stays aligned and the reclaimed width is available to other columns.
   const stageMeasure=measurePrintStageText(tbody);
-  if(stageMeasure){
-    const fitted=fitPrintStageColumn(shares,stageMeasure.index,codeIndex,stageMeasure.labelPx,stageMeasure.statePx);
+  const staffMeasures=measurePrintStaffText(tbody);
+  const measures:PrintGroupMeasure[]=[...staffMeasures];
+  if(stageMeasure)measures.push({index:stageMeasure.index,kind:'stage',
+    labelPx:stageMeasure.labelPx,valuePx:stageMeasure.statePx});
+  if(measures.length){
+    const fitted=fitPrintGroupColumns(shares,codeIndex,measures);
     Array.from(cols.children).forEach((col,index)=>{
       (col as HTMLTableColElement).style.width=fitted.shares[index].toFixed(3)+'%';
     });
-    if(fitted.labelWidthPx!==undefined)
-      printed.style.setProperty('--hdnd-print-stage-label-width',fitted.labelWidthPx+'px');
+    for(const group of measures){
+      const labelWidth=fitted.labelWidths[group.index];
+      if(labelWidth===undefined)continue;
+      if(group.kind==='stage')printed.style.setProperty('--hdnd-print-stage-label-width',labelWidth+'px');
+      else for(const row of Array.from(tbody.rows)){
+        row.cells[group.index]?.style.setProperty('--hdnd-print-staff-label-width',labelWidth+'px');
+      }
+    }
   }
   printed.appendChild(tbody);root.appendChild(printed);
   const style=document.createElement('style');style.id=DOM_ID+'-style';

@@ -185,6 +185,26 @@ try{
         contiguous:!before||Math.abs(r.top-before.bottom)<=.25,
         height:r.height,gap:before?r.top-before.bottom:null};
     });
+    // Audit actual L04 geometry in the same print media as L03, without
+    // altering the browser, clipboard, PDF or network-isolation shell.
+    const staffRows=[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-staff-row')].map(row=>{
+      const tag=row.querySelector('.hdnd-print-staff-tag'),value=row.querySelector('.hdnd-print-staff-value');
+      const td=row.closest('td'),r=td.getBoundingClientRect(),t=tag.getBoundingClientRect(),v=value.getBoundingClientRect();
+      const tagRange=document.createRange(),valueRange=document.createRange();
+      tagRange.selectNodeContents(tag);valueRange.selectNodeContents(value);
+      const tr=tagRange.getBoundingClientRect(),vr=valueRange.getBoundingClientRect();
+      return {column:td.cellIndex,tag:tag.textContent,value:value.textContent,
+        tagWeight:getComputedStyle(tag).fontWeight,valueWeight:getComputedStyle(value).fontWeight,
+        tagLines:tagRange.getClientRects().length,valueLines:valueRange.getClientRects().length,
+        tagSlack:t.right-tr.right-parseFloat(getComputedStyle(tag).paddingRight),
+        valueSlack:v.right-vr.right,tagRail:t.width,valueRail:v.width,
+        overflow:tr.left<r.left-1||vr.right>r.right+1||tr.right>t.right+1||
+          vr.right>v.right+1||tag.scrollWidth>tag.clientWidth+2||value.scrollWidth>value.clientWidth+2};
+    });
+    if(stages.length){
+      stages[0].staffRows=staffRows;
+      stages[0].idWeights=[...document.querySelectorAll('#hdnd-a4-print-root td[data-print-kind="displayCode"] .hdnd-print-plain')].map(el=>getComputedStyle(el).fontWeight);
+    }
     const neutral=(color)=>{
       if(color==='transparent')return true;
       const m=color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)$/);
@@ -204,6 +224,28 @@ try{
   assert.equal(renderInfo.contentWeight,'400','Nội dung trình must be regular weight in print');
   assert.deepEqual(renderInfo.nonMonochrome,[],'Print elements must be black text and neutral paper/grid');
   assert.equal(renderInfo.stages.length,printed.printRows*3,'Every printed record must preserve all three stage rows');
+  const staffRows=renderInfo.stages[0].staffRows;
+  const idWeights=renderInfo.stages[0].idWeights;
+  assert.equal(idWeights.length,printed.printRows,'Every printed record must preserve ID text');
+  assert(idWeights.every(w=>w==='400'),'All printed IDs must be normal weight');
+  assert.equal(staffRows.length,printed.printRows*4,'Every printed record must preserve all four staff rows');
+  assert(staffRows.every(s=>s.tagWeight==='400'&&s.valueWeight==='400'&&
+    s.tagLines===1&&s.valueLines===1&&!s.overflow),
+    'All staff names and tags must fit one line in normal weight: '+JSON.stringify(staffRows));
+  const staffColumns=[...new Set(staffRows.map(s=>s.column))];
+  for(const column of staffColumns){
+    const rows=staffRows.filter(s=>s.column===column);
+    const tagSlack=Math.min(...rows.map(s=>s.tagSlack));
+    const valueSlack=Math.min(...rows.map(s=>s.valueSlack));
+    assert(tagSlack>=-.8&&tagSlack<=4.5,'Staff label rail must fit its actual text: '+tagSlack);
+    assert(valueSlack>=-.8&&valueSlack<=6.5,'Staff value rail must fit its actual text: '+valueSlack);
+    assert(rows.every(s=>Math.abs(s.tagRail-rows[0].tagRail)<=1&&
+      Math.abs(s.valueRail-rows[0].valueRail)<=1),'Staff rails must align across records');
+  }
+  console.log('PRINT_STAFF_SINGLE_LINE_REGULAR_PASS '+JSON.stringify({
+    records:printed.printRows,staffRows:staffRows.length,columns:staffColumns.length,
+    idWeight:idWeights[0],tagWeight:staffRows[0].tagWeight,valueWeight:staffRows[0].valueWeight,
+    maxTagLines:Math.max(...staffRows.map(s=>s.tagLines)),maxValueLines:Math.max(...staffRows.map(s=>s.valueLines))}));
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
     s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.contiguous&&s.joined&&s.aligned&&
     s.statusStartsAtLeft&&s.verticallyCentered&&s.adjacentTracks&&s.ruleInset>1&&
