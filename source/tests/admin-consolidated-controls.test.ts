@@ -35,6 +35,8 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).toContain('className="column-options-checklist"');
     expect(list).toContain('<strong className="column-options-name-heading">Viết tắt tên</strong>');
     expect(list).toContain('data-compact-choice={option.key}');
+    expect(list).toContain("option.key==='mergeProgressStages'?'partyTogether'");
+    expect(list).not.toContain('(luôn gộp)');
     expect(list).not.toContain('<details className="compact-more-options">');
     expect(list).toContain('data-column-choice={column.key}');
     expect(list).toContain('onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}');

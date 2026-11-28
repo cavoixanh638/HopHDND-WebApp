@@ -168,11 +168,14 @@ describe('Legacy compact display settings',()=>{
     expect(upgraded.compactDisplay).toMatchObject({
       typeInContent:true,leadersTogether:true,
       contentDetails:false,partyTogether:false,councilTogether:false,teamTogether:false,
-      showStaffLabels:true
+      showStaffLabels:true,mergeProgressStages:true
     });
     const withoutTags=validateItemLayout({...upgraded,compactDisplay:{...upgraded.compactDisplay!,showStaffLabels:false}});
     expect(withoutTags.compactDisplay?.showStaffLabels).toBe(false);
     expect(()=>validateItemLayout({...upgraded,compactDisplay:{...upgraded.compactDisplay!,showStaffLabels:'yes'}} as unknown as typeof upgraded)).toThrow(/gộp cột/);
+    const split=validateItemLayout({...upgraded,compactDisplay:{...upgraded.compactDisplay!,mergeProgressStages:false}});
+    expect(split.compactDisplay?.mergeProgressStages).toBe(false);
+    expect(()=>validateItemLayout({...upgraded,compactDisplay:{...upgraded.compactDisplay!,mergeProgressStages:'yes'}} as unknown as typeof upgraded)).toThrow(/gộp cột/);
     const invalid={...old,compactDisplay:{...upgraded.compactDisplay,partyTogether:'yes'}};
     expect(()=>validateItemLayout(invalid)).toThrow(/gộp cột/);
   });
