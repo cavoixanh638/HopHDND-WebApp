@@ -1,3 +1,9 @@
+## 28/11/2026 — In PDF: ID và nhân sự chữ thường, nhóm nhân sự tự co
+
+Candidate bổ sung đo hai rail nhân sự bằng font in regular; phân bổ chung với L03 để không làm nhóm này thiếu chiều rộng do nhóm kia chiếm chỗ. ID 15mm căn giữa một dòng regular; tất cả nhãn/tên nhân sự regular, giữ tiêu đề đậm. Giữ hai đường ngang L03, không đổi WebApp, quyền/dữ liệu. Unit phân bổ nhiều nhóm, trường hợp thiếu ngân sách và Chromium đo toàn bộ hàng in. Chưa xác nhận phát hành trước CI/publisher/version.json.
+
+---
+
 ## 28/11/2026 — Danh sách WebApp tự co cột Tiến độ và nhân sự
 
 Candidate: bỏ saved width làm sàn cứng của nhóm khi auto, dùng text metrics của toàn bộ hàng đang hiển thị (bao gồm chrome nút sửa), giữ trục chung và mép phải L03 khi quyền xen kẽ; L04 dùng tag/value rail đo thực tế. Nhóm auto không hấp thụ spare width hay bị resize gián tiếp; text columns nhận phần dư. Mặc định auto, manual opt-out chỉ trong phiên Admin để giữ các thao tác đã có. Không ghi độ rộng đo được vào cấu hình, không đổi quyền/dữ liệu/popup/print. CI chưa xác nhận cho candidate; cần xác minh exact head, publisher và version.json trước khi báo đã phát hành.
