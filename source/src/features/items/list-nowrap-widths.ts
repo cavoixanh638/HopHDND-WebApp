@@ -1,13 +1,34 @@
 import type {PartyTrackWidths} from '../../data/item-preferences';
 
 /** Screen-only measured lower bounds. Never save these derived pixels in Firebase. */
+export interface StaffContentMetrics {label:number;value:number;chrome:number;heading:number}
 export interface ListContentMinimums {
   columns:Record<string,number>;
   party:PartyTrackWidths;
+  staff:Record<string,StaffContentMetrics>;
 }
 export const emptyListContentMinimums=():ListContentMinimums=>({
-  columns:{},party:{readonly:{label:0,status:0},editable:{label:0,level:0,status:0}}
+  columns:{},party:{readonly:{label:0,status:0},editable:{label:0,level:0,status:0}},staff:{}
 });
+export function staffContentWidth(metrics:StaffContentMetrics):number{
+  return Math.ceil(Math.max(metrics.heading,metrics.label+metrics.value+metrics.chrome));
+}
+/** Natural rails are independent of old saved widths. In mixed permission
+ * mode all rows share the tightest common status start and right edge. */
+export function fitMeasuredPartyWidths(saved:PartyTrackWidths,measured:PartyTrackWidths):PartyTrackWidths{
+  const hasRead=measured.readonly.label>0||measured.readonly.status>0;
+  const hasEdit=measured.editable.label>0||measured.editable.status>0||measured.editable.level>0;
+  const readonly=hasRead?{...measured.readonly}:{...saved.readonly};
+  const editable=hasEdit?{...measured.editable}:{...saved.editable};
+  if(hasRead&&hasEdit){
+    const left=Math.max(readonly.label+8,editable.label+editable.level+16);
+    const status=Math.max(readonly.status,editable.status);
+    readonly.label=left-8;
+    editable.label=left-editable.level-16;
+    readonly.status=status;editable.status=status;
+  }
+  return {readonly,editable};
+}
 const px=(value:string)=>Number.parseFloat(value)||0;
 const chrome=(node:Element)=>{
   const s=getComputedStyle(node);
@@ -66,7 +87,7 @@ export function measureListContentMinimums(table:HTMLTableElement):ListContentMi
       const mode=stages.dataset.levelLayout==='editable'?'editable':'readonly';
       const floor=result.party[mode];
       for(const label of Array.from(stages.querySelectorAll('.compact-stage-title')))
-        floor.label=Math.max(floor.label,Math.ceil(measureText(label,true)));
+        floor.label=Math.max(floor.label,Math.ceil(measureText(label,true)+2));
       for(const state of Array.from(stages.querySelectorAll('.compact-stage-state')))
         floor.status=Math.max(floor.status,measureMember(state));
       if(mode==='editable')for(const level of Array.from(stages.querySelectorAll('.compact-stage-level[data-level-editor="true"]')))
@@ -76,14 +97,26 @@ export function measureListContentMinimums(table:HTMLTableElement):ListContentMi
     const staff=td.querySelector('.compact-pair-lines');
     if(staff){
       let width=0;
+      const metrics=result.staff[key]??{label:0,value:0,chrome:0,heading:0};
       for(const row of Array.from(staff.children)){
         const label=row.querySelector('.compact-pair-tag');
         const value=row.querySelector(':scope > .compact-highlight-member,:scope > .compact-staff-inline-values');
         if(!label||!value)continue;
-        const labelWidth=Math.max(label.getBoundingClientRect().width,measureMember(label));
-        width=Math.max(width,labelWidth+px(getComputedStyle(row).columnGap)+measureMember(value));
+        const labelWidth=measureMember(label),valueWidth=measureMember(value);
+        const gap=px(getComputedStyle(row).columnGap);
+        metrics.label=Math.max(metrics.label,labelWidth);
+        metrics.value=Math.max(metrics.value,valueWidth);
+        metrics.chrome=Math.max(metrics.chrome,gap+chrome(td)+2);
+        // The legacy manual mode retains the existing visual label rail floor.
+        width=Math.max(width,Math.max(label.getBoundingClientRect().width,labelWidth)+gap+valueWidth);
       }
-      if(width)result.columns[key]=Math.max(result.columns[key]??0,Math.ceil(width+chrome(td)+2));
+      if(width){
+        result.columns[key]=Math.max(result.columns[key]??0,Math.ceil(width+chrome(td)+2));
+        const header=Array.from(table.tHead?.rows[0]?.cells??[]).find(cell=>cell.dataset.columnKey===key);
+        const label=header?.querySelector('.column-heading-label');
+        if(header&&label)metrics.heading=Math.max(metrics.heading,Math.ceil(measureText(label)+chrome(header)+2));
+        result.staff[key]=metrics;
+      }
     }else{
       result.columns[key]=Math.max(result.columns[key]??0,measureMember(td));
     }
@@ -104,5 +137,11 @@ export function preserveListContentMinimums(measured:ListContentMinimums,normal:
   const columns={...measured.columns};
   for(const [key,width] of Object.entries(normal.columns))
     columns[key]=Math.max(columns[key]??0,width);
-  return {columns,party:withPartyContentMinimums(measured.party,normal.party)};
+  const staff={...measured.staff};
+  for(const [key,prior] of Object.entries(normal.staff)){
+    const next=staff[key];
+    staff[key]=next?{label:Math.max(next.label,prior.label),value:Math.max(next.value,prior.value),
+      chrome:Math.max(next.chrome,prior.chrome),heading:Math.max(next.heading,prior.heading)}:{...prior};
+  }
+  return {columns,party:withPartyContentMinimums(measured.party,normal.party),staff};
 }

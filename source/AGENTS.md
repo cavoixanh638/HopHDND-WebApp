@@ -1,3 +1,11 @@
+## CHỈ THỊ 28/11/2026 — WEBAPP TỰ CO ĐỘ RỘNG HAI CỘT GỘP
+
+- Mặc định Danh sách L03 (Tiến độ 3 khâu) và các nhóm nhân sự L04 dùng đúng nội dung dài nhất đang hiển thị, theo font, chế độ viết tắt/gộp, lọc, quyền sửa và dữ liệu hiện hành; tính cả padding, viền và caret thực của editor. Hai cột không nhận phần chiều rộng dư và không làm kho bù resize. Nếu có hàng được sửa cấp trình và hàng chỉ xem xen kẽ, cùng trục trạng thái và mép phải. Các cột khác nhận phần dư; khi không đủ viewport, cuộn ngang nội bộ, không cắt chữ hoặc giảm font.
+- Auto là mặc định, không ghi pixel đo được vào cấu hình chung. Admin có thể tắt tạm tự co trong Tùy chọn cột để dùng độ rộng/kéo thủ công cũ trong phiên; guest luôn auto. Các thông số lưu cũ, popup chi tiết, dữ liệu/quyền/RULES và bản in A4 không bị đổi bởi lần sửa màn hình này. Quy tắc manual trước đó chỉ áp dụng khi Admin chủ động chọn manual.
+- Kiểm thử real Chrome font 13→20→13, co/giãn cả hai nhóm, giữ một dòng, cùng trục và không thừa đuôi. Test kéo tay cũ dùng đúng lựa chọn manual công khai, không bỏ kiểm thử. Không tự đổi policy, chỉ merge exact SHA CI PASS/preflight auto.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — BẢN IN TIẾN ĐỘ 3 KHÂU TỰ CO VỪA CHỮ
 
 - Thay tỷ lệ cố định 45/55 và độ rộng lấy theo bảng màn hình: bản in A4 ngang đo chữ dài nhất ở từng rail nhãn/trạng thái trên toàn bộ hồ sơ đang in, gồm đúng cỡ/chữ đậm/nghiêng; cột chỉ rộng đủ hai dòng chữ dài nhất + đệm nhỏ, chuyển phần chiều rộng còn lại cho các cột khác. Giữ ID 15mm, hai rail căn trái, hai đường ngang mảnh, không đường dọc/khung/nền riêng; không giảm font, không cắt chữ. Nếu giá trị bất thường dài quá sức chứa A4, ưu tiên wrap an toàn thay vì mất nội dung. Không đổi màn hình, quyền, Firebase hoặc release policy.

@@ -98,3 +98,12 @@
 .inline-layout-save-as-form small{flex:1 1 180px}
 .inline-layout-save-as{white-space:nowrap}
 @media(max-width:700px){.inline-layout-save-as-form label{flex-basis:100%}.inline-layout-save-as-form small{flex-basis:100%}}
+
+/* Natural staff tag rail is shared by all visible records in the same group.
+   It never receives unused viewport pixels; manual layouts keep legacy rails. */
+.item-data-table[data-list-group-widths="auto"] tbody td .compact-pair-lines>div{
+  grid-template-columns:var(--hdnd-list-staff-label-width,max(46px,calc(4em + 8px))) minmax(0,1fr);
+}
+.column-options-auto-widths{display:flex;align-items:flex-start;gap:6px;font-size:12px;padding:4px 0}
+.column-options-auto-widths input{flex:none;width:auto;margin:2px 0 0;accent-color:#287852}
+.column-options-auto-widths span small{display:block;font-size:11px;color:#657b70}
