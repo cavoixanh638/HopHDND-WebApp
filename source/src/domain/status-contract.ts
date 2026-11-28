@@ -97,10 +97,14 @@ export const EXCEL_STATUS_CHOICES:Readonly<Record<StatusCatalogField,readonly st
   progressBuild:['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'],
   progressCouncil:['Sở chưa trình','VP đang xử lý','Hoàn thành']
 };
-export const DEFAULT_STATUS_CHOICE_KEYS=Object.fromEntries(
-  (Object.keys(EXCEL_STATUS_CHOICES) as StatusCatalogField[]).map(field=>
-    [field,EXCEL_STATUS_CHOICES[field].map(label=>canonicalStatus(field,label))]
-  )) as Record<StatusCatalogField,readonly string[]>;
+const excelKeys=(field:StatusCatalogField):readonly string[]=>
+  EXCEL_STATUS_CHOICES[field].map(label=>canonicalStatus(field,label));
+export const DEFAULT_STATUS_CHOICE_KEYS:Readonly<Record<StatusCatalogField,readonly string[]>>={
+  partyLevel:excelKeys('partyLevel'),
+  progressParty:excelKeys('progressParty'),
+  progressBuild:excelKeys('progressBuild'),
+  progressCouncil:excelKeys('progressCouncil')
+};
 export function excelStatusLabel(field:string,raw:string):string{
   if(!Object.prototype.hasOwnProperty.call(EXCEL_STATUS_CHOICES,field))return raw;
   const key=field as StatusCatalogField;

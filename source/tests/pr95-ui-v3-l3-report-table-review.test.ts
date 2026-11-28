@@ -1,3 +1,4 @@
+import {excelStatusLabel} from '../src/domain/status-contract';
 import {describe,expect,it,vi} from 'vitest';
 vi.mock('react',()=>({
   memo:(fn:unknown)=>fn,useEffect:()=>{},useMemo:(fn:()=>unknown)=>fn(),
@@ -109,7 +110,7 @@ describe('R-V3-02: actual report headers/body/footers keep muted intermediate co
     const thead=walk(table).find(node=>node.type==='thead');
     const header=walk(thead).find(node=>node.type==='th'&&
       walk(node).some(child=>child.type==='span'&&child.props?.className==='report-heading-label'&&
-        child.props.children===label));
+        child.props.children===excelStatusLabel(config.statusField,label)));
     const tbody=walk(table).find(node=>node.type==='tbody');
     const footer=walk(table).find(node=>node.type==='tfoot');
     const bodyCells=walk(tbody).filter(node=>node.type==='td');
