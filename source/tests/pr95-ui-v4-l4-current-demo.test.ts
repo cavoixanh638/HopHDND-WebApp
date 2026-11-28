@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import * as XLSX from 'xlsx';
 import {createDemoItems} from '../src/data/demo-items';
 import {createLegacyDemoItemsForTests,legacyUnknownBlankFixtureForTests} from './fixtures/pr95-v4-l4-legacy-demo';
-import {OFFICIAL_STATUS_CHOICES,canonicalStatus,isRecognizedStatus} from '../src/domain/status-contract';
+import {OFFICIAL_STATUS_CHOICES,DEFAULT_STATUS_CHOICE_KEYS,canonicalStatus,isRecognizedStatus} from '../src/domain/status-contract';
 import {catalogFromItems} from '../src/data/catalogs';
 import {cellHighlightStyle,type CellHighlightRule} from '../src/data/item-preferences';
 import {effectiveBuildStatus} from '../src/domain/pr95-v5-l4-build-effective';
@@ -39,7 +39,7 @@ describe('PR95 UI V4 L4 — default synthetic demo uses approved current status 
           .toContain(item[field]);
         expect(canonicalStatus(field,item[field])).toBe(item[field]);
         expect(isRecognizedStatus(field,item[field])).toBe(true);
-        expect(menu.options[field]).toEqual(OFFICIAL_STATUS_CHOICES[field]);
+        expect(menu.options[field]).toEqual(DEFAULT_STATUS_CHOICE_KEYS[field]);
       }
     }
     // Even the largest fixture retains unique, predictable technical IDs.

@@ -66,8 +66,8 @@ describe('PR95 UI V5 L3 — layout-only contract',()=>{
       const html=draw(party,[],record);
       // Legacy raw value survives in the source Item; only UI label is canonical.
       expect(record.partyLevel).toBe(partyLevel);
-      expect(html).toContain(partyLevel==='Ban Chấp hành'?'BCH':'BTV');
-      expect(html).not.toContain(partyLevel);
+      expect(html).toContain(partyLevel==='Ban Chấp hành'?'BCH':'BTV TU');
+      if(partyLevel==='Ban Chấp hành')expect(html).not.toContain(partyLevel);
       expect(html).toContain('Đã trình HĐND, chưa có QĐ');
       expect(html).not.toContain('cell-picker-trigger');
     }

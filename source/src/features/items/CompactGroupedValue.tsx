@@ -136,7 +136,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
            {...memberAttributes(stage.key)}>
            {statusNotRequired?
              <span className="workflow-status-value">Không phải trình</span>:
-             layoutSession?stageValue:shown(stage.key)}
+             layoutSession?excelStatusLabel(stage.key,stageValue):shown(stage.key)}
          </span>}
        </div>;
      });

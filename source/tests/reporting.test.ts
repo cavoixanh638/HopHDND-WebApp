@@ -303,7 +303,7 @@ describe('Báo cáo có cùng tập dữ liệu và không mất tổng', () => 
     const heads=nodes(header).filter(n=>n.type==='th');
     const byName=(name:string)=>heads.find(n=>
       n.props.children===name||n.props.children?.props?.children===name);
-    for(const name of ['Đã gửi ĐU','ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL']){
+    for(const name of ['UB đã gửi ĐU','ĐU đã gửi TU, chưa họp','Đã họp/gửi phiếu, chờ TBKL']){
       expect(byName(name)?.props.className).toContain('report-stage-next');
       expect(byName(name)?.props.className).toContain('report-stage-intermediate');
     }
