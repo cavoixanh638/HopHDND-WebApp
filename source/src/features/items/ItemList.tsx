@@ -33,6 +33,7 @@ import {COMPACT_OPTIONS,activeCompactPairs,
 import { CellPicker } from './CellPicker';
 import {isStatusDisplayField,projectedStatusFilterRows,statusDisplayValue,statusEditSelection,statusPickerValues,statusFilterText,statusReadOnlyValue} from './status-display';
 import {selectablePartyProgress,partyProgressEditIssue} from '../../domain/party-progress-edit';
+import {isNotRequiredStatus} from '../../domain/status-contract';
 import {LeaseTextInput} from './LeaseTextInput';
 import type {CellEditSessionManager} from '../../data/cell-edit-leases';
 import {activateEditableCell} from './activate-editable-cell';
@@ -1656,13 +1657,18 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         if(column.key==='partyMeeting'||column.key==='examined')
           return <td key={column.key} data-col-key={column.key}>{item[column.key]||'—'}</td>;
         const metadata=TEXT_FIELDS.find(field=>field.key===key)!;
-        const writable=editableField(item,key);
+        // Splitting the visual group must not expose an editor for the
+        // server-derived party status when the level is "Không".
+        // Raw-source inspection remains separate and unmodified.
+        const splitPartyLocked=compactOn&&compactDisplay.mergeProgressStages===false&&
+          key==='progressParty'&&isNotRequiredStatus('partyLevel',item.partyLevel);
+        const writable=editableField(item,key)&&!splitPartyLocked;
         return <td key={column.key} data-col-key={column.key}
            data-ui-reference-part={key==='note'||key==='specificProgress'?key:undefined}
-          data-progress-tone={key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
+          data-progress-tone={splitPartyLocked?'neutral':key==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(key,effectiveItemField(item,key),statusPaletteStore?.active.otherEnabled??false)??undefined}
           className={[writable?'editable-cell':'',adminControls&&onCellHistory&&(key==='note'||key==='specificProgress')?'has-history-action':''].filter(Boolean).join(' ')} onClick={activateEditableCell}
           data-edit-hint={writable&&key!=='note'&&key!=='specificProgress'?'Bấm để sửa':undefined}
-          style={cellHighlightStyle(effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{key==='type'
+          style={cellHighlightStyle(splitPartyLocked?'Không phải trình':effectiveItemField(item,key),column.key,activeLayout.cellHighlights)}>{splitPartyLocked?<span className="workflow-status-value" data-level-not-required="true">Không phải trình</span>:key==='type'
           ?<span className="pr95-v6-type-cell" data-kind={compactTypeTone(item.type)}
             data-editable={writable?'true':undefined}
             style={cellHighlightStyle(item.type,'type',activeLayout.cellHighlights)}>

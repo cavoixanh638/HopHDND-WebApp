@@ -7,6 +7,7 @@ import {COMPACT_GROUP_DEFAULT_LABELS} from '../items/compact-columns';
 import {loadDetailGridPreferences,saveDetailGridPreferences,defaultDetailGridPreferences,validateDetailGridPreferences,
   type DetailGridPreferences,type DetailColumnKey} from '../../data/report-detail-preferences';
 import {normalizeSearch} from '../../domain/search';
+import {isNotRequiredStatus} from '../../domain/status-contract';
 import {sortItems,type ColumnSort} from '../../domain/sort-items';
 import {displayId} from '../../domain/display-id';
 import {Modal} from '../../components/Modal';
@@ -275,6 +276,9 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
   const cell=(item:Item,key:DetailColumnKey):ReactNode=>{
     const raw=String(item[key]??'');
     const shown=statusReadOnlyValue(key as TextField,effectiveItemField(item,key));
+    if(popupCompact&&popupPrefs.mergeProgressStages===false&&key==='progressParty'&&
+      isNotRequiredStatus('partyLevel',item.partyLevel))
+      return <span className="workflow-status-value" data-level-not-required="true">Không phải trình</span>;
     if(key==='progressBuild'&&buildLocked(item))return lockedBuildHint(item);
     if(key==='displayCode')return <div className="report-grid-id">
       <strong className="code" title={item.displayCode}>{displayId(item)}</strong>

@@ -2735,6 +2735,14 @@ try{
   await evaluate("document.querySelector('input[data-compact-choice=mergeProgressStages]').click()");
   await eventually("['partyLevel','progressParty','progressBuild','progressCouncil'].every(k=>document.querySelector('th[data-column-key='+k+']')&&document.querySelector('td[data-col-key='+k+']')) && !document.querySelector('.item-data-table .compact-stages') && !!document.querySelector('.compact-document-group') && !!document.querySelector('.compact-pair-lines') && !document.querySelector('input[data-group-choice=partyTogether]')",
     'Progress split lost a source field or changed an independent group');
+  const splitNotRequired=await evaluate(`(()=>{
+    const rows=[...document.querySelectorAll('.item-data-table tbody tr')].filter(row=>row.querySelector('td[data-col-key=partyLevel]')?.textContent.trim()==='Không');
+    return {count:rows.length,ok:rows.every(row=>{
+      const status=row.querySelector('td[data-col-key=progressParty]');
+      return status?.textContent.trim()==='Không phải trình'&&!!status.querySelector('[data-level-not-required=true]')&&!status.querySelector('.cell-picker-trigger')&&!status.classList.contains('editable-cell');
+    })};
+  })()`);
+  if(!splitNotRequired.count||!splitNotRequired.ok)throw Error('Split progress must preserve derived no-submission state: '+JSON.stringify(splitNotRequired));
   await evaluate("document.querySelector('input[data-column-choice=progressBuild]').click()");
   await eventually("!document.querySelector('th[data-column-key=progressBuild]')",'Individual stage visibility lost in split view');
   await evaluate("document.querySelector('input[data-compact-choice=mergeProgressStages]').click()");
