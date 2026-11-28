@@ -9,8 +9,8 @@
 
 ## CHỈ THỊ 27/11/2026 — CHỐT TIẾN ĐỘ 3 KHÂU TRÊN BẢN IN
 
-- Thay riêng cách trình bày in của Tiến độ 3 khâu: mỗi khâu là một khung khép kín có vách ngăn dọc mảnh, nhãn bên trái (45%), trạng thái căn giữa bên phải (55%), khoảng cách dọc 0,9mm. Nền trắng, chữ đen; Sở chưa trình đậm, Không phải trình nghiêng/viền bao nét đứt. Chỉ thị này thay phần bố cục bảng con cũ dưới đây, giữ toàn bộ quy định Admin, dữ liệu, A4, quyền và release gate.
-- Kiểm thử Chromium phải đo đủ ba khâu mỗi hồ sơ: đủ bốn cạnh khung, vách dọc thật, tỷ lệ 45/55, không tràn, căn đều, không viền lồng; kiểm pixel PDF RGB mọi trang. Chỉ merge exact head đạt CI; không bypass gate, không thay Firebase production.
+- Yêu cầu cuối của chủ dự án: **không khung bao từng khâu, không viền nét đứt**. Ba khâu liền nhau không khoảng hở, hai đường kẻ ngang liền mảnh giữa các khâu, vách dọc liền mạch giữa nhãn trái (45%) và trạng thái căn giữa (55%). Nền trắng, chữ đen; Sở chưa trình đậm, Không phải trình chỉ nghiêng. Giữ đường viền ô bảng chính và các quy định Admin, dữ liệu, A4, quyền, release gate.
+- Kiểm thử Chromium đủ ba khâu mỗi hồ sơ: bốn cạnh hàng không có khung bao, không nét đứt, hai đường ngang mảnh nối đúng vách dọc không khoảng hở, tỷ lệ 45/55, không tràn, căn đều; kiểm pixel PDF RGB mọi trang. Chỉ merge exact head đạt CI; không bypass gate, không thay Firebase production.
 
 ---
 
