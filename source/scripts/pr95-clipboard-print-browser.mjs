@@ -142,23 +142,27 @@ try{
       labelRange.selectNodeContents(label);
       const labelTextRect=labelRange.getBoundingClientRect();
       const labelTextLeft=l.left+parseFloat(labelCss.paddingLeft)+parseFloat(labelCss.borderLeftWidth);
+      const statusRange=document.createRange();
+      statusRange.selectNodeContents(value);
+      const statusTextRect=statusRange.getBoundingClientRect();
+      const statusTextLeft=b.left+parseFloat(css.paddingLeft)+parseFloat(css.borderLeftWidth);
       const previous=row.previousElementSibling;
       const before=previous?.getBoundingClientRect();
       const borderWidths=['Top','Right','Bottom','Left'].map(side=>parseFloat(rowCss['border'+side+'Width']));
       const borderStyles=['Top','Right','Bottom','Left'].map(side=>rowCss['border'+side+'Style']);
-      const previousDivider=previous?.querySelector('.hdnd-print-stage-state')?.getBoundingClientRect();
+      const previousState=previous?.querySelector('.hdnd-print-stage-state')?.getBoundingClientRect();
+      const rowTop=parseFloat(rowCss.borderTopWidth);
       return {tone:badge.dataset.tone,rowTone:row.dataset.tone,background:rowCss.backgroundColor,
-        outerBorderWidths:borderWidths,outerBorderStyles:borderStyles,
-        labelSideBorders:['Right','Bottom','Left'].map(side=>parseFloat(labelCss['border'+side+'Width'])),
+        rowTop,rowTopStyle:rowCss.borderTopStyle,
+        outerBorderWidths:borderWidths.slice(1),outerBorderStyles:borderStyles.slice(1),
+        labelBorders:['Top','Right','Bottom','Left'].map(side=>parseFloat(labelCss['border'+side+'Width'])),
         valueBorders:['Top','Right','Bottom','Left'].map(side=>parseFloat(getComputedStyle(value)['border'+side+'Width'])),
-        labelTop:parseFloat(labelCss.borderTopWidth),labelTopStyle:labelCss.borderTopStyle,
-        statusTop:parseFloat(css.borderTopWidth),statusTopStyle:css.borderTopStyle,
-        joined:!before||(!!previousDivider&&Math.abs(b.top-previousDivider.bottom)<=.25&&
-          Math.abs(b.left-previousDivider.left)<=.25&&Math.abs(l.top-before.bottom)<=.25),
+        joined:!before||(!!previousState&&Math.abs(b.top-previousState.bottom-rowTop)<=.25&&
+          Math.abs(b.left-previousState.left)<=.25&&Math.abs(l.top-before.bottom-rowTop)<=.25),
+        ruleInset:Math.min(r.left-t.left,t.right-r.right),
         dashedBorders:[row,label,badge,value].flatMap(el=>['Top','Right','Bottom','Left']
           .filter(side=>getComputedStyle(el)['border'+side+'Style']==='dashed')),
-        divider:parseFloat(css.borderLeftWidth),dividerStyle:css.borderLeftStyle,
-        extraStateBorders:['Right','Bottom'].map(side=>parseFloat(css['border'+side+'Width'])),
+        stateBorders:['Top','Right','Bottom','Left'].map(side=>parseFloat(css['border'+side+'Width'])),
         weight:css.fontWeight,fontStyle:css.fontStyle,color:css.color,align:css.textAlign,
         labelAlign:labelCss.textAlign,labelJustify:labelCss.justifyContent,
         labelStartsAtLeft:labelTextRect.width>0&&Math.abs(labelTextRect.left-labelTextLeft)<=1,
@@ -168,11 +172,11 @@ try{
           l.right>b.left+1||!v||v.left<b.left-1||v.right>b.right+1||
           v.top<b.top-1||v.bottom>b.bottom+1||
           label.scrollWidth>label.clientWidth+2||value.scrollWidth>value.clientWidth+2,
-        centered:!!v&&Math.abs((v.left+v.right-b.left-b.right)/2)<=1&&
-          Math.abs((v.top+v.bottom-b.top-b.bottom)/2)<=1,
+        statusStartsAtLeft:statusTextRect.width>0&&Math.abs(statusTextRect.left-statusTextLeft)<=1,
+        verticallyCentered:!!v&&Math.abs((v.top+v.bottom-b.top-b.bottom)/2)<=1,
         aligned:!before||(Math.abs(r.left-before.left)<=1&&Math.abs(r.right-before.right)<=1&&
-          !!previousDivider&&Math.abs(b.left-previousDivider.left)<=1),
-        sharedDivider:Math.abs(l.right-b.left)<=1&&Math.abs(l.top-b.top)<=1&&Math.abs(l.bottom-b.bottom)<=1,
+          !!previousState&&Math.abs(b.left-previousState.left)<=1),
+        adjacentTracks:Math.abs(l.right-b.left)<=1&&Math.abs(l.top-b.top)<=1&&Math.abs(l.bottom-b.bottom)<=1,
         leftRatio:l.width/(l.width+b.width),
         contiguous:!before||Math.abs(r.top-before.bottom)<=.25,
         height:r.height,gap:before?r.top-before.bottom:null};
@@ -198,39 +202,36 @@ try{
   assert.equal(renderInfo.stages.length,printed.printRows*3,'Every printed record must preserve all three stage rows');
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
     s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.contiguous&&s.joined&&s.aligned&&
-    s.centered&&s.sharedDivider&&Math.abs(s.leftRatio-printLayout.leftPercent/100)<=.015&&
+    s.statusStartsAtLeft&&s.verticallyCentered&&s.adjacentTracks&&s.ruleInset>1&&Math.abs(s.leftRatio-printLayout.leftPercent/100)<=.015&&
     s.height>=printLayout.minHeightMm*96/25.4-.5&&
     (s.gap===null||Math.abs(s.gap)<=.25)),
-    'Print stage rows must align and touch, have a continuous divider, and fully contain text: '+JSON.stringify(renderInfo.stages));
+    'Print stage rows must align and touch, keep horizontal rules inset, and fully contain text: '+JSON.stringify(renderInfo.stages));
   for(const stage of renderInfo.stages){
     assert.equal(stage.background,'rgb(255, 255, 255)','Stage row must remain white paper');
     assert.equal(stage.color,'rgb(0, 0, 0)','All stages must use black text');
     assert(stage.outerBorderWidths.every(width=>width===0),'Stage rows must have no enclosing outline');
-    assert(stage.outerBorderStyles.every(style=>style==='none'),'No outer border style on any stage');
-    assert(stage.labelSideBorders.every(width=>width===0)&&stage.valueBorders.every(width=>width===0),
-      'Label and value must have no enclosing borders');
+    assert(stage.outerBorderStyles.every(style=>style==='none'),'No side or bottom border on any stage');
+    assert([...stage.labelBorders,...stage.stateBorders,...stage.valueBorders].every(width=>width===0),
+      'Labels, states and values must have no borders, especially no internal vertical divider');
     if(stage.gap===null){
-      assert.equal(stage.labelTop,0,'No horizontal rule above the first stage');
-      assert.equal(stage.statusTop,0,'No horizontal rule above the first status');
+      assert.equal(stage.rowTop,0,'No horizontal rule above the first stage');
+      assert.equal(stage.rowTopStyle,'none');
     }else{
-      assert(stage.labelTop>0&&stage.statusTop>0,'Two adjacent rows must share a horizontal rule');
-      assert.equal(stage.labelTopStyle,'solid');
-      assert.equal(stage.statusTopStyle,'solid');
-      assert(Math.abs(stage.labelTop-stage.statusTop)<=.01&&stage.labelTop<=Math.max(1,.35*96/72)+.01,
-        'Horizontal rule must be even and thin across both columns');
+      assert(stage.rowTop>0&&stage.rowTopStyle==='solid','Exactly one continuous horizontal rule above later stages');
+      assert(stage.rowTop<=Math.max(1,.35*96/72)+.01,'Horizontal rule must be thin');
     }
     assert.deepEqual(stage.dashedBorders,[],'Never use dashed borders, including not required');
-    assert(stage.divider>0&&stage.dividerStyle==='solid','Require a thin solid vertical internal divider');
-    assert(stage.divider<=Math.max(1,printLayout.dividerPt*96/72)+.01,'Vertical divider must remain thin');
-    assert(stage.extraStateBorders.every(width=>width===0),'Status must not have a separate nested outline');
     assert.equal(stage.labelAlign,'left','Stage label must align left');
     // Chromium can serialize flex-start as flow-start; assert actual text geometry.
     assert(stage.labelStartsAtLeft,'Label text must start at the inner left edge: '+JSON.stringify(stage));
-    assert.equal(stage.align,'center','Status labels must be centered');
+    assert.equal(stage.align,'left','Option A: status text must align left');
+    assert(stage.statusStartsAtLeft,'Status text must start at the inner left edge: '+JSON.stringify(stage));
     assert.equal(stage.pseudo,'none','Status text must have no pictogram');
     assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
     assert.equal(stage.fontStyle,stage.tone==='not-required'?'italic':'normal','Not required must be distinguishable in grayscale');
   }
+  assert.equal(renderInfo.stages.filter(s=>s.rowTop>0).length,printed.printRows*2,
+    'Every printed record must have exactly two internal horizontal rules');
   assert(new Set(renderInfo.stages.map(s=>s.tone)).size>=3,'Need several distinct status classes in fixture');
   console.log('PRINT_CONTINUOUS_MONOCHROME_STAGE_GRID_PASS '+JSON.stringify({
     font:renderInfo.contentWeight,tones:[...new Set(renderInfo.stages.map(s=>s.tone))],
@@ -239,12 +240,15 @@ try{
     minHeight:Math.min(...renderInfo.stages.map(s=>s.height)),
     minLeftRatio:Math.min(...renderInfo.stages.map(s=>s.leftRatio)),
     maxLeftRatio:Math.max(...renderInfo.stages.map(s=>s.leftRatio)),
-    allCentered:renderInfo.stages.every(s=>s.centered),
+    allStatusLeftAligned:renderInfo.stages.every(s=>s.statusStartsAtLeft),
+    allVerticallyCentered:renderInfo.stages.every(s=>s.verticallyCentered),
     allAligned:renderInfo.stages.every(s=>s.aligned),
-    allSharedDividers:renderInfo.stages.every(s=>s.sharedDivider),
+    allAdjacentTracks:renderInfo.stages.every(s=>s.adjacentTracks),
+    noVerticalDividers:renderInfo.stages.every(s=>s.labelBorders[3]===0&&s.stateBorders[3]===0&&s.labelBorders[1]===0&&s.stateBorders[1]===0),
     noOutlines:renderInfo.stages.every(s=>s.outerBorderWidths.every(w=>w===0)),
     allJoined:renderInfo.stages.every(s=>s.joined&&s.contiguous),
-    horizontalRules:renderInfo.stages.filter(s=>s.gap!==null&&s.labelTop>0&&s.statusTop>0).length,
+    horizontalRules:renderInfo.stages.filter(s=>s.rowTop>0).length,
+    minRuleInset:Math.min(...renderInfo.stages.map(s=>s.ruleInset)),
     noDashedBorders:renderInfo.stages.every(s=>s.dashedBorders.length===0)}));
   const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:false});
   mkdirSync('qa-results/print-a4',{recursive:true});
