@@ -1196,7 +1196,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
           <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.contentDetails??COMPACT_GROUP_DEFAULT_LABELS.contentDetails}</strong>{groupLabelPencil('contentDetails')}</div>
           {COMPACT_OPTIONS.filter(option=>option.section==='merge'&&
             (option.key!=='cvRoomInline'||canJoinCvRoom)).map(option=>{
-              const renameKey=option.key==='leadersTogether'||option.key==='roomSpecialist'||option.key==='teamTogether'?option.key:undefined;
+              const renameKey=option.key==='mergeProgressStages'?'partyTogether':option.key==='leadersTogether'||option.key==='roomSpecialist'||option.key==='teamTogether'?option.key:undefined;
               return <div className="column-options-merge-row" key={option.key}>
                 <label>
                   <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??false}
@@ -1206,7 +1206,6 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                 {renameKey&&groupLabelPencil(renameKey)}
               </div>;
             })}
-          <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.partyTogether??COMPACT_GROUP_DEFAULT_LABELS.partyTogether} <small className="column-options-note">(luôn gộp)</small></strong>{groupLabelPencil('partyTogether')}</div>
           <strong className="column-options-name-heading">Hiển thị nhân sự</strong>
           {COMPACT_OPTIONS.filter(option=>option.section==='staff').map(option=><label key={option.key} className="column-options-staff-labels">
             <input type="checkbox" data-compact-choice={option.key}
@@ -1372,7 +1371,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <span>{'C0'+(index+1)+' · '+(['Trình Thành ủy','Trình HĐND xây dựng NQ','Trình HĐND ban hành NQ'][index])}</span>
           </label>)}
         </fieldset></details>
-        {canEditListSettings&&<details className="admin-control-section admin-control-section-l03"><summary>Nâng cao · 5 thông số độ rộng L03</summary><div className="admin-l03-widths">
+        {canEditListSettings&&l03Pair&&<details className="admin-control-section admin-control-section-l03"><summary>Nâng cao · 5 thông số độ rộng L03</summary><div className="admin-l03-widths">
           <button type="button" className="button ghost" aria-expanded={l03WidthEditorOpen}
             aria-controls="admin-l03-width-editor" disabled={viewSaving} onClick={()=>{
               if(l03WidthEditorOpen){setL03WidthEditorOpen(false);setL03WidthErrors({});l03EditBaseline.current=null;}

@@ -16,11 +16,12 @@ export type CompactDisplay=SharedCompactDisplay;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
   typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,
   leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,
-  mergeTypeIntoContent:true,mergeDepartmentIntoContent:true,showStaffLabels:true,
+  mergeTypeIntoContent:true,mergeDepartmentIntoContent:true,mergeProgressStages:true,showStaffLabels:true,
 };
 export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string;section:'merge'|'name'|'staff'}[]=[
   {key:'mergeTypeIntoContent',label:'Gộp Loại văn bản vào Nội dung trình',detail:'Bật/tắt riêng cột Loại văn bản',section:'merge'},
   {key:'mergeDepartmentIntoContent',label:'Gộp Đơn vị chủ trì vào Nội dung trình',detail:'Bật/tắt riêng cột Đơn vị chủ trì',section:'merge'},
+  {key:'mergeProgressStages',label:'Gộp Tiến độ 3 khâu',detail:'Bỏ chọn để hiện riêng cấp Thành ủy và 3 cột tiến độ theo Excel',section:'merge'},
   {key:'leadersTogether',label:'Lãnh đạo UBND + VP',detail:'UBND trên, VP dưới',section:'merge'},
   {key:'roomSpecialist',label:'Phòng + Chuyên viên',detail:'Phòng trên, chuyên viên dưới',section:'merge'},
   {key:'teamTogether',label:'UBND + VP + Phòng + CV',detail:'Bốn thông tin theo nhóm',section:'merge'},
@@ -62,7 +63,7 @@ export function readPersonalCompactDisplay(scope:string):CompactDisplay|null {
     if(!value||typeof value!=='object'||Array.isArray(value))return null;
     const object=value as Record<string,unknown>;
     const keys=Object.keys(DEFAULT_COMPACT_DISPLAY) as CompactOption[];
-    if(keys.some(key=>typeof object[key]!=='boolean'&&!(['cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent','showStaffLabels'].includes(key)&&object[key]===undefined)))return null;
+    if(keys.some(key=>typeof object[key]!=='boolean'&&!(['cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent','mergeProgressStages','showStaffLabels'].includes(key)&&object[key]===undefined)))return null;
     return Object.fromEntries(keys.map(key=>[key,object[key]??DEFAULT_COMPACT_DISPLAY[key]??false])) as CompactDisplay;
   }catch{return null;}
 }
@@ -110,7 +111,7 @@ export type CompactPair={
   anchor:string; hidden:string; hiddenFields:readonly string[];memberFields:readonly string[];
   tags:readonly string[];label:string;extraWidth:number;variant:CompactOption;
 };
-/** Staff-only presentation groups. U01 has independent options; U02 stays mandatory. */
+/** Staff-only groups. Document and progress groups have independent options. */
 const PAIRS:Partial<Record<CompactOption,CompactPair>>={
   leadersTogether:{anchor:'vpLeader',hidden:'ubndLeader',hiddenFields:['ubndLeader'],
     memberFields:['ubndLeader','vpLeader'],tags:['UBND','VP'],label:'Lãnh đạo UBND / VP',extraWidth:0,variant:'leadersTogether'},
@@ -137,8 +138,8 @@ export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDi
   const mandatory=[
     ...(includeType||includeDepartment?[{variant:'contentDetails' as const,order:documentOrder,anchor:'content',
       label:'Nội dung trình',tags:documentOrder.map(key=>key==='type'?'Loại VB':key==='department'?'Sở':'Nội dung'),extraWidth:0}]:[]),
-    {variant:'partyTogether' as const,order:['partyLevel','progressParty','progressBuild','progressCouncil'],
-      anchor:'partyLevel',label:'Tiến độ 3 khâu',tags:['Cấp','Thành ủy','Xây dựng NQ','Ban hành NQ'],extraWidth:130}
+    ...(prefs.mergeProgressStages!==false?[{variant:'partyTogether' as const,order:['partyLevel','progressParty','progressBuild','progressCouncil'],
+      anchor:'partyLevel',label:'Tiến độ 3 khâu',tags:['Cấp','Thành ủy','Xây dựng NQ','Ban hành NQ'],extraWidth:130}]:[])
   ].flatMap(def=>{
     const memberFields=def.order.filter(key=>keys.has(key));
     if(memberFields.length===0||def.variant==='contentDetails'&&memberFields.length===1&&

@@ -1,3 +1,9 @@
+## 28/11/2026 — Tiến độ 3 khâu có thể tách/gộp
+
+Candidate tiếp nối #258 đã phát hành. Checkbox mergeProgressStages mặc định true, false hiển thị riêng F–I. Giữ quyền, ẩn/hiện, bộ lọc, tên nhóm; PDF theo bảng hiện hành và nhấn trạng thái như trước. Unit và Chromium split/group + print; chưa xác nhận CI hoặc phát hành. Không đổi Rules, dữ liệu, policy.
+
+---
+
 ## 28/11/2026 — G00 tích hợp bản phát hành chung #255/#256/#257
 
 Gộp toàn bộ thay đổi từ ba PR (bỏ dải Admin; Excel Droplist + import; nhãn WebApp và PDF tên đầy đủ) lên source đang phát hành. Các head độc lập: #255 9/10 (smoke còn yêu cầu header rỗng cũ), #256 11/11, #257 10/11 (hai unit test cũ chưa hiểu default nhãn/CSS staff). Sửa các kiểm tra theo hành vi mới, không bỏ QA; chạy CI cho exact candidate tích hợp. Giữ cổng manual HOLD do importer/core và layout. Không đổi Rules, biến, dữ liệu hay policy. Chỉ merge khi tất cả workflow candidate PASS; sau đó owner Run workflow cho main SHA đã merge và kiểm tra version.json.

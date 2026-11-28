@@ -91,10 +91,12 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root .hdnd-print-stage-value{
     display:block;min-width:0;max-width:100%;overflow-wrap:anywhere;border:0;
   }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"]{
+  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-submitted"],
+   #hdnd-a4-print-root .hdnd-print-plain[data-tone="not-submitted"]{
     color:#000;font-weight:700;
   }
-  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"]{
+  #hdnd-a4-print-root .hdnd-print-stage-state[data-tone="not-required"],
+   #hdnd-a4-print-root .hdnd-print-plain[data-tone="not-required"]{
     color:#000;font-style:italic;
   }
   #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
@@ -224,8 +226,10 @@ function renderPrintCell(cell:HTMLTableCellElement,target:HTMLTableCellElement,r
     const code=kind==='displayCode'?cell.querySelector('.code'):null;
     const value=code??cell.querySelector('.inline-note-trigger')??cell;
     // An on-screen add prompt is an affordance, never printed business data.
-    appendPart(target,'div','hdnd-print-plain',
+    const plain=appendPart(target,'div','hdnd-print-plain',
       value.classList.contains('inline-note-empty')?'—':displayText(value));
+    if(['progressParty','progressBuild','progressCouncil'].includes(kind))
+      plain.dataset.tone=printStageTone(kind,plain.textContent??'');
   }
 }
 

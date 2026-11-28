@@ -1,3 +1,10 @@
+## CHỈ THỊ 28/11/2026 — TIẾN ĐỘ 3 KHÂU GỘP HOẶC TÁCH
+
+- Checkbox “Gộp Tiến độ 3 khâu” trong Tùy chọn cột; mặc định bật, cờ mới thiếu vẫn gộp. Tắt hiện bốn cột F–I: cấp Thành ủy và ba tiến độ. Không đổi quyền, dữ liệu, ẩn/hiện hay lựa chọn khác; bật lại khôi phục nhóm. Bố cục và popup dùng đường hiện hành.
+- PDF theo bảng hiện hành, vẫn giữ đậm Sở chưa trình, nghiêng Không phải trình, trắng đen. Kiểm thử migration, lưu false, nhóm độc lập, trường ẩn, Chrome và PDF. Chờ exact CI và release gate, không đổi Rules, dữ liệu hoặc policy.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — TÙY CHỌN HIỆN NHÃN NHÂN SỰ CHỈ TRÊN WEBAPP
 
 - Thêm checkbox “Hiện nhãn UBND / VP / Phòng / CV” trong Tùy chọn cột → Hiển thị nhân sự. Mặc định bật để tương thích mọi bố cục đã lưu. Lưu/Hủy và cấu hình cá nhân theo luồng gộp cột hiện hành; không đổi quyền hoặc giá trị hồ sơ. Tắt phải bỏ hẳn rail và gap, đo lại chiều rộng thực tế, giữ đủ các trường đang hiện, bao gồm chế độ CV/Phòng cùng dòng và nhóm tách. Danh sách và popup chi tiết báo cáo dùng cùng tùy chọn hiển thị nhân sự; chế độ sửa cấu hình cột nguồn vẫn giữ nguyên.
