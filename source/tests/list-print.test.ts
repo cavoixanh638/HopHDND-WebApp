@@ -28,7 +28,7 @@ describe('A4 print content contract',()=>{
 });
 
 describe('Readable print status and normal content typography',()=>{
-  it('prints regular content and a continuous monochrome three-stage grid',()=>{
+  it('prints regular content and an option A left-aligned monochrome three-stage list',()=>{
     expect(LIST_A4_PRINT_CSS).toMatch(/\.hdnd-print-document-main\{\s*font-weight:400!important/);
     expect(LIST_A4_PRINT_CSS).not.toContain('data-marker');
     expect(LIST_A4_PRINT_CSS).toContain(`min-height:${printLayout.minHeightMm}mm`);
@@ -37,7 +37,11 @@ describe('Readable print status and normal content typography',()=>{
     expect(stageRow).toContain('margin:0;border:0;border-radius:0');
     expect(stageRow).not.toMatch(/border-(?:top|right|bottom|left|style|width):/);
     expect(LIST_A4_PRINT_CSS).toContain(`border-left:${printLayout.dividerPt}pt solid #888`);
-    expect(LIST_A4_PRINT_CSS).toContain('background:transparent;text-align:center');
+    const state=LIST_A4_PRINT_CSS.match(/\.hdnd-print-stage-state\{([^}]+)\}/)?.[1];
+    expect(state).toBeDefined();
+    expect(state).toContain('justify-content:flex-start');
+    expect(state).toContain('background:transparent;text-align:left');
+    expect(state).not.toContain('text-align:center');
     expect(LIST_A4_PRINT_CSS).toContain('align-items:stretch;gap:0');
     expect(LIST_A4_PRINT_CSS).not.toMatch(/(?:^|[;{])\s*border[^:;{}]*:[^;{}]*\bdashed\b/);
     expect(LIST_A4_PRINT_CSS).not.toMatch(/\.hdnd-print-stage-row\[data-tone=/);

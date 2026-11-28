@@ -142,6 +142,10 @@ try{
       labelRange.selectNodeContents(label);
       const labelTextRect=labelRange.getBoundingClientRect();
       const labelTextLeft=l.left+parseFloat(labelCss.paddingLeft)+parseFloat(labelCss.borderLeftWidth);
+      const statusRange=document.createRange();
+      statusRange.selectNodeContents(value);
+      const statusTextRect=statusRange.getBoundingClientRect();
+      const statusTextLeft=b.left+parseFloat(css.paddingLeft)+parseFloat(css.borderLeftWidth);
       const previous=row.previousElementSibling;
       const before=previous?.getBoundingClientRect();
       const borderWidths=['Top','Right','Bottom','Left'].map(side=>parseFloat(rowCss['border'+side+'Width']));
@@ -168,8 +172,8 @@ try{
           l.right>b.left+1||!v||v.left<b.left-1||v.right>b.right+1||
           v.top<b.top-1||v.bottom>b.bottom+1||
           label.scrollWidth>label.clientWidth+2||value.scrollWidth>value.clientWidth+2,
-        centered:!!v&&Math.abs((v.left+v.right-b.left-b.right)/2)<=1&&
-          Math.abs((v.top+v.bottom-b.top-b.bottom)/2)<=1,
+        statusStartsAtLeft:statusTextRect.width>0&&Math.abs(statusTextRect.left-statusTextLeft)<=1,
+        verticallyCentered:!!v&&Math.abs((v.top+v.bottom-b.top-b.bottom)/2)<=1,
         aligned:!before||(Math.abs(r.left-before.left)<=1&&Math.abs(r.right-before.right)<=1&&
           !!previousDivider&&Math.abs(b.left-previousDivider.left)<=1),
         sharedDivider:Math.abs(l.right-b.left)<=1&&Math.abs(l.top-b.top)<=1&&Math.abs(l.bottom-b.bottom)<=1,
@@ -198,7 +202,7 @@ try{
   assert.equal(renderInfo.stages.length,printed.printRows*3,'Every printed record must preserve all three stage rows');
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
     s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.contiguous&&s.joined&&s.aligned&&
-    s.centered&&s.sharedDivider&&Math.abs(s.leftRatio-printLayout.leftPercent/100)<=.015&&
+    s.statusStartsAtLeft&&s.verticallyCentered&&s.sharedDivider&&Math.abs(s.leftRatio-printLayout.leftPercent/100)<=.015&&
     s.height>=printLayout.minHeightMm*96/25.4-.5&&
     (s.gap===null||Math.abs(s.gap)<=.25)),
     'Print stage rows must align and touch, have a continuous divider, and fully contain text: '+JSON.stringify(renderInfo.stages));
@@ -226,7 +230,8 @@ try{
     assert.equal(stage.labelAlign,'left','Stage label must align left');
     // Chromium can serialize flex-start as flow-start; assert actual text geometry.
     assert(stage.labelStartsAtLeft,'Label text must start at the inner left edge: '+JSON.stringify(stage));
-    assert.equal(stage.align,'center','Status labels must be centered');
+    assert.equal(stage.align,'left','Option A: status text must align left');
+    assert(stage.statusStartsAtLeft,'Status text must start at the inner left edge: '+JSON.stringify(stage));
     assert.equal(stage.pseudo,'none','Status text must have no pictogram');
     assert.equal(stage.weight,stage.tone==='not-submitted'?'700':'400','Print weight must emphasize only not-yet-submitted');
     assert.equal(stage.fontStyle,stage.tone==='not-required'?'italic':'normal','Not required must be distinguishable in grayscale');
@@ -239,7 +244,8 @@ try{
     minHeight:Math.min(...renderInfo.stages.map(s=>s.height)),
     minLeftRatio:Math.min(...renderInfo.stages.map(s=>s.leftRatio)),
     maxLeftRatio:Math.max(...renderInfo.stages.map(s=>s.leftRatio)),
-    allCentered:renderInfo.stages.every(s=>s.centered),
+    allStatusLeftAligned:renderInfo.stages.every(s=>s.statusStartsAtLeft),
+    allVerticallyCentered:renderInfo.stages.every(s=>s.verticallyCentered),
     allAligned:renderInfo.stages.every(s=>s.aligned),
     allSharedDividers:renderInfo.stages.every(s=>s.sharedDivider),
     noOutlines:renderInfo.stages.every(s=>s.outerBorderWidths.every(w=>w===0)),

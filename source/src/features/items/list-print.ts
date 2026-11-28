@@ -61,9 +61,9 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root .hdnd-print-document-meta{
     margin-top:1mm;color:#000;line-height:1.26;
   }
-  /* Owner revision 27/11: a continuous two-column, three-row grid.
+  /* Owner-approved option A: a minimal three-line task list for paper.
      No enclosing stage boxes or dashed borders. Adjacent rows touch,
-     with thin solid horizontal rules and a joined vertical divider. */
+     with thin solid rules, a quiet divider and left-aligned status text. */
   #hdnd-a4-print-root .hdnd-print-stage-row{
     display:grid;grid-template-columns:minmax(0,${printLayout.leftPercent}fr) minmax(0,${100-printLayout.leftPercent}fr);
     align-items:stretch;gap:0;min-height:${printLayout.minHeightMm}mm;box-sizing:border-box;
@@ -77,10 +77,10 @@ export const LIST_A4_PRINT_CSS=`
     text-align:left;overflow-wrap:anywhere;color:#000;
   }
   #hdnd-a4-print-root .hdnd-print-stage-state{
-    display:flex;align-items:center;justify-content:center;
+    display:flex;align-items:center;justify-content:flex-start;
     min-width:0;box-sizing:border-box;
     padding:.65mm .8mm;border:0;border-left:${printLayout.dividerPt}pt solid #888;
-    background:transparent;text-align:center;font-weight:400;font-size:8pt;line-height:1.3;
+    background:transparent;text-align:left;font-weight:400;font-size:8pt;line-height:1.3;
     color:#000;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root .hdnd-print-stage-row + .hdnd-print-stage-row > .hdnd-print-stage-label,
