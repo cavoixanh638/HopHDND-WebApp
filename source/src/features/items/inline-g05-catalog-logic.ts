@@ -1,7 +1,7 @@
 /** G05: pure draft operations. No SDK, persistence, row mutation or role escalation. */
 import type {Item} from '../../../shared/types';
 import {normalizeSearch} from '../../domain/search';
-import {OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
+import {OFFICIAL_STATUS_CHOICES,canonicalStatus,type StatusCatalogField} from '../../domain/status-contract';
 import {REPORT_GROUP_FIELDS,renameReportGroupIdentity,validateReportGroupIdentities} from '../../domain/report-reference-identity';
 import {validateCatalog,type CatalogConfig,type CatalogKey} from '../../data/catalogs';
 
@@ -17,8 +17,9 @@ export const g05LockedCatalog=(key:CatalogKey):boolean=>
 
 /** Count source usage conservatively, including case/whitespace/accent variants. */
 export function g05UsageCount(items:readonly Item[],key:CatalogKey,value:string):number{
-  const expected=g05Identity(value);
-  return items.reduce((sum,item)=>sum+(g05Identity(String(item[key]??''))===expected?1:0),0);
+  const identity=(raw:string)=>g05Identity(g05LockedCatalog(key)?canonicalStatus(key as StatusCatalogField,raw):raw);
+  const expected=identity(value);
+  return items.reduce((sum,item)=>sum+(identity(String(item[key]??''))===expected?1:0),0);
 }
 export function g05RemoveBlockReason(config:CatalogConfig,items:readonly Item[],key:CatalogKey,value:string):string|null{
   if(g05LockedCatalog(key))return 'Trạng thái chuẩn được khóa bởi mã nguồn.';

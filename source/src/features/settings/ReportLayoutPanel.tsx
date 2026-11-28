@@ -7,6 +7,7 @@ import {ReportInlineVisualToolbar} from './inline-g03-ReportInlineVisualToolbar'
 import {inlineG03ApplyVisualChange,inlineG03VisualEqual,inlineG03VisualValue,type ReportInlineVisualChange} from './inline-g03-report-visual-adapter';
 import {DeferredWidthInput} from '../items/DeferredWidthInput';
 import { ReportTable } from '../reports/ReportTable';
+import {excelStatusLabel} from '../../domain/status-contract';
 
 type ReportLayoutPanelProps = {
   draft: ReportLayout[];
@@ -160,7 +161,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                 <legend>Thứ tự cột</legend>
                 <ol className="column-order-list">
                   {report.columnOrder.map((column, columnIndex) => <li key={column}>
-                    <span>{column}</span>
+                    <span>{excelStatusLabel(preview.statusField,column)}</span>
                     <span className="top-actions">
                       <button className="button ghost" type="button" aria-label={`Đưa cột ${column} lên`} onClick={() => moveColumn(index, columnIndex, -1)} disabled={columnIndex === 0}>Lên</button>
                       <button className="button ghost" type="button" aria-label={`Đưa cột ${column} xuống`} onClick={() => moveColumn(index, columnIndex, 1)} disabled={columnIndex === report.columnOrder.length - 1}>Xuống</button>
@@ -179,7 +180,7 @@ export function ReportLayoutPanel({ draft, onChange, items, group, sourceLabel, 
                         hiddenColumns:shown?[...new Set([...report.hiddenColumns,column])]:
                           report.hiddenColumns.filter(value=>value!==column),
                         ...(exempt?{showNotRequiredColumn:!shown}:{})
-                      })}/>{column}</label>;
+                      })}/>{excelStatusLabel(preview.statusField,column)}</label>;
                   })}
                 </div>
               </fieldset></details>

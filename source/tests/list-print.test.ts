@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
-import {LIST_A4_PRINT_CSS,printStageTone,fitPrintStageColumn,fitPrintGroupColumns} from '../src/features/items/list-print';
+import {LIST_A4_PRINT_CSS,printStageTone,fitPrintStageColumn,fitPrintGroupColumns,printStaffValues} from '../src/features/items/list-print';
 import printLayout from '../src/presentation/print-layout.json';
 describe('A4 print content contract',()=>{
   it('uses landscape A4 and only heading + copied visible table, no extra labels',()=>{
@@ -118,15 +118,16 @@ describe('Print-only stage column autofit',()=>{
 });
 
 describe('Print personnel fit and regular typography',()=>{
-  it('uses regular ID, staff tag and staff value, leaving all table headings bold',()=>{
-    for(const selector of ['td[data-print-kind="displayCode"]','.hdnd-print-staff-tag','.hdnd-print-staff-value']){
+  it('uses regular ID and staff values with no label rail, leaving all table headings bold',()=>{
+    for(const selector of ['td[data-print-kind="displayCode"]','.hdnd-print-staff-value']){
       const start=LIST_A4_PRINT_CSS.indexOf(selector+'{');
       expect(start).toBeGreaterThan(-1);
       const rule=LIST_A4_PRINT_CSS.slice(start,LIST_A4_PRINT_CSS.indexOf('}',start));
       expect(rule).toContain('font-weight:400');
       expect(rule).not.toContain('font-weight:700');
     }
-    expect(LIST_A4_PRINT_CSS).toContain('var(--hdnd-print-staff-label-width,35%)');
+    expect(LIST_A4_PRINT_CSS).not.toContain('hdnd-print-staff-tag');
+    expect(LIST_A4_PRINT_CSS).not.toContain('--hdnd-print-staff-label-width');
     expect(LIST_A4_PRINT_CSS).not.toContain('grid-template-columns:12mm');
   });
   it('fits long staff names and stage text together even when saved staff width is tiny',()=>{
@@ -136,17 +137,17 @@ describe('Print personnel fit and regular typography',()=>{
     const fit=fitPrintGroupColumns(initial,0,[stage,staff]);
     expect(fit.shares[0]).toBe(initial[0]);
     expect(fit.shares[2]).toBeCloseTo(fitPrintStageColumn(initial,2,0,92,116).shares[2],8);
-    expect(fit.shares[4]).toBeGreaterThan(23);
+    expect(fit.shares[4]).toBeGreaterThan(21);
+    expect(fit.shares[4]).toBeLessThan(23);
     expect(fit.shares[1]).toBeLessThan(initial[1]);
     expect(fit.shares.reduce((a,b)=>a+b,0)).toBeCloseTo(100,8);
-    expect(fit.labelWidths[4]).toBeGreaterThan(staff.labelPx);
-    expect(fit.labelWidths[4]).toBeLessThan(staff.labelPx+6);
+    expect(fit.labelWidths[4]).toBeUndefined();
   });
   it('supports multiple partial staff columns and staff without a stage group',()=>{
     const fit=fitPrintGroupColumns([5,75,10,10],0,[
       {index:2,kind:'staff',labelPx:22,valuePx:130},
       {index:3,kind:'staff',labelPx:24,valuePx:90}]);
-    expect(Object.keys(fit.labelWidths)).toEqual(['2','3']);
+    expect(Object.keys(fit.labelWidths)).toEqual([]);
     expect(fit.shares[2]).toBeGreaterThan(fit.shares[3]);
     expect(fit.shares.reduce((a,b)=>a+b,0)).toBeCloseTo(100,8);
   });
@@ -157,5 +158,24 @@ describe('Print personnel fit and regular typography',()=>{
     expect(fit.shares[0]).toBe(5);expect(fit.shares[1]).toBeGreaterThan(0);
     expect(fit.labelWidths[3]).toBeUndefined();
     expect(fit.shares.reduce((a,b)=>a+b,0)).toBeCloseTo(100,8);
+  });
+});
+
+describe('Print full staff values without UI field labels',()=>{
+  const full={ubndLeader:'PCT Nguyễn Văn A',vpLeader:'PCVP Trần Văn B',
+    room:'Phòng Tổng hợp',specialist:'Lê Văn C'};
+  it('retains exact full titles and names, prints each field once and never adds UBND/VP/CV prefixes',()=>{
+    expect(printStaffValues(['ubndLeader','vpLeader','room','specialist'],full)).toEqual([
+      {field:'ubndLeader',value:'PCT Nguyễn Văn A'},
+      {field:'vpLeader',value:'PCVP Trần Văn B'},
+      {field:'room',value:'Phòng Tổng hợp'},
+      {field:'specialist',value:'Lê Văn C'}
+    ]);
+  });
+  it('omits hidden and empty fields, preserves an already-abbreviated original without guessing',()=>{
+    expect(printStaffValues(['vpLeader','room','specialist'],{...full,vpLeader:'PCVP T.V.B',room:' ',specialist:'—'}))
+      .toEqual([{field:'vpLeader',value:'PCVP T.V.B'}]);
+    expect(printStaffValues(['specialist','room','specialist'],full)).toEqual([
+      {field:'room',value:'Phòng Tổng hợp'},{field:'specialist',value:'Lê Văn C'}]);
   });
 });

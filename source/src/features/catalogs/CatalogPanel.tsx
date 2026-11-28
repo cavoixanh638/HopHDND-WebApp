@@ -1,3 +1,4 @@
+import {excelStatusLabel} from '../../domain/status-contract';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Item,GroupField } from '../../../shared/types';
 import {REPORT_GROUP_FIELDS} from '../../domain/report-reference-identity';
@@ -58,7 +59,7 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
   const config = catalogLabels.find(entry => entry.key === selected)!;
   const selectedLabel=columnLabels?.[selected]??config.label;
   const values = draft.options[selected] ?? [];
-  const visibleValues = useMemo(() => values.filter(value => normalizeSearch(value).includes(normalizeSearch(query))), [values, query]);
+  const visibleValues = useMemo(() => values.filter(value => normalizeSearch(value+' '+excelStatusLabel(selected,value)).includes(normalizeSearch(query))), [values, query,selected]);
   const usageCount = (value: string) => g05UsageCount(items,selected,value);
   const locked=g05LockedCatalog(selected);
 
@@ -127,7 +128,7 @@ export function CatalogPanel({ draft, onChange, items, sourceKey, onPendingChang
               <label className="field"><span className="sr-only">Tên mới cho {value}</span><input autoFocus maxLength={200} value={form.renameValue} onChange={event => setForm({ ...form, renameValue: event.target.value })} onKeyDown={event => { if(event.nativeEvent?.isComposing||event.keyCode===229)return; if (event.key === 'Enter') {event.preventDefault();saveRename(value);} if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); discardForm(); } }} /></label>
               <span className="top-actions"><button type="button" className="button primary" onClick={() => saveRename(value)}>Lưu tên</button><button type="button" className="button ghost" onClick={discardForm}>Hủy</button></span>
             </> : <>
-              <span>{value} <small className="muted">({count} nội dung)</small></span>
+              <span>{excelStatusLabel(selected,value)} <small className="muted">({count} nội dung)</small></span>
               <span className="top-actions">
                 <button type="button" className="button ghost" aria-label={`Đưa ${value} lên`} onClick={() => moveValue(index, -1)} disabled={locked||index === 0}>Lên</button>
                 <button type="button" className="button ghost" aria-label={`Đưa ${value} xuống`} onClick={() => moveValue(index, 1)} disabled={locked||index === values.length - 1}>Xuống</button>

@@ -101,8 +101,9 @@ try{
         .map(row=>({label:row.querySelector('.hdnd-print-stage-label')?.textContent?.trim(),
           status:row.querySelector('.hdnd-print-stage-state')?.textContent?.trim()})),
       staff:Array.from(table?.tBodies[0]?.rows[0]?.querySelectorAll('.hdnd-print-staff-row')??[])
-        .map(row=>({tag:row.querySelector('.hdnd-print-staff-tag')?.textContent?.trim(),
-          value:row.querySelector('.hdnd-print-staff-value')?.textContent?.trim()}))
+        .map(row=>({field:row.dataset.printStaffField,
+          value:row.querySelector('.hdnd-print-staff-value')?.textContent?.trim(),
+          hasTag:!!row.querySelector('.hdnd-print-staff-tag')}))
     };
   });
   assert.equal(printed.invoked,1,'Print command not invoked');
@@ -123,9 +124,9 @@ try{
   assert(printed.stages[0].label.includes('Thành ủy'),'L03 first label changed');
   assert(printed.stages[1].label.includes('Trình'),'L03 second label changed');
   assert(printed.stages[2].label.includes('Trình'),'L03 third label changed');
-  assert.deepEqual(printed.staff.map(s=>s.tag),['UBND','VP','Phòng','CV'],
-    'L04 personnel must retain the four labeled rows in web order');
-  assert(printed.staff.every(s=>s.value),'L04 lost a displayed name');
+  assert.deepEqual(printed.staff.map(s=>s.field),['ubndLeader','vpLeader','room','specialist'],
+    'L04 personnel must retain the four source fields in order');
+  assert(printed.staff.every(s=>s.value&&!s.hasTag),'L04 lost a name or retained a UI field label');
   await page.emulateMedia({media:'print'});
   const renderInfo=await page.evaluate(()=>{
     const c=document.querySelector('#hdnd-a4-print-root td[data-print-kind="displayCode"]');
@@ -188,18 +189,17 @@ try{
     // Audit actual L04 geometry in the same print media as L03, without
     // altering the browser, clipboard, PDF or network-isolation shell.
     const staffRows=[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-staff-row')].map(row=>{
-      const tag=row.querySelector('.hdnd-print-staff-tag'),value=row.querySelector('.hdnd-print-staff-value');
-      const td=row.closest('td'),r=td.getBoundingClientRect(),t=tag.getBoundingClientRect(),v=value.getBoundingClientRect();
-      const tagRange=document.createRange(),valueRange=document.createRange();
-      tagRange.selectNodeContents(tag);valueRange.selectNodeContents(value);
-      const tr=tagRange.getBoundingClientRect(),vr=valueRange.getBoundingClientRect();
-      return {column:td.cellIndex,tag:tag.textContent,value:value.textContent,
-        tagWeight:getComputedStyle(tag).fontWeight,valueWeight:getComputedStyle(value).fontWeight,
-        tagLines:tagRange.getClientRects().length,valueLines:valueRange.getClientRects().length,
-        tagSlack:t.right-tr.right-parseFloat(getComputedStyle(tag).paddingRight),
-        valueSlack:v.right-vr.right,tagRail:t.width,valueRail:v.width,
-        overflow:tr.left<r.left-1||vr.right>r.right+1||tr.right>t.right+1||
-          vr.right>v.right+1||tag.scrollWidth>tag.clientWidth+2||value.scrollWidth>value.clientWidth+2};
+      const value=row.querySelector('.hdnd-print-staff-value');
+      const td=row.closest('td'),r=td.getBoundingClientRect(),v=value.getBoundingClientRect();
+      const valueRange=document.createRange();valueRange.selectNodeContents(value);
+      const vr=valueRange.getBoundingClientRect();
+      return {column:td.cellIndex,field:row.dataset.printStaffField,value:value.textContent,
+        valueWeight:getComputedStyle(value).fontWeight,valueLines:valueRange.getClientRects().length,
+        valueSlack:v.right-vr.right,valueRail:v.width,
+        leftAligned:Math.abs(vr.left-v.left)<=1,
+        hasTag:!!row.querySelector('.hdnd-print-staff-tag'),
+        overflow:vr.left<r.left-1||vr.right>r.right+1||vr.right>v.right+1||
+          value.scrollWidth>value.clientWidth+2};
     });
     if(stages.length){
       stages[0].staffRows=staffRows;
@@ -229,23 +229,24 @@ try{
   assert.equal(idWeights.length,printed.printRows,'Every printed record must preserve ID text');
   assert(idWeights.every(w=>w==='400'),'All printed IDs must be normal weight');
   assert.equal(staffRows.length,printed.printRows*4,'Every printed record must preserve all four staff rows');
-  assert(staffRows.every(s=>s.tagWeight==='400'&&s.valueWeight==='400'&&
-    s.tagLines===1&&s.valueLines===1&&!s.overflow),
-    'All staff names and tags must fit one line in normal weight: '+JSON.stringify(staffRows));
+  assert(staffRows.every(s=>s.valueWeight==='400'&&s.valueLines===1&&
+    s.leftAligned&&!s.hasTag&&!s.overflow),
+    'Full staff values must fit one regular left-aligned line with no tag: '+JSON.stringify(staffRows));
+  const fullFirst=staffRows.slice(0,4).map(s=>s.value);
+  assert.deepEqual(fullFirst,printed.staff.map(s=>s.value),'Print staff snapshot changed between screen and print media');
+  assert(fullFirst[0].includes('Lãnh đạo mẫu')&&fullFirst[1].includes('Lãnh đạo mẫu')&&
+    fullFirst[3].includes('Chuyên viên mẫu'),'Full source names must print even when screen names are abbreviated: '+JSON.stringify(fullFirst));
   const staffColumns=[...new Set(staffRows.map(s=>s.column))];
   for(const column of staffColumns){
     const rows=staffRows.filter(s=>s.column===column);
-    const tagSlack=Math.min(...rows.map(s=>s.tagSlack));
     const valueSlack=Math.min(...rows.map(s=>s.valueSlack));
-    assert(tagSlack>=-.8&&tagSlack<=4.5,'Staff label rail must fit its actual text: '+tagSlack);
     assert(valueSlack>=-.8&&valueSlack<=6.5,'Staff value rail must fit its actual text: '+valueSlack);
-    assert(rows.every(s=>Math.abs(s.tagRail-rows[0].tagRail)<=1&&
-      Math.abs(s.valueRail-rows[0].valueRail)<=1),'Staff rails must align across records');
+    assert(rows.every(s=>Math.abs(s.valueRail-rows[0].valueRail)<=1),'Staff values must align across records');
   }
   console.log('PRINT_STAFF_SINGLE_LINE_REGULAR_PASS '+JSON.stringify({
     records:printed.printRows,staffRows:staffRows.length,columns:staffColumns.length,
-    idWeight:idWeights[0],tagWeight:staffRows[0].tagWeight,valueWeight:staffRows[0].valueWeight,
-    maxTagLines:Math.max(...staffRows.map(s=>s.tagLines)),maxValueLines:Math.max(...staffRows.map(s=>s.valueLines))}));
+    idWeight:idWeights[0],valueWeight:staffRows[0].valueWeight,
+    noTags:staffRows.every(s=>!s.hasTag),maxValueLines:Math.max(...staffRows.map(s=>s.valueLines))}));
   assert(renderInfo.stages.length>=3&&renderInfo.stages.every(s=>
     s.label&&s.text&&s.tone&&s.rowTone===s.tone&&!s.overflow&&s.contiguous&&s.joined&&s.aligned&&
     s.statusStartsAtLeft&&s.verticallyCentered&&s.adjacentTracks&&s.ruleInset>1&&
@@ -370,6 +371,32 @@ try{
   assert(!printed.content.includes('Tổng số nội dung'),'Added a summary into print');
   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Print DOM not cleaned');
+
+  // Same synthetic current records; use the real WebApp preference to remove
+  // staff labels, then take another print snapshot. Print content must not
+  // depend on the UI label setting (including the abbreviated screen names).
+  await page.emulateMedia({media:'screen'});
+  await page.evaluate(()=>{document.querySelector('.compact-columns-menu').open=true;});
+  const labelToggle=page.locator('input[data-compact-choice=showStaffLabels]');
+  await labelToggle.waitFor();
+  assert.equal(await labelToggle.isChecked(),true,'Legacy default must show labels');
+  await labelToggle.uncheck();
+  await page.locator('.compact-pair-lines[data-staff-labels="hidden"]').first().waitFor();
+  assert.equal(await page.locator('.item-data-table .compact-pair-tag').count(),0,'WebApp labels did not hide');
+  await page.locator('.column-options-close').click();
+  await page.getByRole('button',{name:'In hoặc lưu PDF A4 ngang'}).click();
+  const withoutWebLabels=await page.evaluate(()=>({
+    values:[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-staff-row')].map(row=>({
+      field:row.dataset.printStaffField,value:row.querySelector('.hdnd-print-staff-value')?.textContent
+    })),
+    tags:document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-staff-tag').length
+  }));
+  assert.deepEqual(withoutWebLabels.values,staffRows.map(row=>({field:row.field,value:row.value})),
+    'PDF personnel data changed when WebApp labels were disabled');
+  assert.equal(withoutWebLabels.tags,0,'PDF must never print staff field labels');
+  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+  assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Second print DOM not cleaned');
+  console.log('PRINT_WEB_STAFF_LABEL_INDEPENDENCE_PASS '+JSON.stringify({staffRows:withoutWebLabels.values.length}));
 
   assert.deepEqual(external,[],'External network request from isolated preview');
   console.log('HDND_CLIPBOARD_A4_CHROME_PASS '+JSON.stringify({

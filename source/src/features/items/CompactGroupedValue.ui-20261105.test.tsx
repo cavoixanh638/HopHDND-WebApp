@@ -87,7 +87,7 @@ describe('UI 05/11 — compact grouped picker/party-level projection',()=>{
     expect((markup.match(/data-ui-picker-skin="standard"/g)??[]).length).toBe(2);
   });
   it('normalizes legacy view labels while retaining neutral R05 visual tone',()=>{
-    expect(compactPartyLevelLabel('BTV TU')).toBe('BTV');
+    expect(compactPartyLevelLabel('BTV TU')).toBe('BTV TU');
     expect(compactPartyLevelLabel('Không')).toBe('Không');
     expect(compactPartyLevelLabel('TTTU')).toBe('TTTU');
     expect(compactStageVisualTone('Không phải trình','done')).toBe('neutral');

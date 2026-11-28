@@ -690,13 +690,13 @@ try{
    }
    const status=stage.querySelector('.compact-stage-state[data-editable="true"] button.cell-picker-trigger');
    const level=stage.querySelector('.compact-stage-level[data-level-editor="true"] button.cell-picker-trigger');
-   const atDefault={status:measure(status,'ĐU gửi TU, chưa họp'),level:measure(level,'BCH')};
+   const atDefault={status:measure(status,'ĐU đã gửi TU, chưa họp'),level:measure(level,'BCH')};
    // Simulate only the configurable status rail becoming 160px. The actual
    // app persists rails via its layout editor; this is a visual CSS probe.
    const td=stage.closest('td');
    td.style.setProperty('--hdnd-l03-status-track','170px');
    td.style.setProperty('--hdnd-l03-inner-width','351px'); // 110+55+170+2*8
-   const widenedStatus=measure(status,'ĐU gửi TU, chưa họp');
+   const widenedStatus=measure(status,'ĐU đã gửi TU, chưa họp');
    return {...atDefault,widenedStatus};
   });
   writeFileSync(join(out,'packing-'+surface+'.json'),JSON.stringify(packing,null,2));

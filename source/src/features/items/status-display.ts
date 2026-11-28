@@ -1,6 +1,6 @@
 import type {Item,TextField} from '../../../shared/types';
 import {displayOrganisationName} from '../../domain/organisation-display';
-import {canonicalStatus,OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
+import {canonicalStatus,OFFICIAL_STATUS_CHOICES,DEFAULT_STATUS_CHOICE_KEYS,type StatusCatalogField} from '../../domain/status-contract';
 import {effectiveBuildStatus} from '../../domain/pr95-v5-l4-build-effective';
 
 /** Pure presentation projection. Never mutate the raw Item, drafts, histories,
@@ -14,7 +14,7 @@ export function statusDisplayValue(field:string,raw:string):string {
 /** Only official menu presets. CellPicker may additionally display a currently
  * selected UNKNOWN source value, but never re-add a known legacy alias. */
 export function statusPickerValues(field:string,choices:readonly string[]):string[]{
-  return isStatusDisplayField(field)?[...OFFICIAL_STATUS_CHOICES[field]]:[...choices];
+  return isStatusDisplayField(field)?[...DEFAULT_STATUS_CHOICE_KEYS[field]]:[...choices];
 }
 /** A no-op for opening/closing/Esc or selecting the canonical representation
  * of the current raw alias. Only explicit different official choices patch. */

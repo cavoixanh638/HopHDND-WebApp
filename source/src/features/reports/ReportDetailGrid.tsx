@@ -556,7 +556,7 @@ export function ReportDetailGrid({title,selectedIds,items,sourceKey,catalog,list
                   field={field=>cell(item,field as DetailColumnKey)} editable={field=>editing&&popupMayEdit&&mayEditField(item,field)}
                   tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
                   highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,listLayout?.cellHighlights)}
-                  cvRoomInline={popupPrefs.cvRoomInline}/>:cell(item,c.key as DetailColumnKey)}
+                  cvRoomInline={popupPrefs.cvRoomInline} showStaffLabels={popupPrefs.showStaffLabels!==false}/>:cell(item,c.key as DetailColumnKey)}
                 {showCellHistory&&<CellHistoryAction label={(labelByKey.get(c.key)??c.key)+' · '+displayId(item)}
                   onClick={()=>onCellHistory!(item,c.key as TextField)}/>}
                 {c.key==='specialist'&&assignmentIssue(item,catalog)&&
