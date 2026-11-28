@@ -236,8 +236,14 @@ describe('Mandatory document/stage projection and optional staff groups are read
     const a='uid-A:source-A',other='uid-B:source-A';
     const old={...DEFAULT_COMPACT_DISPLAY,teamTogether:true};
     delete (old as Partial<typeof old>).cvRoomInline;
+    delete old.showStaffLabels;
     values.set('hdnd.viewer-compact.v1:'+a,JSON.stringify(old));
     expect(readPersonalCompactDisplay(a)?.cvRoomInline).toBe(false);
+    expect(readPersonalCompactDisplay(a)?.showStaffLabels).toBe(true);
+    const withoutTags=toggleCompactOption(readPersonalCompactDisplay(a)!,'showStaffLabels',false);
+    expect(withoutTags.teamTogether).toBe(true);
+    expect(writePersonalCompactDisplay(a,withoutTags)).toBe(true);
+    expect(readPersonalCompactDisplay(a)?.showStaffLabels).toBe(false);
     const changed=toggleCompactOption(readPersonalCompactDisplay(a)!,'cvRoomInline',true);
     expect(writePersonalCompactDisplay(a,changed)).toBe(true);
     expect(readPersonalCompactDisplay(a)?.cvRoomInline).toBe(true);

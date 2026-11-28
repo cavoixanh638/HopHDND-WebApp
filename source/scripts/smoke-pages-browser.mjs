@@ -2716,7 +2716,7 @@ try{
     const rect=panel?.getBoundingClientRect();
     const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
-    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===8&&
+    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===9&&
       !panel.querySelector('details.compact-more-options')&&
       nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&
       nameBoxes.some(box=>box.dataset.compactChoice==='shortSpecialist')&&
@@ -2726,6 +2726,30 @@ try{
       count:labels.length,rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
   if(!compactMenuDesktop.ok)throw Error('Staff menu geometry/options regression: '+JSON.stringify(compactMenuDesktop));
+  // Staff labels are display-only, and removing them must remove the width
+  // of the label rail without changing any member or its edit grant.
+  const staffLabelState=()=>evaluate(`(()=>{
+    const td=document.querySelector('td[data-col-key=room]'),group=td?.querySelector('.compact-pair-lines');
+    const first=group?.firstElementChild;
+    return {labels:group?.querySelectorAll('.compact-pair-tag').length,
+      members:[...group?.querySelectorAll('[data-ui-reference-part]')??[]].map(n=>n.dataset.uiReferencePart),
+      width:td?.getBoundingClientRect().width,tracks:first?getComputedStyle(first).gridTemplateColumns.split(' ').length:0,
+      gap:first?parseFloat(getComputedStyle(first).columnGap):null,
+      auto:document.querySelector('.item-data-table')?.dataset.listGroupWidths,
+      option:document.querySelector('input[data-compact-choice=showStaffLabels]')?.checked};
+  })()`);
+  const tagged=await staffLabelState();
+  if(!tagged.option||tagged.labels!==4||tagged.tracks!==2)throw Error('Existing staff label default lost: '+JSON.stringify(tagged));
+  await evaluate("document.querySelector('input[data-compact-choice=showStaffLabels]').click()");
+  await eventually("!!document.querySelector('.compact-pair-lines[data-staff-labels=hidden]') && !document.querySelector('.compact-pair-lines .compact-pair-tag')",'Staff labels did not hide');
+  const untagged=await staffLabelState();
+  if(untagged.option||untagged.labels!==0||untagged.tracks!==1||untagged.gap!==0||
+     JSON.stringify(untagged.members)!==JSON.stringify(tagged.members)||
+     (tagged.auto==='auto'&&untagged.width>tagged.width+1))
+    throw Error('Staff labels hide must retain members and remove label rail: '+JSON.stringify({tagged,untagged}));
+  await evaluate("document.querySelector('input[data-compact-choice=showStaffLabels]').click()");
+  await eventually("!!document.querySelector('.compact-pair-lines .compact-pair-tag')",'Staff labels did not restore');
+  console.log('ADMIN_STAFF_LABEL_OPTION_PASS',JSON.stringify({tagged,untagged}));
   const toggledNote=await evaluate(`(()=>{
     const box=document.querySelector('.column-options-checklist input[data-column-choice=note]');
     if(!box||box.disabled||!box.checked)return false;box.click();return true;
@@ -2812,7 +2836,7 @@ try{
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
-      labels.length===8&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
+      labels.length===9&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
       html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,

@@ -1206,6 +1206,13 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               </div>;
             })}
           <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.partyTogether??COMPACT_GROUP_DEFAULT_LABELS.partyTogether} <small className="column-options-note">(luôn gộp)</small></strong>{groupLabelPencil('partyTogether')}</div>
+          <strong className="column-options-name-heading">Hiển thị nhân sự</strong>
+          {COMPACT_OPTIONS.filter(option=>option.section==='staff').map(option=><label key={option.key} className="column-options-staff-labels">
+            <input type="checkbox" data-compact-choice={option.key}
+              checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??true}
+              disabled={viewSaving||locked} onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <span>{option.label}<small>{option.detail}</small></span>
+          </label>)}
           <strong className="column-options-name-heading">Viết tắt tên</strong>
           {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
             <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]}
@@ -1629,6 +1636,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
               highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,activeLayout.cellHighlights)}
               cvRoomInline={compactDisplay.cvRoomInline}
+              showStaffLabels={compactDisplay.showStaffLabels!==false}
               l03InlineEditor={pair.variant==='partyTogether'&&!autoGroupWidths&&inlineReady&&
                 item.recordId===rows[0]?.recordId?{
                   verifiedAdmin:canEditListSettings,

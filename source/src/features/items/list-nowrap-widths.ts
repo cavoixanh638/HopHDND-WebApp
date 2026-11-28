@@ -101,14 +101,14 @@ export function measureListContentMinimums(table:HTMLTableElement):ListContentMi
       for(const row of Array.from(staff.children)){
         const label=row.querySelector('.compact-pair-tag');
         const value=row.querySelector(':scope > .compact-highlight-member,:scope > .compact-staff-inline-values');
-        if(!label||!value)continue;
-        const labelWidth=measureMember(label),valueWidth=measureMember(value);
-        const gap=px(getComputedStyle(row).columnGap);
+        if(!value)continue;
+        const labelWidth=label?measureMember(label):0,valueWidth=measureMember(value);
+        const gap=label?px(getComputedStyle(row).columnGap):0;
         metrics.label=Math.max(metrics.label,labelWidth);
         metrics.value=Math.max(metrics.value,valueWidth);
         metrics.chrome=Math.max(metrics.chrome,gap+chrome(td)+2);
         // The legacy manual mode retains the existing visual label rail floor.
-        width=Math.max(width,Math.max(label.getBoundingClientRect().width,labelWidth)+gap+valueWidth);
+        width=Math.max(width,Math.max(label?.getBoundingClientRect().width??0,labelWidth)+gap+valueWidth);
       }
       if(width){
         result.columns[key]=Math.max(result.columns[key]??0,Math.ceil(width+chrome(td)+2));

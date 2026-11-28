@@ -125,13 +125,13 @@ export function partyTrackPhysicalWidth(widths:PartyTrackWidths,hasEditableLevel
 export interface CellHighlightRule {
   id:string;word:string;field:string;textColor:string;backgroundColor:string;
 }
-export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline',boolean>&Partial<Record<'mergeTypeIntoContent'|'mergeDepartmentIntoContent',boolean>>;
+export type SharedCompactDisplay=Record<'typeInContent'|'contentDetails'|'partyTogether'|'councilTogether'|'leadersTogether'|'roomSpecialist'|'teamTogether'|'shortSpecialist'|'shortLeaders'|'cvRoomInline',boolean>&Partial<Record<'mergeTypeIntoContent'|'mergeDepartmentIntoContent'|'showStaffLabels',boolean>>;
 /** Stable identities independent of the currently visible column/anchor. */
 export const COMPACT_GROUP_LABEL_KEYS=['contentDetails','partyTogether','leadersTogether',
   'roomSpecialist','teamTogether'] as const;
 export type CompactGroupLabelKey=(typeof COMPACT_GROUP_LABEL_KEYS)[number];
 export type CompactGroupLabels=Partial<Record<CompactGroupLabelKey,string>>;
-export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,mergeTypeIntoContent:true,mergeDepartmentIntoContent:true};
+export const EMPTY_COMPACT:SharedCompactDisplay={typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,mergeTypeIntoContent:true,mergeDepartmentIntoContent:true,showStaffLabels:true};
 export const DEFAULT_LIST_TITLE='Danh sách các ND trình HĐND';
 export const SUMMARY_CARD_KEYS=['party','build','nq'] as const;
 export type SummaryCardVisibility=Record<(typeof SUMMARY_CARD_KEYS)[number],boolean>;
@@ -328,8 +328,9 @@ function validateItemLayoutBase(value:unknown):ItemLayout{
   if(!compactSource||typeof compactSource!=='object'||Array.isArray(compactSource))
     throw new Error('Cấu hình gộp cột dùng chung không hợp lệ.');
   // Older saved Firebase layouts predate four new grouping options. Missing
-  // NEW flags default to false; invalid values remain rejected, not coerced.
-  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether','cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent']);
+  // New flags use EMPTY_COMPACT defaults (staff labels stay visible in old
+  // layouts); invalid values remain rejected, not coerced.
+  const newOptions=new Set(['contentDetails','partyTogether','councilTogether','teamTogether','cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent','showStaffLabels']);
   if((Object.keys(EMPTY_COMPACT) as (keyof SharedCompactDisplay)[]).some(key=>
     typeof compactSource[key]!=='boolean'&&
     !(newOptions.has(key)&&compactSource[key]===undefined)))
