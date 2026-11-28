@@ -1112,7 +1112,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               value={String(item[field]??'')} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
             :<CellPicker directStatusCas={directStatusCasActive} leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={displayId(item)+': '+label} value={statusDisplayValue(field,rawValue)}
-              displayValue={isStatusDisplayField(field)?statusDisplayValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
+              displayValue={isStatusDisplayField(field)?statusReadOnlyValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked} highlightQuery={columnFilters[field]}
               onChange={value=>{const next=statusEditSelection(field,rawValue,value);
                 return next===null?false:guardBuildUpdate(item.recordId,{[field]:next});}}/>
@@ -1133,7 +1133,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     aria-label={'Đổi tên cột gộp '+COMPACT_GROUP_DEFAULT_LABELS[key]}
     title={'Đổi tên '+(activeLayout.groupLabels?.[key]??COMPACT_GROUP_DEFAULT_LABELS[key])}
     disabled={viewSaving||locked} onClick={()=>openGroupLabelEditor(key)}>✎</button>;
-  const compactMenu=adminControls&&compactOn&&!customizing&&(shareCompact||allowPersonalCompact)&&
+  const compactMenu=adminControls&&(compactOn||showAllSourceColumns)&&!customizing&&(shareCompact||allowPersonalCompact)&&
     (<>
       <details className="compact-columns-menu" ref={compactDetailsRef}
         onToggle={event=>{
@@ -1156,6 +1156,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             maxHeight:compactMenuPlacement.maxHeight,
           }}>
           <strong className="column-options-title">{uiPresentation.labels.columnOptions}</strong>
+          {!showAllSourceColumns&&<>
           {canEditListSettings&&<div className="column-options-visibility" role="group" aria-label="Ẩn hoặc hiện cột dữ liệu">
             <div className="column-options-section-heading"><strong>Ẩn / hiện cột</strong>
               <button type="button" className="button ghost" disabled={viewSaving||!hiddenQuickColumns.length}
@@ -1206,6 +1207,13 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               </div>;
             })}
           <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.partyTogether??COMPACT_GROUP_DEFAULT_LABELS.partyTogether} <small className="column-options-note">(luôn gộp)</small></strong>{groupLabelPencil('partyTogether')}</div>
+          <strong className="column-options-name-heading">Hiển thị nhân sự</strong>
+          {COMPACT_OPTIONS.filter(option=>option.section==='staff').map(option=><label key={option.key} className="column-options-staff-labels">
+            <input type="checkbox" data-compact-choice={option.key}
+              checked={compactDisplay[option.key]??DEFAULT_COMPACT_DISPLAY[option.key]??true}
+              disabled={viewSaving||locked} onChange={event=>updateCompact(option.key,event.currentTarget.checked)}/>
+            <span>{option.label}<small>{option.detail}</small></span>
+          </label>)}
           <strong className="column-options-name-heading">Viết tắt tên</strong>
           {COMPACT_OPTIONS.filter(option=>option.section==='name').map(option=><label key={option.key}>
             <input type="checkbox" data-compact-choice={option.key} checked={compactDisplay[option.key]}
@@ -1214,6 +1222,16 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             <span>{option.label}<small>{option.detail}</small></span>
           </label>)}
           <p>{shareCompact?'Ẩn/hiện, gộp và viết tắt tên chỉ tạo nháp; chọn Lưu bố cục hoặc Hủy thay đổi trên bảng.':'Ẩn/hiện theo bố cục; tùy chọn gộp và viết tắt tên cá nhân trên trình duyệt.'}</p>
+          </>}
+          <div className="column-options-source-view">
+            <button type="button" className="button ghost" data-source-view-toggle
+              aria-pressed={showAllSourceColumns} disabled={inlineMode||viewSaving||locked}
+              onClick={()=>{
+                setShowAllSourceColumns(current=>!current);
+                if(compactDetailsRef.current)compactDetailsRef.current.open=false;
+                setCompactMenuOpen(false);setCompactMenuPlacement(null);compactSummaryRef.current?.focus();
+              }}>{showAllSourceColumns?'Theo cột đã chọn':'Xem cột nguồn Excel'}</button>
+          </div>
            <button type="button" className="button ghost column-options-close" onClick={()=>{if(compactDetailsRef.current)compactDetailsRef.current.open=false;setCompactMenuOpen(false);setCompactMenuPlacement(null);compactSummaryRef.current?.focus();}}>Đóng</button>
           {compactStorageWarning&&<p className="muted" role="status">{compactStorageWarning}</p>}
           {!shareCompact&&personalCompact&&<button type="button" className="button ghost" onClick={()=>{
@@ -1308,7 +1326,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             const table=printTableRef.current;
             if(!table){onLayoutSaved('Không có bảng để in.');return;}
             try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
-              displayedColumns.map(col=>col.label));}
+              displayedColumns.map(col=>col.label),rows);}
             catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
           }}>In / PDF A4</button>}
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}
@@ -1399,44 +1417,12 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         </div></details>}
       </div>}
     </>}
-    {/* Admin tools stay distinct and AFTER the shared summary/heading. */}
-    {/* Guest never mounts the obsolete personal column menu or its empty spacer. */}
-    {adminControls&&<div className="card-header">
-    <div className="item-header-actions">
-      {!customizing&&statusPaletteStore&&onStatusPaletteChange&&
-        <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>}
-      {!customizing&&onPersistViewerLayout&&<span className="muted admin-column-arrange-hint"
-        role="status">{viewSaving?'Đang lưu cột…':personalViewActive?'Mở giao diện chung để kéo cột dùng chung':showAllSourceColumns?'Tắt “Hiện đủ cột Excel” để kéo cột':'Admin: kéo tiêu đề/đường phân cách để chỉnh bố cục · bấm Lưu bố cục để ghi dùng chung'}</span>}
-      {inlineReady&&<div className="inline-g01-restore-columns">
-        <details><summary>Thẻ ẩn ({SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).length})</summary>
-          <div role="group" aria-label="Khôi phục thẻ C01 C02 C03">
-            {SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).length===0
-              ?<span>Không có thẻ ẩn</span>
-              :SUMMARY_CARD_KEYS.filter(key=>activeLayout.summaryCards?.[key]===false).map(key=>
-                <button key={key} type="button" disabled={viewSaving} onClick={()=>changeInlineCardVisibility(key,true)}>
-                  Hiện {key==='party'?'C01':key==='build'?'C02':'C03'} · {key==='party'?'Trình Thành ủy':key==='build'?'Xây dựng NQ':'Ban hành NQ'}
-                </button>)}
-          </div>
-        </details>
-        <details><summary>Cột ẩn ({activeLayout.columns.filter(c=>!c.removed&&!c.visible).length})</summary>
-          <div role="group" aria-label="Khôi phục các cột đã ẩn">
-            {activeLayout.columns.filter(c=>!c.removed&&!c.visible).length===0
-              ?<span>Không có cột ẩn</span>
-              :activeLayout.columns.filter(c=>!c.removed&&!c.visible).map(c=>
-                <button key={c.key} type="button" disabled={viewSaving}
-                  onClick={()=>changeInlineColumnVisibility(c.key,true)}>Hiện {c.label}</button>)}
-          </div>
-        </details>
-      </div>}
-      {adminControls&&!customizing&&<div className="source-column-visibility" role="group" aria-label="Hiển thị cột nguồn Excel">
-        <span>{displayedColumns.length} / {activeLayout.columns.filter(c=>!c.removed).length} cột dữ liệu</span>
-        <button type="button" className="button ghost" aria-pressed={showAllSourceColumns} disabled={inlineMode}
-          onClick={()=>setShowAllSourceColumns(current=>!current)}>
-          {showAllSourceColumns?'Theo cột đã chọn':'Hiện đủ cột Excel'}
-        </button>
-      </div>}
-
-    </div></div>}
+    {/* Only a real independent Admin action can create this header; no
+        instructions, hidden counts, redundant restore menus or source tally. */}
+    {adminControls&&!customizing&&statusPaletteStore&&onStatusPaletteChange&&
+      <div className="card-header"><div className="item-header-actions">
+        <StatusPaletteManager store={statusPaletteStore} onStoreChange={onStatusPaletteChange}/>
+      </div></div>}
     {!customizing&&(onPersistViewerLayout||isRamAdminList)&&(saveFeedback||layoutError)&&
       <p className={layoutError?'notice error-text':'muted'} role={layoutError?'alert':'status'}>{layoutError||saveFeedback}</p>}
     {!customizing&&adminControls&&viewLayoutConflicts.length>0&&pendingViewLayout.current&&
@@ -1514,7 +1500,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                 onChange={e=>setToolbar(old=>({...old,details:{...old.details,
                   [key]:e.currentTarget.value}}))}>
                 <option value="">Tất cả</option>
-                {exactChoices(items,key).map(value=><option key={value} value={value}>{value}</option>)}
+                {exactChoices(items,key).map(value=><option key={value} value={value}>{displayOrganisationName(key,value)}</option>)}
               </select>
             </label>)}
           </div>}
@@ -1629,6 +1615,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               tone={field=>field==='progressBuild'&&buildLocked(item)?undefined:statusPaletteTone(field,effectiveItemField(item,field),statusPaletteStore?.active.otherEnabled??false)??undefined}
               highlight={field=>cellHighlightStyle(effectiveItemField(item,field),field,activeLayout.cellHighlights)}
               cvRoomInline={compactDisplay.cvRoomInline}
+              showStaffLabels={compactDisplay.showStaffLabels!==false}
               l03InlineEditor={pair.variant==='partyTogether'&&!autoGroupWidths&&inlineReady&&
                 item.recordId===rows[0]?.recordId?{
                   verifiedAdmin:canEditListSettings,
@@ -1699,7 +1686,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>
   :<CellPicker directStatusCas={directStatusCasActive} leaseManager={leaseManager} recordId={item.recordId} field={key} editorKind={key==='specialist'?'search':'status'} label={`${displayId(item)}: ${column.label}`} value={statusDisplayValue(key,item[key])}
-    displayValue={isStatusDisplayField(key)?statusDisplayValue(key,item[key]):compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
+    displayValue={isStatusDisplayField(key)?statusReadOnlyValue(key,item[key]):compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked} highlightQuery={columnFilters[key]}

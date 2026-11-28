@@ -206,7 +206,7 @@ async function keyboardCase(page,{surface,width,selection}){
  const selectedOption=page.locator('.cell-picker-popover:popover-open [role="option"][aria-selected="true"]');
  await selectedOption.waitFor();
  const selected=await selectedOption.textContent();
- assert.equal(selected?.trim(),'BTV',key+' unexpected starting level');
+ assert.equal(selected?.trim(),'BTV TU',key+' unexpected starting level');
  // Popover visibility is immediate; focusFirstOption is on next RAF. Focus
  // the REAL selected option before sending real Chromium Arrow/Enter/Space.
  // Wait out the requestAnimationFrame focusFirstOption scheduled by CellPicker.
@@ -224,7 +224,7 @@ async function keyboardCase(page,{surface,width,selection}){
   await page.keyboard.press('ArrowDown');await page.waitForTimeout(60);
   trail.push({key:'ArrowDown',...await readFocus()});
   assert.equal(trail.at(-1).role,'option',key+' ArrowDown left real option');
-  assert.notEqual(trail.at(-1).text,'BTV',key+' ArrowDown did not navigate');
+  assert.notEqual(trail.at(-1).text,'BTV TU',key+' ArrowDown did not navigate');
   await page.keyboard.press('ArrowUp');await page.waitForTimeout(60);
   trail.push({key:'ArrowUp',...await readFocus()});
   assert.equal(trail.at(-1).role,'option',key+' ArrowUp left real option');
@@ -239,7 +239,7 @@ async function keyboardCase(page,{surface,width,selection}){
   await page.keyboard.press('ArrowUp');await page.waitForTimeout(60);
   trail.push({key:'ArrowUp',...await readFocus()});
   assert.equal(trail.at(-1).role,'option',key+' ArrowUp left real option');
-  assert.notEqual(trail.at(-1).text,'BTV',key+' ArrowUp did not navigate');
+  assert.notEqual(trail.at(-1).text,'BTV TU',key+' ArrowUp did not navigate');
   const choice=page.locator('.cell-picker-popover:popover-open [role="option"]')
    .filter({hasText:'Không',exact:true});
   await choice.focus();await page.waitForTimeout(30);

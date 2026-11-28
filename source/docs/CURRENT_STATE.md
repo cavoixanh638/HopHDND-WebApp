@@ -1,3 +1,33 @@
+## 28/11/2026 — G00 tích hợp bản phát hành chung #255/#256/#257
+
+Gộp toàn bộ thay đổi từ ba PR (bỏ dải Admin; Excel Droplist + import; nhãn WebApp và PDF tên đầy đủ) lên source đang phát hành. Các head độc lập: #255 9/10 (smoke còn yêu cầu header rỗng cũ), #256 11/11, #257 10/11 (hai unit test cũ chưa hiểu default nhãn/CSS staff). Sửa các kiểm tra theo hành vi mới, không bỏ QA; chạy CI cho exact candidate tích hợp. Giữ cổng manual HOLD do importer/core và layout. Không đổi Rules, biến, dữ liệu hay policy. Chỉ merge khi tất cả workflow candidate PASS; sau đó owner Run workflow cho main SHA đã merge và kiểm tra version.json.
+
+---
+
+## 28/11/2026 — Tùy chọn nhãn nhân sự WebApp
+
+Candidate PR #257 kết hợp bản in không nhãn và checkbox showStaffLabels (mặc định true, lưu theo bố cục/cá nhân đã có). Renderer chỉ bỏ tag và rail khi false, không bỏ bất kỳ member/source editor nào; đo lại chiều rộng tự co của List, đồng bộ nhãn popup chi tiết báo cáo, giữ PDF độc lập. Chromium đối chiếu snapshot in khi bật/tắt nhãn. Layout cũ không có cờ nhận mặc định true; false được bảo toàn, kiểu sai bị từ chối. Phạm vi có tùy chọn lưu và cập nhật shell kiểm thử in, cần manual owner approval sau CI, không sửa policy. Kiểm thử cũ PR #257 đã PASS riêng Chromium PDF, nhưng auto-only preflight HOLD; không dùng kết quả đó để nghiệm thu head mới.
+
+---
+
+## 28/11/2026 — In PDF bỏ nhãn lặp nhân sự, in nguyên tên đầy đủ
+
+Candidate: nhóm nhân sự in giá trị nguồn hiện hành theo ID kỹ thuật và danh sách thành phần DOM đang hiển thị; mỗi thành phần một dòng, bỏ nhãn UBND/VP/Phòng/CV, không thêm chữ, không suy diễn tên từ viết tắt. Không còn rail nhãn, tự fit chiều rộng tên dài nhất đồng thời với L03. Giữ 8pt regular, ID, thiết kế L03; không đổi WebApp màn hình hoặc dữ liệu. Cập nhật kiểm thử Chrome in tên đầy đủ mặc dù màn hình viết tắt, một dòng/căn trái/regular/no-tag và unit ẩn thành phần. Chưa xác nhận phát hành trước exact SHA QA và cổng phát hành.
+
+---
+
+## 28/11/2026 — Excel Droplist là mặc định trạng thái
+
+Candidate: chuẩn dropdown F–I theo Droplist ẩn của file 55 hồ sơ, nhãn Excel + thứ tự gốc; các khóa lưu/ghi đã được Rules chấp thuận giữ tương thích, không migration dữ liệu. Thêm alias G và nhận diện hai tiêu đề nhóm A–O theo cấu trúc chặt chẽ. Danh sách/popup/report/filter/catalog/PDF đồng bộ nhãn; dữ liệu nhập được giữ nguyên. Kiểm thử fixture tổng hợp không chứa nội dung thật; chưa nhập Firebase. Thay đổi importer/core phải qua preflight và phê duyệt theo policy hiện hành, không bypass.
+
+---
+
+## 28/11/2026 — Bỏ dải thông tin Admin thừa
+
+Candidate xóa dải hướng dẫn kéo, bộ đếm và dropdown thẻ/cột ẩn, số cột hiện/tổng và nút Excel thường trực trên Danh sách. Chức năng ẩn/hiện tập trung trong hai menu đã có; xem đối chiếu Excel chỉ trong Tùy chọn cột và có nút quay lại, giữ quyền hạn và bố cục đã lưu. Chỉ render header riêng nếu có công cụ bảng màu thực sự, giữ Save/Cancel, lỗi/lưu và chức năng popup báo cáo. Có kiểm thử static và Chromium cho view/draft/round-trip. Chưa xác nhận phát hành candidate trước CI/publisher/version.json.
+
+---
+
 ## 28/11/2026 — In PDF: ID và nhân sự chữ thường, nhóm nhân sự tự co
 
 Candidate bổ sung đo hai rail nhân sự bằng font in regular; phân bổ chung với L03 để không làm nhóm này thiếu chiều rộng do nhóm kia chiếm chỗ. ID 15mm căn giữa một dòng regular; tất cả nhãn/tên nhân sự regular, giữ tiêu đề đậm. Giữ hai đường ngang L03, không đổi WebApp, quyền/dữ liệu. Unit phân bổ nhiều nhóm, trường hợp thiếu ngân sách và Chromium đo toàn bộ hàng in. Chưa xác nhận phát hành trước CI/publisher/version.json.

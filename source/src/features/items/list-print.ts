@@ -100,20 +100,15 @@ export const LIST_A4_PRINT_CSS=`
   #hdnd-a4-print-root td[data-print-kind="content"] .hdnd-print-plain{
     font-weight:400!important;
   }
-  /* Keep the actual visible staff rows (including partial/combined groups).
-     The print-specific tag rail and value rail are measured together with L03. */
+  /* Print personnel as one left-aligned rail of full source values.
+     No repeated field labels, blank label track, bold text or guessed names. */
   #hdnd-a4-print-root .hdnd-print-staff-row{
-    display:grid;grid-template-columns:minmax(0,var(--hdnd-print-staff-label-width,35%)) minmax(0,1fr);
-    align-items:center;gap:.8mm;margin:.75mm 0;
+    display:block;margin:.75mm 0;
     break-inside:avoid;page-break-inside:avoid;
   }
-  #hdnd-a4-print-root .hdnd-print-staff-tag{
-    background:transparent;color:#000;
-    font-size:7pt;font-weight:400!important;text-align:left;padding:0 .6mm 0 0;
-    min-width:0;overflow-wrap:anywhere;
-  }
   #hdnd-a4-print-root .hdnd-print-staff-value{
-    font-size:8pt;font-weight:400!important;min-width:0;white-space:normal;overflow-wrap:anywhere;
+    display:block;font-size:8pt;font-weight:400!important;min-width:0;
+    text-align:left;white-space:normal;overflow-wrap:anywhere;
   }
   #hdnd-a4-print-root td[data-print-kind="displayCode"] .hdnd-print-plain{
     font-weight:400!important;white-space:nowrap!important;
@@ -178,17 +173,29 @@ function printStageRows(source:Element,target:HTMLTableCellElement):void {
     badge.dataset.tone=tone;
   }
 }
-function printStaffRows(source:Element,target:HTMLTableCellElement):void {
-  // The WebApp uses .compact-pair-lines for UBND, VP, Phòng and CV.
-  for(const line of Array.from(source.children)){
-    const title=displayText(line.querySelector('.compact-pair-tag'));
-    const names=Array.from(line.querySelectorAll('[data-ui-reference-part]'))
-      .map(displayText).filter(Boolean);
-    const value=names.join(' ')||displayText(line).replace(title,'').trim();
-    if(!title&&!value)continue;
+const PRINT_STAFF_FIELDS=['ubndLeader','vpLeader','room','specialist'] as const;
+export type PrintStaffField=typeof PRINT_STAFF_FIELDS[number];
+export type PrintStaffRecord={recordId:string}&Record<PrintStaffField,string>;
+/** Only the visible source fields of this group may enter the print snapshot.
+ * Full names come from the current row, not from reversing abbreviations.
+ * Preserve a source title as-is and never manufacture a missing name/title. */
+export function printStaffValues(visible:readonly PrintStaffField[],
+  record:Readonly<Record<PrintStaffField,string>>):Array<{field:PrintStaffField;value:string}>{
+  return PRINT_STAFF_FIELDS.filter(field=>visible.includes(field)).flatMap(field=>{
+    const value=String(record[field]??'').replace(/\s+/gu,' ').trim();
+    return value&&value!=='—'?[{field,value}]:[];
+  });
+}
+function printStaffRows(source:Element,target:HTMLTableCellElement,record:PrintStaffRecord|undefined):void {
+  // Even when CV + room share a screen line, print one actual source field per
+  // line; the DOM is the visibility authority and the row is the text authority.
+  const visible=PRINT_STAFF_FIELDS.filter(field=>source.querySelector('[data-ui-reference-part="'+field+'"]'));
+  const fallback=Object.fromEntries(PRINT_STAFF_FIELDS.map(field=>[field,
+    displayText(source.querySelector('[data-ui-reference-part="'+field+'"]'))])) as Record<PrintStaffField,string>;
+  for(const part of printStaffValues(visible,record??fallback)){
     const row=appendPart(target,'div','hdnd-print-staff-row','');
-    appendPart(row,'span','hdnd-print-staff-tag',title);
-    appendPart(row,'span','hdnd-print-staff-value',value);
+    row.dataset.printStaffField=part.field;
+    appendPart(row,'span','hdnd-print-staff-value',part.value);
   }
 }
 function printDocumentParts(source:Element,target:HTMLTableCellElement):void {
@@ -203,7 +210,7 @@ function printDocumentParts(source:Element,target:HTMLTableCellElement):void {
     if(visibleMeta)appendPart(target,'div','hdnd-print-document-meta',visibleMeta);
   }
 }
-function renderPrintCell(cell:HTMLTableCellElement,target:HTMLTableCellElement):void {
+function renderPrintCell(cell:HTMLTableCellElement,target:HTMLTableCellElement,record:PrintStaffRecord|undefined):void {
   const kind=cell.getAttribute('data-col-key')??'';
   target.dataset.printKind=kind;
   const documentGroup=cell.querySelector('.compact-document-group');
@@ -211,7 +218,7 @@ function renderPrintCell(cell:HTMLTableCellElement,target:HTMLTableCellElement):
   const staff=cell.querySelector('.compact-pair-lines');
   if(documentGroup)printDocumentParts(documentGroup,target);
   else if(stages)printStageRows(stages,target);
-  else if(staff)printStaffRows(staff,target);
+  else if(staff)printStaffRows(staff,target,record);
   else{
     // .code is the canonical visible ID; history icons are not table values.
     const code=kind==='displayCode'?cell.querySelector('.code'):null;
@@ -232,9 +239,9 @@ const PRINT_TRACK_PADDING=2*.8*PRINT_PX_PER_MM+2;
 export type PrintGroupMeasure={index:number;kind:'stage'|'staff';labelPx:number;valuePx:number};
 function printGroupNeed(group:PrintGroupMeasure):{labelWidthPx:number;needed:number}{
   const stage=group.kind==='stage';
-  const labelWidthPx=Math.ceil(group.labelPx+(stage?PRINT_TRACK_PADDING:.6*PRINT_PX_PER_MM+2));
+  const labelWidthPx=stage?Math.ceil(group.labelPx+PRINT_TRACK_PADDING):0;
   const valueWidthPx=Math.ceil(group.valuePx+(stage?PRINT_TRACK_PADDING:2));
-  const needed=(labelWidthPx+valueWidthPx+(stage?0:.8*PRINT_PX_PER_MM)+PRINT_CELL_PADDING)/PRINT_PAGE_WIDTH*100;
+  const needed=(labelWidthPx+valueWidthPx+PRINT_CELL_PADDING)/PRINT_PAGE_WIDTH*100;
   return {labelWidthPx,needed};
 }
 /** Allocate both compact groups in a single pass. Neither can steal the other
@@ -262,7 +269,7 @@ export function fitPrintGroupColumns(shares:readonly number[],codeIndex:number,
   for(const g of fixed){
     const target=required>0?used*g.needed/required:used/fixed.length;
     result[g.index]=target;
-    if(target+1e-6>=g.needed)labelWidths[g.index]=g.labelWidthPx;
+    if(g.kind==='stage'&&target+1e-6>=g.needed)labelWidths[g.index]=g.labelWidthPx;
   }
   const total=others.reduce((sum,i)=>sum+shares[i],0);
   for(const i of others)result[i]=(free-used)*(total>0?shares[i]/total:1/others.length);
@@ -302,8 +309,6 @@ function measurePrintStaffText(tbody:HTMLTableSectionElement):PrintGroupMeasure[
     const index=row.closest('td')?.cellIndex??-1;
     if(index<0)continue;
     const group=groups.get(index)??{index,kind:'staff',labelPx:0,valuePx:0};
-    ctx.font='400 7pt Arial, "Segoe UI", sans-serif';
-    group.labelPx=Math.max(group.labelPx,ctx.measureText(row.querySelector('.hdnd-print-staff-tag')?.textContent??'').width);
     ctx.font='400 8pt Arial, "Segoe UI", sans-serif';
     group.valuePx=Math.max(group.valuePx,ctx.measureText(row.querySelector('.hdnd-print-staff-value')?.textContent??'').width);
     groups.set(index,group);
@@ -312,7 +317,8 @@ function measurePrintStaffText(tbody:HTMLTableSectionElement):PrintGroupMeasure[
 }
 
 const DOM_ID='hdnd-a4-print-root';
-export function printVisibleListA4(title:string,table:HTMLTableElement,headers:readonly string[]):void{
+export function printVisibleListA4(title:string,table:HTMLTableElement,headers:readonly string[],
+  staffRecords:readonly PrintStaffRecord[]=[]):void{
   if(!title.trim()||!table.tBodies.length||headers.length<1)
     throw Error('Không tìm thấy tiêu đề hoặc bảng hiện hành để in.');
   const sourceRows=Array.from(table.tBodies[0].rows).filter(row=>
@@ -342,11 +348,13 @@ export function printVisibleListA4(title:string,table:HTMLTableElement,headers:r
   for(const label of headers){const th=document.createElement('th');th.textContent=label;headRow.appendChild(th);}
   thead.appendChild(headRow);printed.appendChild(thead);
   const tbody=document.createElement('tbody');
+  const staffById=new Map(staffRecords.map(record=>[record.recordId,record]));
   for(const row of sourceRows){
     const tr=document.createElement('tr');
+    const record=staffById.get(row.dataset.uiReferenceRecordId??'');
     for(const cell of Array.from(row.cells)){
       const td=document.createElement('td');
-      renderPrintCell(cell,td);
+      renderPrintCell(cell,td,record);
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
@@ -367,9 +375,6 @@ export function printVisibleListA4(title:string,table:HTMLTableElement,headers:r
       const labelWidth=fitted.labelWidths[group.index];
       if(labelWidth===undefined)continue;
       if(group.kind==='stage')printed.style.setProperty('--hdnd-print-stage-label-width',labelWidth+'px');
-      else for(const row of Array.from(tbody.rows)){
-        row.cells[group.index]?.style.setProperty('--hdnd-print-staff-label-width',labelWidth+'px');
-      }
     }
   }
   printed.appendChild(tbody);root.appendChild(printed);

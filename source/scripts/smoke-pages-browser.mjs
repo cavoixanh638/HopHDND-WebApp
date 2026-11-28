@@ -2716,7 +2716,7 @@ try{
     const rect=panel?.getBoundingClientRect();
     const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
-    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===8&&
+    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===9&&
       !panel.querySelector('details.compact-more-options')&&
       nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&
       nameBoxes.some(box=>box.dataset.compactChoice==='shortSpecialist')&&
@@ -2726,6 +2726,30 @@ try{
       count:labels.length,rect:rect?{left:rect.left,right:rect.right,height:rect.height}:null};
   })()`);
   if(!compactMenuDesktop.ok)throw Error('Staff menu geometry/options regression: '+JSON.stringify(compactMenuDesktop));
+  // Staff labels are display-only, and removing them must remove the width
+  // of the label rail without changing any member or its edit grant.
+  const staffLabelState=()=>evaluate(`(()=>{
+    const td=document.querySelector('td[data-col-key=room]'),group=td?.querySelector('.compact-pair-lines');
+    const first=group?.firstElementChild;
+    return {labels:group?.querySelectorAll('.compact-pair-tag').length,
+      members:[...group?.querySelectorAll('[data-ui-reference-part]')??[]].map(n=>n.dataset.uiReferencePart),
+      width:td?.getBoundingClientRect().width,tracks:first?getComputedStyle(first).gridTemplateColumns.split(' ').length:0,
+      gap:first?parseFloat(getComputedStyle(first).columnGap):null,
+      auto:document.querySelector('.item-data-table')?.dataset.listGroupWidths,
+      option:document.querySelector('input[data-compact-choice=showStaffLabels]')?.checked};
+  })()`);
+  const tagged=await staffLabelState();
+  if(!tagged.option||tagged.labels!==4||tagged.tracks!==2)throw Error('Existing staff label default lost: '+JSON.stringify(tagged));
+  await evaluate("document.querySelector('input[data-compact-choice=showStaffLabels]').click()");
+  await eventually("!!document.querySelector('.compact-pair-lines[data-staff-labels=hidden]') && !document.querySelector('.compact-pair-lines .compact-pair-tag')",'Staff labels did not hide');
+  const untagged=await staffLabelState();
+  if(untagged.option||untagged.labels!==0||untagged.tracks!==1||untagged.gap!==0||
+     JSON.stringify(untagged.members)!==JSON.stringify(tagged.members)||
+     (tagged.auto==='auto'&&untagged.width>tagged.width+1))
+    throw Error('Staff labels hide must retain members and remove label rail: '+JSON.stringify({tagged,untagged}));
+  await evaluate("document.querySelector('input[data-compact-choice=showStaffLabels]').click()");
+  await eventually("!!document.querySelector('.compact-pair-lines .compact-pair-tag')",'Staff labels did not restore');
+  console.log('ADMIN_STAFF_LABEL_OPTION_PASS',JSON.stringify({tagged,untagged}));
   const toggledNote=await evaluate(`(()=>{
     const box=document.querySelector('.column-options-checklist input[data-column-choice=note]');
     if(!box||box.disabled||!box.checked)return false;box.click();return true;
@@ -2738,7 +2762,12 @@ try{
   // operate on the whole displayed group; hidden-bar clutter never mounts.
   await evaluate("document.querySelector('input[data-column-choice=specialist]').click()");
   await eventually("(()=>{const h=document.querySelector('th[data-column-key=room] .column-heading-label');const c=document.querySelector('td[data-col-key=room]');return h?.textContent.trim()==='Lãnh đạo / Phòng'&&c?.querySelector('[data-ui-reference-part=ubndLeader]')&&c.querySelector('[data-ui-reference-part=vpLeader]')&&c.querySelector('[data-ui-reference-part=room]')&&!c.querySelector('[data-ui-reference-part=specialist]')&&document.querySelector('input[data-group-choice=teamTogether]')?.indeterminate;})()",'Partial staff group lost its remaining fields or retained an obsolete heading');
-  if(await evaluate("!!document.querySelector('.inline-excel-hidden-bar')"))throw Error('Obsolete hidden-column counter still mounted');
+  const redundantAdminStrip=await evaluate(`(()=>{
+    const root=document.querySelector('.item-list-card');
+    return [...root.querySelectorAll('.inline-excel-hidden-bar,.admin-column-arrange-hint,.inline-g01-restore-columns,.source-column-visibility')].map(el=>el.className);
+  })()`);
+  if(redundantAdminStrip.length)throw Error('Obsolete Admin strip still mounted during layout editing: '+JSON.stringify(redundantAdminStrip));
+  console.log('ADMIN_REDUNDANT_STRIP_REMOVED_PASS');
   await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
   await eventually("!document.querySelector('th[data-column-key=room],th[data-column-key=specialist],th[data-column-key=vpLeader],th[data-column-key=ubndLeader]')&&!document.querySelector('input[data-group-choice=teamTogether]')?.checked",'Hide group did not hide every staff member');
   await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
@@ -2812,7 +2841,7 @@ try{
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
-      labels.length===8&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
+      labels.length===9&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
       html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
@@ -3094,7 +3123,7 @@ try{
     'Cấp stage cell picker popover did not open');
   const selected=await evaluate(`(()=>{
     const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
-    const next=choices.find(x=>x.textContent?.trim()==='BTV');
+    const next=choices.find(x=>x.textContent?.trim()==='BTV TU');
     if(!next)return false;next.click();return true;
   })()`);
   if(!selected)throw Error('QA canonical BTV official choice missing');
@@ -3580,8 +3609,12 @@ try{
   if(!r03list.ok)throw Error('R03 grouped colors not scoped by source member: '+JSON.stringify(r03list));
   const r03shot=await send('Page.captureScreenshot',{format:'png'});
   writeFileSync('hophdnd-review-r03-after.png',Buffer.from(r03shot.data,'base64'));
-  await evaluate(`[...document.querySelectorAll('.source-column-visibility button')]
-    .find(x=>x.textContent.includes('Hiện đủ cột Excel'))?.click()`);
+  // Source inspection remains an optional popup action, never a permanent strip.
+  if(await evaluate("!!document.querySelector('.source-column-visibility,.admin-column-arrange-hint,.inline-g01-restore-columns,[data-source-view-toggle]')"))
+    throw Error('Redundant Admin strip or source action visible outside column options');
+  await evaluate("document.querySelector('.compact-columns-menu').open=true");
+  await eventually("!!document.querySelector('.compact-columns-options-floating [data-source-view-toggle]')",'Source inspection missing inside column options');
+  await evaluate("document.querySelector('.compact-columns-options-floating [data-source-view-toggle]').click()");
   await eventually("!!document.querySelector('td[data-col-key=department]')",
     'R03 source comparison did not ungroup');
   const sourceColor=await evaluate(`(()=>{
@@ -3590,6 +3623,13 @@ try{
   })()`);
   if(sourceColor!=='rgb(204, 0, 0)')
     throw Error('R03 original source rule changed: '+sourceColor);
+  await eventually("!document.querySelector('.compact-columns-options-floating') && !!document.querySelector('.compact-columns-menu')",'Source view must keep the column options reachable without an open popup');
+  await evaluate("document.querySelector('.compact-columns-menu').open=true");
+  await eventually("document.querySelector('.compact-columns-options-floating [data-source-view-toggle]')?.getAttribute('aria-pressed')==='true'",'Source comparison return control missing');
+  if(await evaluate("!!document.querySelector('.compact-columns-options-floating input[data-column-choice]')"))throw Error('Source preview should not edit stored visibility');
+  await evaluate("document.querySelector('.compact-columns-options-floating [data-source-view-toggle]').click()");
+  await eventually("!!document.querySelector('.compact-document-group') && !document.querySelector('td[data-col-key=department]')",'Source preview did not return to selected columns');
+  console.log('ADMIN_SOURCE_VIEW_IN_MENU_ROUNDTRIP_PASS');
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/compact-qa/compact-qa.html?highlight=1&hide-dept=1'});
   await eventually("!!document.querySelector('.compact-document-group')",
     'R03 hidden member fixture missing');
@@ -4310,10 +4350,10 @@ try{
   // two selected row IDs/counts, never migrate the source to satisfy this check.
   const v4NextVisible=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
     .map(x=>x.textContent)`);
-  if(!v4NextVisible.some(x=>x.includes('Đã gửi ĐU'))||
-      !v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp'))||
-      v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
-    throw Error('UI V4 next bucket must preserve distinct source member IDs and show canonical labels: '+JSON.stringify(v4NextVisible));
+  if(!v4NextVisible.some(x=>x.includes('UB đã gửi ĐU'))||
+      !v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp'))||
+      v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp')))
+    throw Error('Next bucket must preserve distinct source member IDs and show Excel labels: '+JSON.stringify(v4NextVisible));
   console.log('UI_V4_L1_NEXT_BUCKET_CANONICAL_DISPLAY_IDS_PRESERVED_PASS',JSON.stringify(v4NextVisible));
 
   const quickSummary=await evaluate(`({
@@ -4735,7 +4775,8 @@ try{
       const region=document.querySelector('.item-data-region');
       const old=region.querySelector(':scope > .card-header');
       const button=region.querySelector('.admin-list-heading .compact-columns-menu > summary');
-      return {ok:!!old&&getComputedStyle(old).display==='none'&&!!button&&
+      return {ok:(!old||getComputedStyle(old).display==='none')&&!!button&&
+        !region.querySelector('.admin-column-arrange-hint,.inline-g01-restore-columns,.source-column-visibility')&&
         button.getClientRects().length>0&&region.querySelectorAll('.compact-columns-menu').length===1&&
         !region.querySelector('.inline-layout-savebar'),oldHeader:old?getComputedStyle(old).display:null,
         title:button?.textContent?.trim()};

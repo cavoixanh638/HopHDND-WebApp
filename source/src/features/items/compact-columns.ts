@@ -16,15 +16,16 @@ export type CompactDisplay=SharedCompactDisplay;
 export const DEFAULT_COMPACT_DISPLAY:CompactDisplay={
   typeInContent:false,contentDetails:false,partyTogether:false,councilTogether:false,
   leadersTogether:false,roomSpecialist:false,teamTogether:false,shortSpecialist:false,shortLeaders:false,cvRoomInline:false,
-  mergeTypeIntoContent:true,mergeDepartmentIntoContent:true,
+  mergeTypeIntoContent:true,mergeDepartmentIntoContent:true,showStaffLabels:true,
 };
-export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string;section:'merge'|'name'}[]=[
+export const COMPACT_OPTIONS:{key:CompactOption;label:string;detail:string;section:'merge'|'name'|'staff'}[]=[
   {key:'mergeTypeIntoContent',label:'Gộp Loại văn bản vào Nội dung trình',detail:'Bật/tắt riêng cột Loại văn bản',section:'merge'},
   {key:'mergeDepartmentIntoContent',label:'Gộp Đơn vị chủ trì vào Nội dung trình',detail:'Bật/tắt riêng cột Đơn vị chủ trì',section:'merge'},
   {key:'leadersTogether',label:'Lãnh đạo UBND + VP',detail:'UBND trên, VP dưới',section:'merge'},
   {key:'roomSpecialist',label:'Phòng + Chuyên viên',detail:'Phòng trên, chuyên viên dưới',section:'merge'},
   {key:'teamTogether',label:'UBND + VP + Phòng + CV',detail:'Bốn thông tin theo nhóm',section:'merge'},
   {key:'cvRoomInline',label:'Chuyên viên và phòng cùng dòng',detail:'CV Tên chuyên viên (Tên phòng)',section:'merge'},
+  {key:'showStaffLabels',label:'Hiện nhãn UBND / VP / Phòng / CV',detail:'Chỉ trên WebApp; bản in PDF luôn bỏ nhãn',section:'staff'},
   {key:'shortSpecialist',label:'Viết tắt tên chuyên viên',detail:'Tên đầy đủ vẫn tìm được',section:'name'},
   {key:'shortLeaders',label:'Viết tắt tên lãnh đạo',detail:'Giữ nguyên chức danh',section:'name'},
 ];
@@ -61,7 +62,7 @@ export function readPersonalCompactDisplay(scope:string):CompactDisplay|null {
     if(!value||typeof value!=='object'||Array.isArray(value))return null;
     const object=value as Record<string,unknown>;
     const keys=Object.keys(DEFAULT_COMPACT_DISPLAY) as CompactOption[];
-    if(keys.some(key=>typeof object[key]!=='boolean'&&!(['cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent'].includes(key)&&object[key]===undefined)))return null;
+    if(keys.some(key=>typeof object[key]!=='boolean'&&!(['cvRoomInline','mergeTypeIntoContent','mergeDepartmentIntoContent','showStaffLabels'].includes(key)&&object[key]===undefined)))return null;
     return Object.fromEntries(keys.map(key=>[key,object[key]??DEFAULT_COMPACT_DISPLAY[key]??false])) as CompactDisplay;
   }catch{return null;}
 }

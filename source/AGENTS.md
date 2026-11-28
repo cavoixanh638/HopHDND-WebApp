@@ -1,3 +1,35 @@
+## CHỈ THỊ 28/11/2026 — TÙY CHỌN HIỆN NHÃN NHÂN SỰ CHỈ TRÊN WEBAPP
+
+- Thêm checkbox “Hiện nhãn UBND / VP / Phòng / CV” trong Tùy chọn cột → Hiển thị nhân sự. Mặc định bật để tương thích mọi bố cục đã lưu. Lưu/Hủy và cấu hình cá nhân theo luồng gộp cột hiện hành; không đổi quyền hoặc giá trị hồ sơ. Tắt phải bỏ hẳn rail và gap, đo lại chiều rộng thực tế, giữ đủ các trường đang hiện, bao gồm chế độ CV/Phòng cùng dòng và nhóm tách. Danh sách và popup chi tiết báo cáo dùng cùng tùy chọn hiển thị nhân sự; chế độ sửa cấu hình cột nguồn vẫn giữ nguyên.
+- Bản in PDF luôn không có nhãn, không phụ thuộc checkbox; lấy chức danh/họ tên đầy đủ từ snapshot hồ sơ đang in, không suy đoán tên, không in trường ẩn. Giữ ID và nhân sự font regular, L03 và phân bổ chiều rộng A4.
+- Thêm cờ tùy chọn tương thích layout cũ, kiểm kiểu boolean, kiểm thử DOM/rail và ẩn/hiện. Chromium in lần hai khi tắt nhãn, đối chiếu toàn bộ giá trị nhân sự với bản in lúc bật. Cổng phát hành: thay đổi schema tùy chọn bố cục và kiểm thử in ngoài vùng QA tự động phải HOLD cho chủ repo xác nhận, không chỉnh policy.
+
+---
+
+## CHỈ THỊ 28/11/2026 — BẢN IN NHÂN SỰ CHỈ GHI CHỨC DANH VÀ HỌ TÊN
+
+- Bản in PDF A4 bỏ hoàn toàn nhãn lặp UBND, VP, Phòng, CV và rail nhãn trong các cột nhân sự gộp. In nguyên giá trị nguồn đầy đủ (ví dụ PCT + họ tên, PCVP + họ tên), không viết tắt theo chế độ màn hình; mỗi thành phần hiện có một dòng chữ thường 8pt, căn trái, không đậm. Phòng/CV chỉ in giá trị đang có, không thêm nhãn; bỏ dòng trống; nếu nguồn đã viết tắt thì giữ nguyên, không đoán họ tên.
+- Chỉ in các thành phần thực sự đang hiển thị, dùng ID kỹ thuật của đúng hồ sơ để lấy giá trị từ snapshot List (không lấy dữ liệu trường ẩn), cả khi CV/Phòng gộp trên màn hình. Tự đo độ rộng một rail nhân sự theo giá trị dài nhất, phối hợp với L03, không dành chỗ cho nhãn cũ. Không thay bảng trên màn hình, dữ liệu, Rules, quyền, cấu hình hay thiết kế ID/Tiến độ 3 khâu.
+- Kiểm thử full name trong chế độ viết tắt, không còn tag, mỗi dòng regular, không mất trường hoặc in trường ẩn, vẫn bảo toàn A4/Chrome/clipboard. Không sửa cổng phát hành.
+
+---
+
+## CHỈ THỊ 28/11/2026 — DANH MỤC TRẠNG THÁI MẶC ĐỊNH THEO EXCEL DROPLIST
+
+- Nguồn chuẩn: file chủ dự án gửi 28/11, sheet ẩn Droplist: F nghiệp vụ lấy B2:B5 (TTTU, BTV TU, BCH, Không); G lấy C2:C8 (Không phải trình; Sở chưa trình; VP đang xử lý; UB đã gửi ĐU; ĐU đã gửi TU, chưa họp; Đã họp/gửi phiếu, chờ TBKL; Đã có TBKL); H lấy E2:E6; I lấy F2:F4. Không dùng tên khác ở sheet báo cáo thay cho dropdown. Dùng đúng thứ tự, kể cả lựa chọn chưa xuất hiện trong hồ sơ.
+- Tách nhãn hiển thị chính thức theo Excel khỏi khóa nghiệp vụ đã được Firebase Rules phê duyệt. Không đổi Rules, ID, transaction/history, dữ liệu lưu cũ hay tự nới quyền ghi. Khi chọn trạng thái, gửi khóa cũ tương ứng; import giữ nguyên chữ gốc, nhận diện alias đúng trường; báo cáo, bộ lọc, menu, danh mục và bản in dùng nhãn Excel, thống kê không đổi ý nghĩa. Quy định tên V3 cũ chỉ còn là khóa tương thích.
+- Import A–O nhận đúng hai dòng phân nhóm (A rỗng, B=I/II, C=NGHỊ QUYẾT/BÁO CÁO, D–O rỗng), không bỏ qua hồ sơ thiếu mã thật sự hoặc trùng mã/sai cột. Không upload file nghiệp vụ có tên người thật lên repo public; dùng fixture tổng hợp 43 NQ + 12 BC, vị trí và danh mục đúng nguồn. Không suy diễn trạng thái không được xác nhận, không tự ghi production. Phải qua CI và release gate theo phạm vi import/core.
+
+---
+
+## CHỈ THỊ 28/11/2026 — BỎ DẢI THÔNG TIN ADMIN THỪA TRÊN DANH SÁCH
+
+- Xóa hẳn dòng hướng dẫn kéo tiêu đề/đường phân cách, nút Thẻ ẩn (n), Cột ẩn (n), số cột đang hiện/tổng cột và nút Hiện đủ cột Excel khỏi dải giao diện bảng, cả khi xem và khi chỉnh giao diện; không để wrapper trống. Giữ hành động thực sự độc lập (bảng màu nếu được cấp).
+- Khôi phục thẻ tại Chỉnh giao diện → Hiện/ẩn thẻ tổng hợp; khôi phục cột thường/cột gộp tại Tùy chọn cột hiện có. Quyền xem đối chiếu cột nguồn Excel không mất: chỉ đặt thao tác Xem cột nguồn Excel bên trong popup Tùy chọn cột, có đường trở về cùng popup, không xuất hiện thường trực và không ghi bố cục. Giữ Save/Cancel và phản hồi lỗi/lưu thực sự; không thay dữ liệu/Rules/bản in.
+- Chromium kiểm không còn dải thừa ở view/draft, ẩn/hiện qua các menu chính, đối chiếu Excel round-trip không ghi layout. Không bypass release gate; merge exact SHA khi CI + auto preflight PASS.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — BẢN IN CỘT NHÂN SỰ MỘT DÒNG, ID VÀ NHÂN SỰ CHỮ THƯỜNG
 
 - Bản in A4 tự co đồng thời Tiến độ 3 khâu và các nhóm nhân sự đang hiển thị, độc lập tỷ lệ màn hình. Nhãn UBND/VP/Phòng/CV và tên tương ứng giữ một dòng cho dữ liệu đủ sức chứa A4; đo dài nhất theo font in thực tế, giảm rail/gap thừa, dành đủ chỗ cho cả hai nhóm. Giữ mọi thành phần đang hiện, không giảm font, không cắt chữ; nếu nội dung bất thường vượt giấy thì wrap an toàn.

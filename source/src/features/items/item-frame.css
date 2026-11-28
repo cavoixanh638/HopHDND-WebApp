@@ -610,6 +610,10 @@
 .compact-pair-tag{font-size:10px;font-weight:750;color:#688579;
   background:#edf3ef;border-radius:4px;padding:2px 4px;box-sizing:border-box;
   width:100%;min-width:0;text-align:center;white-space:nowrap}
+/* Hide the label rail in every WebApp staff group (List and report detail). */
+.compact-pair-lines[data-staff-labels="hidden"]>div{
+  grid-template-columns:minmax(0,1fr)!important;column-gap:0!important;
+}
 .compact-pair-lines .compact-highlight-member,.compact-pair-lines .compact-staff-inline-values{
   min-width:0;max-width:100%;overflow-wrap:anywhere;text-align:left;
 }
@@ -2009,3 +2013,5 @@
 @media (prefers-reduced-motion:reduce){
   .column-manager .column-manager-rename-button{transition:none;}
 }
+
+

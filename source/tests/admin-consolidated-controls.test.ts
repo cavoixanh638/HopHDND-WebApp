@@ -38,14 +38,17 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).not.toContain('<details className="compact-more-options">');
     expect(list).toContain('data-column-choice={column.key}');
     expect(list).toContain('onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}');
-    expect(list).toContain('const compactMenu=adminControls&&compactOn&&!customizing');
+    expect(list).toContain('const compactMenu=adminControls&&(compactOn||showAllSourceColumns)&&!customizing');
     // Regression: the production CSS hides the old .card-header when
     // data-preview-options=closed. A DOM existence check alone missed it.
     const heading=list.slice(list.indexOf('{columnMenuInHeading?<div className="admin-list-heading">'),
       list.indexOf('</div>:<h2 className="item-list-page-title">'));
     expect(heading).toContain('{compactMenu}');
-    const hiddenHeader=list.slice(list.indexOf('{adminControls&&<div className="card-header">'),
-      list.indexOf('{!customizing&&(onPersistViewerLayout||isRamAdminList)&&(saveFeedback||layoutError)'));
+    const headerStart=list.indexOf('{adminControls&&!customizing&&statusPaletteStore&&onStatusPaletteChange&&');
+    expect(headerStart).toBeGreaterThan(-1);
+    const hiddenHeader=list.slice(headerStart,
+      list.indexOf('{!customizing&&(onPersistViewerLayout||isRamAdminList)&&(saveFeedback||layoutError)',headerStart));
+    expect(hiddenHeader).toContain('<StatusPaletteManager');
     expect(hiddenHeader).not.toContain('{compactMenu}');
     expect(list).toContain('{!columnMenuInHeading&&compactMenu}');
     const productionCss=readFileSync(new URL('../src/features/items/real-list-visual-parity.css',import.meta.url),'utf8');
@@ -57,6 +60,20 @@ describe('G00 consolidated admin tools across recent UI requests',()=>{
     expect(list).toContain('disabled={locked||!rows.length||inlineMode}');
     expect(list).toContain('Lưu bố cục');
     expect(list).toContain('Hủy thay đổi');
+  });
+  it('removes the redundant admin strip in both view and layout editing',()=>{
+    for(const fragment of ['admin-column-arrange-hint','inline-g01-restore-columns',
+      'className="source-column-visibility"','Thẻ ẩn (','Cột ẩn (',' cột dữ liệu</span>',
+      'Hiện đủ cột Excel','Admin: kéo tiêu đề/đường phân cách'])
+      expect(list).not.toContain(fragment);
+    // Hidden items remain restorable through their existing single controls;
+    // optional raw-source inspection lives inside the column-options popup.
+    expect(list).toContain('admin-summary-visibility');
+    expect(list).toContain('data-column-choice={column.key}');
+    const menu=list.slice(list.indexOf('const compactMenu='),list.indexOf('return <section className="card item-list-card"'));
+    expect(menu).toContain('data-source-view-toggle');
+    expect(menu).toContain("{showAllSourceColumns?'Theo cột đã chọn':'Xem cột nguồn Excel'}");
+    expect(menu).toContain('{!showAllSourceColumns&&<>');
   });
   it('exposes inline name and kind controls, keeping complex editor available',()=>{
     expect(panel).toContain('className="column-manager-rename-button"');

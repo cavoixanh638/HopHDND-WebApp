@@ -5,13 +5,13 @@ import {L03InlineWidthControl} from './L03InlineWidthControl';
 import type {Item,TextField} from '../../../shared/types';
 import {compactTypeTone,type CompactPair} from './compact-columns';
 import {normalizeSearch} from '../../domain/search';
-import {canonicalStatus,isNotRequiredStatus} from '../../domain/status-contract';
+import {canonicalStatus,isNotRequiredStatus,excelStatusLabel} from '../../domain/status-contract';
 
 /** Display-only transition for saved legacy labels until DATA's canonical catalog
  * lands. Never writes an Item or duplicates the domain's edit contract. */
 export function compactPartyLevelLabel(raw:unknown):string{
  const canonical=canonicalStatus('partyLevel',raw);
- return canonical==='BTV TU'?'BTV':canonical==='Không phải trình'?'Không':canonical;
+ return excelStatusLabel('partyLevel',canonical);
 }
 type MemberHighlight={color:string;backgroundColor:string}|undefined;
 /** R05 is presentation-only. Never reuse the report's completed bucket for
@@ -26,14 +26,14 @@ type Props={
  item:Item;pair:CompactPair;field:(key:TextField)=>ReactNode;
  tone:(key:TextField)=>string|undefined;editable?:(key:TextField)=>boolean;
  /** Only source fields that belong to the visible group can be highlighted. */
- highlight?:(key:TextField)=>MemberHighlight;cvRoomInline?:boolean;
+ highlight?:(key:TextField)=>MemberHighlight;cvRoomInline?:boolean;showStaffLabels?:boolean;
  /** Optional verified-admin layout session; NEVER implies permission to edit Item. */
  l03InlineEditor?:L03InlineWidthEditor;
 };
 /** Shared render for list + popup; source permissions, leases and conditional
  * highlights are evaluated per FIELD, never inherited from the group anchor. */
 export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
-  highlight=()=>undefined,cvRoomInline=false,l03InlineEditor}:Props){
+  highlight=()=>undefined,cvRoomInline=false,showStaffLabels=true,l03InlineEditor}:Props){
  const includes=(key:string)=>pair.memberFields.includes(key);
  const shown=(key:TextField)=>field(key);
  const memberStyle=(key:TextField):CSSProperties|undefined=>{
@@ -136,7 +136,7 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
            {...memberAttributes(stage.key)}>
            {statusNotRequired?
              <span className="workflow-status-value">Không phải trình</span>:
-             layoutSession?stageValue:shown(stage.key)}
+             layoutSession?excelStatusLabel(stage.key,stageValue):shown(stage.key)}
          </span>}
        </div>;
      });
@@ -149,14 +149,14 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
  }
  if(pair.variant==='teamTogether'&&cvRoomInline&&includes('room')&&includes('specialist')){
    const leadFields=(['ubndLeader','vpLeader'] as TextField[]).filter(includes);
-   return <div className="compact-pair-lines" data-ui-reference-group="L04">
+   return <div className="compact-pair-lines" data-ui-reference-group="L04" data-staff-labels={showStaffLabels?'shown':'hidden'}>
      {leadFields.map(key=><div key={key}>
-       <span className="compact-pair-tag">{key==='ubndLeader'?'UBND':'VP'}</span>
+       {showStaffLabels&&<span className="compact-pair-tag">{key==='ubndLeader'?'UBND':'VP'}</span>}
        <span className="compact-highlight-member" data-ui-reference-part={key} data-ui-picker-skin={editable(key)?'standard':undefined}
          {...memberAttributes(key)}>{shown(key)}</span>
      </div>)}
      <div className="compact-cv-room-line">
-       <span className="compact-pair-tag">{item.specialist?'CV':'Phòng'}</span>
+       {showStaffLabels&&<span className="compact-pair-tag">{item.specialist?'CV':'Phòng'}</span>}
        <span className="compact-staff-inline-values">
        {(item.specialist||editable('specialist'))&&<span className="compact-highlight-member" data-ui-reference-part="specialist" data-ui-picker-skin={editable('specialist')?'standard':undefined}
          {...memberAttributes('specialist')}>{shown('specialist')}</span>}
@@ -169,9 +169,9 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
      </div>
    </div>;
  }
- return <div className="compact-pair-lines" data-ui-reference-group="L04">
+ return <div className="compact-pair-lines" data-ui-reference-group="L04" data-staff-labels={showStaffLabels?'shown':'hidden'}>
    {pair.memberFields.map((key,index)=><div key={key}>
-     <span className="compact-pair-tag">{pair.tags[index]}</span>
+     {showStaffLabels&&<span className="compact-pair-tag">{pair.tags[index]}</span>}
      <span className="compact-highlight-member" data-ui-reference-part={key} data-ui-picker-skin={editable(key as TextField)?'standard':undefined}
        {...memberAttributes(key as TextField)}>
        {shown(key as TextField)}

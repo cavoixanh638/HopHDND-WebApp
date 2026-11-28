@@ -3,7 +3,7 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import type {Item,TextField} from '../shared/types';
 import {createDemoItems} from '../src/data/demo-items';
-import {OFFICIAL_STATUS_CHOICES,canonicalStatus} from '../src/domain/status-contract';
+import {DEFAULT_STATUS_CHOICE_KEYS,canonicalStatus} from '../src/domain/status-contract';
 import {CompactGroupedValue} from '../src/features/items/CompactGroupedValue';
 import {activeCompactPairs,DEFAULT_COMPACT_DISPLAY} from '../src/features/items/compact-columns';
 import {defaultItemLayout} from '../src/data/item-preferences';
@@ -45,8 +45,8 @@ describe('UI V4 L1: source-preserving status presentation in List and popup',()=
   it('honors ALL official choices in exact order, no old alias and no synthetic aggregate/preset',()=>{
     for(const key of fields){
       expect(statusPickerValues(key,['VP đang thực hiện',legacy[key],unknown[key],'Bước tiếp theo']))
-        .toEqual(OFFICIAL_STATUS_CHOICES[key]);
-      expect(statusPickerValues(key,[])).toEqual(OFFICIAL_STATUS_CHOICES[key]);
+        .toEqual(DEFAULT_STATUS_CHOICE_KEYS[key]);
+      expect(statusPickerValues(key,[])).toEqual(DEFAULT_STATUS_CHOICE_KEYS[key]);
     }
     expect(statusPickerValues('vpLeader',['','Lãnh đạo A'])).toEqual(['','Lãnh đạo A']);
   });

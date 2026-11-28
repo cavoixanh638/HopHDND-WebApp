@@ -69,7 +69,7 @@ describe('UI V4 L2 source protections retained by REV2 standard L03 controls',()
       expect(html).toContain('aria-expanded="false"');
       expect(html).not.toContain('cell-picker-popover');
     }
-    expect(canonical).toContain('Đã xin ý kiến, chờ TBKL');
+    expect(canonical).toContain('Đã họp/gửi phiếu, chờ TBKL');
     expect(canonical).toContain('Đã trình, chờ QĐ');
   });
   it('keeps independently accessible full-width 36px buttons in the common grid track',()=>{

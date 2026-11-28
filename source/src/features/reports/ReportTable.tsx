@@ -10,7 +10,7 @@ import { reportStage,reportStageLabels,type ReportStage } from '../../domain/rep
 import {tableFontStack} from '../../data/report-preferences';
 import {normalizeSearch} from '../../domain/search';
 import {displayOrganisationName} from '../../domain/organisation-display';
-import {canonicalStatus} from '../../domain/status-contract';
+import {canonicalStatus,excelStatusLabel} from '../../domain/status-contract';
 import {reportReferenceGroupRows,reportReferenceStatusColumn,
   REPORT_REFERENCE_COLUMN as RC,REPORT_REFERENCE_ROW as RR,
   type ReportGroupIdentityRegistry} from '../../domain/report-reference-identity';
@@ -210,7 +210,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
         {config.columns.map(column=><label key={column} className="inline-g02-column-option">
           <input type="checkbox" checked={!config.hiddenColumns.includes(column)}
             onChange={event=>update({type:'status-visible',reportId:config.id,column,visible:event.target.checked})}/>
-          {column}</label>)}
+          {excelStatusLabel(config.statusField,column)}</label>)}
       </div>}
     </div>}
 
@@ -240,7 +240,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
       {inlineBusy&&<span role="status">Đang lưu cách hiển thị cột…</span>}
       {hiddenStatusColumns.length>0&&<details><summary>+ Hiện cột ẩn ({hiddenStatusColumns.length})</summary>
         <div>{hiddenStatusColumns.map(column=><button key={column} type="button"
-          disabled={inlineBusy} onClick={()=>toggleStatus(column,true)}>+ Hiện {column}</button>)}</div>
+          disabled={inlineBusy} onClick={()=>toggleStatus(column,true)}>+ Hiện {excelStatusLabel(config.statusField,column)}</button>)}</div>
       </details>}
     </div>}
     <div className="table-wrap"><table className="data-table report-table"
@@ -278,27 +278,27 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
               onDragEnd={()=>{draggingColumn.current=null;}}
               onKeyDown={event=>{if(event.altKey&&(event.key==='ArrowLeft'||event.key==='ArrowRight')){
                 event.preventDefault();update({type:'status-step',reportId:config.id,column,direction:event.key==='ArrowLeft'?-1:1});}}}>⠿</span>
-            <span className="report-heading-label">{column}</span>
+            <span className="report-heading-label">{excelStatusLabel(config.statusField,column)}</span>
             <button type="button" className="inline-g02-hide" title={`Ẩn cột ${column}`}
               aria-label={`Ẩn cột ${column}`} onClick={()=>update({type:'status-visible',reportId:config.id,column,visible:false})}>×</button>
             {grip(column,index+2,column)}</div>:
-            quickEditable&&config.columns.includes(column)?<><span className="report-heading-label">{column}</span>
+            quickEditable&&config.columns.includes(column)?<><span className="report-heading-label">{excelStatusLabel(config.statusField,column)}</span>
               <span className="inline-excel-report-tools">
                 <button type="button" className="inline-excel-report-trigger" aria-label={`Tùy chọn ẩn hiện cột ${column}`}
                   title="Nhấp để ẩn/hiện cột, hoặc nhấp chuột phải lên tiêu đề"
                   aria-expanded={quickMenu===column} onClick={()=>setQuickMenu(current=>current===column?null:column)}></button>
                 {quickMenu===column&&<span className="inline-excel-status-menu" role="group" aria-label={`Ẩn hiện cột ${column}`}>
-                  <button type="button" onClick={()=>toggleStatus(column,false)}>Ẩn cột {column} (không xóa)</button>
+                  <button type="button" onClick={()=>toggleStatus(column,false)}>Ẩn cột {excelStatusLabel(config.statusField,column)} (không xóa)</button>
                   <strong>Cột đã ẩn ({hiddenStatusColumns.length})</strong>
                   {hiddenStatusColumns.length===0?<span>Không có cột ẩn</span>:
                     hiddenStatusColumns.map(hidden=><button key={hidden} type="button"
-                      onClick={()=>toggleStatus(hidden,true)}>+ Hiện {hidden}</button>)}
+                      onClick={()=>toggleStatus(hidden,true)}>+ Hiện {excelStatusLabel(config.statusField,hidden)}</button>)}
                   <button type="button" onClick={()=>setQuickMenu(null)}>Đóng</button>
                 </span>}
               </span>
               {onColumnResize&&grip(column,index+2,column)}</>:
-            onColumnResize?<><span className="report-heading-label">{column}</span>{grip(column,index+2,column)}</>:
-            <span className="report-heading-label">{column}</span>}</th>)}
+            onColumnResize?<><span className="report-heading-label">{excelStatusLabel(config.statusField,column)}</span>{grip(column,index+2,column)}</>:
+            <span className="report-heading-label">{excelStatusLabel(config.statusField,column)}</span>}</th>)}
         <th scope="col" data-ui-reference-report-column={RC.percent} className="report-number-header report-percent-col report-resizable-heading">{onColumnResize||editable?<>% hoàn thành{grip('__percent',allColumnWidths.length-1,'% hoàn thành')}</>:'% hoàn thành'}</th>
       </tr></thead>
       <tbody>
@@ -316,7 +316,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
                 style={entries.length&&emphasize&&visualStyle==='bars'
                   ?{'--bar-fill':`${Math.max(1,Math.round(entries.length/(maxByColumn.get(column)??1)*100))}%`} as CSSProperties:undefined}>
                 {entries.length?<span className="report-count-mark">
-                  {drill(`${shownLabel} · ${column}`,entries)}
+                  {drill(`${shownLabel} · ${excelStatusLabel(config.statusField,column)}`,entries)}
                 </span>:'—'}
               </td>;
             })}
@@ -336,7 +336,7 @@ export function ReportTable({ items, config, group, onSelect, sourceLabel = 'D�
           const entries=[...report.rows.values()].flatMap(cells=>cells.get(column)??[]);
           return <td data-ui-reference-report-column={reportReferenceStatusColumn(config,column)}
               className={'report-number'+emphasis(column)+clickable(entries)} key={column}>
-            {drill(`Tổng cộng · ${column}`,entries)}
+            {drill(`Tổng cộng · ${excelStatusLabel(config.statusField,column)}`,entries)}
           </td>;
         })}
         <td data-ui-reference-report-column={RC.percent} className="report-number report-percent-col">

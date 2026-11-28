@@ -2,7 +2,7 @@ import {describe,it,expect} from 'vitest';
 import * as XLSX from 'xlsx';
 import type {Item} from '../shared/types';
 import {PARTY_LEVEL_OPTIONS,STATUS_OPTIONS} from '../shared/field-definitions';
-import {canonicalStatus,isRecognizedStatus,OFFICIAL_STATUS_CHOICES} from '../src/domain/status-contract';
+import {canonicalStatus,isRecognizedStatus,OFFICIAL_STATUS_CHOICES,DEFAULT_STATUS_CHOICE_KEYS} from '../src/domain/status-contract';
 import {createDemoItems} from '../src/data/demo-items';
 import {catalogFromItems,mergeCatalogItems} from '../src/data/catalogs';
 import {DEFAULT_REPORTS,aggregateReport,normalizeReportStatus,reportItems,getKpis} from '../src/domain/reporting';
@@ -79,7 +79,7 @@ describe('V3 L3 official status contract, no source rewrites',()=>{
       progressBuild:'Đã trình HĐND, chưa có QĐ',progressCouncil:'Đã trình HĐND thành phố'})];
     const before=JSON.stringify(items);
     const original=catalogFromItems(items);
-    for(const [key,options] of Object.entries(OFFICIAL_STATUS_CHOICES)){
+    for(const [key,options] of Object.entries(DEFAULT_STATUS_CHOICE_KEYS)){
       expect(original.options[key as keyof typeof original.options]).toEqual(options);
     }
     const saved=structuredClone(original);
@@ -92,7 +92,7 @@ describe('V3 L3 official status contract, no source rewrites',()=>{
     expect(merged.options.progressParty).toEqual(STATUS_OPTIONS.progressParty);
     expect(merged.options.progressBuild).toEqual(STATUS_OPTIONS.progressBuild);
     expect(merged.options.progressCouncil).toEqual(STATUS_OPTIONS.progressCouncil);
-    expect(merged.options.partyLevel).toEqual(PARTY_LEVEL_OPTIONS);
+    expect(merged.options.partyLevel).toEqual(DEFAULT_STATUS_CHOICE_KEYS.partyLevel);
     expect(merged.options.department[0]).toBe('Đơn vị được đặt riêng');
     expect(JSON.stringify(items)).toBe(before);
     expect(saved.options.progressParty[0]).toBe('VP đang thực hiện');

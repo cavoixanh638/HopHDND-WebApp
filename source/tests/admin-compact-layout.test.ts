@@ -9,7 +9,8 @@ describe('Admin compact display is part of the saved shared layout',()=>{
    const migrated=validateItemLayout(old);
    expect(migrated.compactDisplay?.mergeTypeIntoContent).toBe(true);
    expect(migrated.compactDisplay?.mergeDepartmentIntoContent).toBe(true);
-   expect(Object.entries(migrated.compactDisplay??{}).filter(([key])=>!key.startsWith('merge')).every(([,flag])=>!flag)).toBe(true);
+   expect(migrated.compactDisplay?.showStaffLabels).toBe(true);
+   expect(Object.entries(migrated.compactDisplay??{}).filter(([key])=>!key.startsWith('merge')&&key!=='showStaffLabels').every(([,flag])=>!flag)).toBe(true);
  });
  it('admin merging a pair preserves unrelated remote edits',()=>{
    const base=defaultItemLayout();

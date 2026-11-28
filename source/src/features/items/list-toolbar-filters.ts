@@ -5,7 +5,7 @@ import {displayId} from '../../domain/display-id';
 import {isActive} from '../../domain/reporting';
 import type {SummarySelection} from '../../domain/item-summary';
 import {filterListBySummary} from '../../domain/item-summary';
-import {canonicalStatus,OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../../domain/status-contract';
+import {canonicalStatus,OFFICIAL_STATUS_CHOICES,DEFAULT_STATUS_CHOICE_KEYS,type StatusCatalogField} from '../../domain/status-contract';
 import {effectiveBuildStatus,effectiveItemField} from '../../domain/pr95-v5-l4-build-effective';
 
 export type ListKind='qppl'|'hc'|'bc'|'nq-unknown'|'unclassified';
@@ -86,7 +86,7 @@ export const hasToolbarFilters=(state:ListToolbarState):boolean=>
     DETAIL_FIELDS.some(({key})=>state.details[key]));
 export const exactChoices=(items:readonly Item[],key:keyof Item):string[]=>{
   if(isWorkflowField(key)){
-    const official=OFFICIAL_STATUS_CHOICES[key];
+    const official=DEFAULT_STATUS_CHOICE_KEYS[key];
     const observed=[...new Set(items.map(item=>canonicalStatus(key,key==='progressBuild'?effectiveBuildStatus(item):item[key])).filter(Boolean))]
       .filter(value=>!official.includes(value)).sort((a,b)=>a.localeCompare(b,'vi'));
     // Unknown originals remain selectable for data-quality filtering, but

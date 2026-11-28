@@ -97,7 +97,7 @@ describe('Worker A REV2 — L03 permission drives entire group geometry',()=>{
  it('level readonly: two tracks, caption keeps real value, no fake level picker',()=>{
    const html=render(stages,fixture,['progressBuild']);
    expect(html).toContain('data-level-layout="readonly"');
-   expect(plain(html)).toContain('Thành ủy (BTV)VP đang xử lý');
+   expect(plain(html)).toContain('Thành ủy (BTV TU)VP đang xử lý');
    expect(fixture.partyLevel).toBe('BTV TU'); // render-only alias, never writes source
    expect(html).not.toContain('data-level-editor="true"');
    expect(html).not.toContain('aria-label="NQ01 partyLevel"');

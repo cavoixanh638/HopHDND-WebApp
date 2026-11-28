@@ -1,4 +1,5 @@
 import type {SummarySelection,SummaryStage} from '../../domain/item-summary';
+import {excelStatusLabel} from '../../domain/status-contract';
 import {EXCEL_SOURCE_COLUMNS} from '../../data/item-preferences';
 import {
   DETAIL_FIELDS,SEARCH_FIELDS,type ListKind,type ListToolbarState
@@ -52,7 +53,7 @@ export function activeListConditions(options:InventoryOptions):ActiveListConditi
   for(const field of DETAIL_FIELDS){
     const value=toolbar.details[field.key];
     if(nonEmpty(value))list.push({
-      id:'detail:'+field.key,category:'detail',key:field.key,label:field.label,value
+      id:'detail:'+field.key,category:'detail',key:field.key,label:field.label,value:excelStatusLabel(field.key,value)
     });
   }
   if(kindSelection)list.push({
@@ -75,7 +76,7 @@ export function activeListConditions(options:InventoryOptions):ActiveListConditi
     // Removed/unknown custom columns cannot actually filter any records.
     if(!label||!activeColumns.has(key))continue;
     list.push({
-      id:'column:'+key,category:'column',key,label:'Cột · '+label,value:value.trim()
+      id:'column:'+key,category:'column',key,label:'Cột · '+label,value:excelStatusLabel(key,value.trim())
     });
   }
   return list;
