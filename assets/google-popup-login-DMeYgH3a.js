@@ -1,0 +1,1 @@
+import{C as e,h as t,m as n,p as r,x as i}from"./pages-buZFoQYO.js";async function a(a){await e(a,new r,t),await i(a,n)}export{a as loginWithGooglePopup};
