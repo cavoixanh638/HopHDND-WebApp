@@ -1,8 +1,8 @@
 ## CHỈ THỊ 28/11/2026 — TÙY CHỌN HIỆN NHÃN NHÂN SỰ CHỈ TRÊN WEBAPP
 
-- Thêm checkbox “Hiện nhãn UBND / VP / Phòng / CV” trong Tùy chọn cột → Hiển thị nhân sự. Mặc định bật để tương thích mọi bố cục đã lưu. Lưu/Hủy và cấu hình cá nhân theo luồng gộp cột hiện hành; không đổi quyền hoặc giá trị hồ sơ. Tắt phải bỏ hẳn rail và gap, đo lại chiều rộng thực tế, giữ đủ các trường đang hiện, bao gồm chế độ CV/Phòng cùng dòng và nhóm tách. Chỉ danh sách WebApp nhận lựa chọn; popup khác mặc định cũ.
+- Thêm checkbox “Hiện nhãn UBND / VP / Phòng / CV” trong Tùy chọn cột → Hiển thị nhân sự. Mặc định bật để tương thích mọi bố cục đã lưu. Lưu/Hủy và cấu hình cá nhân theo luồng gộp cột hiện hành; không đổi quyền hoặc giá trị hồ sơ. Tắt phải bỏ hẳn rail và gap, đo lại chiều rộng thực tế, giữ đủ các trường đang hiện, bao gồm chế độ CV/Phòng cùng dòng và nhóm tách. Danh sách và popup chi tiết báo cáo dùng cùng tùy chọn hiển thị nhân sự; chế độ sửa cấu hình cột nguồn vẫn giữ nguyên.
 - Bản in PDF luôn không có nhãn, không phụ thuộc checkbox; lấy chức danh/họ tên đầy đủ từ snapshot hồ sơ đang in, không suy đoán tên, không in trường ẩn. Giữ ID và nhân sự font regular, L03 và phân bổ chiều rộng A4.
-- Thêm cờ tùy chọn tương thích layout cũ, kiểm kiểu boolean, kiểm thử DOM/rail và ẩn/hiện. Cổng phát hành: thay đổi schema tùy chọn bố cục và kiểm thử in ngoài vùng QA tự động phải HOLD cho chủ repo xác nhận, không chỉnh policy.
+- Thêm cờ tùy chọn tương thích layout cũ, kiểm kiểu boolean, kiểm thử DOM/rail và ẩn/hiện. Chromium in lần hai khi tắt nhãn, đối chiếu toàn bộ giá trị nhân sự với bản in lúc bật. Cổng phát hành: thay đổi schema tùy chọn bố cục và kiểm thử in ngoài vùng QA tự động phải HOLD cho chủ repo xác nhận, không chỉnh policy.
 
 ---
 

@@ -2009,3 +2009,8 @@
 @media (prefers-reduced-motion:reduce){
   .column-manager .column-manager-rename-button{transition:none;}
 }
+
+/* Hide the label rail in every WebApp staff group (List and report detail). */
+.compact-pair-lines[data-staff-labels="hidden"]>div{
+  grid-template-columns:minmax(0,1fr)!important;column-gap:0!important;
+}

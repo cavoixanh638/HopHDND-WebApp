@@ -1,6 +1,6 @@
 ## 28/11/2026 — Tùy chọn nhãn nhân sự WebApp
 
-Candidate PR #257 kết hợp bản in không nhãn và checkbox showStaffLabels (mặc định true, lưu theo bố cục/cá nhân đã có). Renderer chỉ bỏ tag và rail khi false, không bỏ bất kỳ member/source editor nào; đo lại chiều rộng tự co, giữ PDF độc lập. Layout cũ không có cờ nhận mặc định true; false được bảo toàn, kiểu sai bị từ chối. Phạm vi có tùy chọn lưu và cập nhật shell kiểm thử in, cần manual owner approval sau CI, không sửa policy. Kiểm thử cũ PR #257 đã PASS riêng Chromium PDF, nhưng auto-only preflight HOLD; không dùng kết quả đó để nghiệm thu head mới.
+Candidate PR #257 kết hợp bản in không nhãn và checkbox showStaffLabels (mặc định true, lưu theo bố cục/cá nhân đã có). Renderer chỉ bỏ tag và rail khi false, không bỏ bất kỳ member/source editor nào; đo lại chiều rộng tự co của List, đồng bộ nhãn popup chi tiết báo cáo, giữ PDF độc lập. Chromium đối chiếu snapshot in khi bật/tắt nhãn. Layout cũ không có cờ nhận mặc định true; false được bảo toàn, kiểu sai bị từ chối. Phạm vi có tùy chọn lưu và cập nhật shell kiểm thử in, cần manual owner approval sau CI, không sửa policy. Kiểm thử cũ PR #257 đã PASS riêng Chromium PDF, nhưng auto-only preflight HOLD; không dùng kết quả đó để nghiệm thu head mới.
 
 ---
 

@@ -372,6 +372,32 @@ try{
   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Print DOM not cleaned');
 
+  // Same synthetic current records; use the real WebApp preference to remove
+  // staff labels, then take another print snapshot. Print content must not
+  // depend on the UI label setting (including the abbreviated screen names).
+  await page.emulateMedia({media:'screen'});
+  await page.evaluate(()=>{document.querySelector('.compact-columns-menu').open=true;});
+  const labelToggle=page.locator('input[data-compact-choice=showStaffLabels]');
+  await labelToggle.waitFor();
+  assert.equal(await labelToggle.isChecked(),true,'Legacy default must show labels');
+  await labelToggle.uncheck();
+  await page.locator('.compact-pair-lines[data-staff-labels="hidden"]').first().waitFor();
+  assert.equal(await page.locator('.item-data-table .compact-pair-tag').count(),0,'WebApp labels did not hide');
+  await page.locator('.column-options-close').click();
+  await page.getByRole('button',{name:'In hoặc lưu PDF A4 ngang'}).click();
+  const withoutWebLabels=await page.evaluate(()=>({
+    values:[...document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-staff-row')].map(row=>({
+      field:row.dataset.printStaffField,value:row.querySelector('.hdnd-print-staff-value')?.textContent
+    })),
+    tags:document.querySelectorAll('#hdnd-a4-print-root .hdnd-print-staff-tag').length
+  }));
+  assert.deepEqual(withoutWebLabels.values,staffRows.map(row=>({field:row.field,value:row.value})),
+    'PDF personnel data changed when WebApp labels were disabled');
+  assert.equal(withoutWebLabels.tags,0,'PDF must never print staff field labels');
+  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+  assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Second print DOM not cleaned');
+  console.log('PRINT_WEB_STAFF_LABEL_INDEPENDENCE_PASS '+JSON.stringify({staffRows:withoutWebLabels.values.length}));
+
   assert.deepEqual(external,[],'External network request from isolated preview');
   console.log('HDND_CLIPBOARD_A4_CHROME_PASS '+JSON.stringify({
     initialRows:initial,searchColumns:count,bulkRows:2,

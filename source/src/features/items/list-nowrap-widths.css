@@ -108,8 +108,4 @@
 .column-options-auto-widths input{flex:none;width:auto;margin:2px 0 0;accent-color:#287852}
 .column-options-auto-widths span small{display:block;font-size:11px;color:#657b70}
 
-/* Removing staff tags also removes the whole rail and gap, in both auto
-   and manual layouts. The source editors remain in their original rows. */
-.item-data-table[data-list-group-widths] tbody td .compact-pair-lines[data-staff-labels="hidden"]>div{
-  grid-template-columns:minmax(0,1fr)!important;column-gap:0!important;
-}
+
