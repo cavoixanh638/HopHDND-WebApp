@@ -8,7 +8,7 @@ import {DEFAULT_COMPACT_DISPLAY,abbreviateVietnameseName,abbreviateLeaderName,co
   from '../src/features/items/compact-columns';
 
 afterEach(()=>vi.unstubAllGlobals());
-describe('Mandatory document/stage projection and optional staff groups are read-only presentation',()=>{
+describe('Optional document/stage projection and staff groups are read-only presentation',()=>{
   const all={...DEFAULT_COMPACT_DISPLAY,typeInContent:true,leadersTogether:true,
     roomSpecialist:true,shortSpecialist:true};
   it('does not remove or mutate the 15 Excel source columns',()=>{
@@ -214,7 +214,7 @@ describe('Mandatory document/stage projection and optional staff groups are read
     expect(readPersonalCompactDisplay('x')).toBeNull();
   });
 
-  it('U01/U02 cannot be disabled by old saved flags or missing new flags',()=>{
+  it('Legacy saved flags preserve default document and progress grouping',()=>{
     const source=defaultItemLayout().columns;
     const legacy={...DEFAULT_COMPACT_DISPLAY,typeInContent:false,contentDetails:false,
       partyTogether:false,councilTogether:false};
@@ -237,9 +237,14 @@ describe('Mandatory document/stage projection and optional staff groups are read
     const old={...DEFAULT_COMPACT_DISPLAY,teamTogether:true};
     delete (old as Partial<typeof old>).cvRoomInline;
     delete old.showStaffLabels;
+    delete old.mergeProgressStages;
     values.set('hdnd.viewer-compact.v1:'+a,JSON.stringify(old));
     expect(readPersonalCompactDisplay(a)?.cvRoomInline).toBe(false);
     expect(readPersonalCompactDisplay(a)?.showStaffLabels).toBe(true);
+    expect(readPersonalCompactDisplay(a)?.mergeProgressStages).toBe(true);
+    const split=toggleCompactOption(readPersonalCompactDisplay(a)!,'mergeProgressStages',false);
+    expect(writePersonalCompactDisplay(a,split)).toBe(true);
+    expect(readPersonalCompactDisplay(a)?.mergeProgressStages).toBe(false);
     const withoutTags=toggleCompactOption(readPersonalCompactDisplay(a)!,'showStaffLabels',false);
     expect(withoutTags.teamTogether).toBe(true);
     expect(writePersonalCompactDisplay(a,withoutTags)).toBe(true);
@@ -273,5 +278,26 @@ describe('Independent document group options',()=>{
     const pairs=activeCompactPairs(source,prefs);
     expect(pairs.some(p=>p.variant==='contentDetails')).toBe(false);
     expect(compactVisibleColumns(source,prefs).some(c=>c.key==='department')).toBe(true);
+  });
+});
+
+
+describe('Optional progress stages',()=>{
+  const fields=['partyLevel','progressParty','progressBuild','progressCouncil'];
+  it('splits four Excel F–I source fields independently and restores grouping',()=>{
+    const source=defaultItemLayout().columns;
+    const prefs=toggleCompactOption({...DEFAULT_COMPACT_DISPLAY,teamTogether:true},'mergeProgressStages',false);
+    expect(activeCompactPairs(source,prefs).map(p=>p.variant)).toEqual(['contentDetails','teamTogether']);
+    expect(compactVisibleColumns(source,prefs).filter(c=>fields.includes(c.key))).toEqual(source.filter(c=>fields.includes(c.key)));
+    const merged=toggleCompactOption(prefs,'mergeProgressStages',true);
+    expect(activeCompactPairs(source,merged).find(p=>p.variant==='partyTogether')?.memberFields).toEqual(fields);
+    expect(compactVisibleColumns(source,merged).filter(c=>fields.includes(c.key)).map(c=>c.key)).toEqual(['partyLevel']);
+  });
+  it('does not restore hidden members when switching projection',()=>{
+    const source=defaultItemLayout().columns.map(c=>c.key==='progressParty'?{...c,visible:false}:c);
+    const prefs=toggleCompactOption(DEFAULT_COMPACT_DISPLAY,'mergeProgressStages',false);
+    expect(compactVisibleColumns(source,prefs).find(c=>c.key==='progressParty')?.visible).toBe(false);
+    const pair=activeCompactPairs(source,toggleCompactOption(prefs,'mergeProgressStages',true)).find(p=>p.variant==='partyTogether');
+    expect(pair?.memberFields).toEqual(['partyLevel','progressBuild','progressCouncil']);
   });
 });

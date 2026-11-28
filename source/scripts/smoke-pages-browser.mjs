@@ -2716,7 +2716,7 @@ try{
     const rect=panel?.getBoundingClientRect();
     const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
-    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===9&&
+    return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===10&&
       !panel.querySelector('details.compact-more-options')&&
       nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&
       nameBoxes.some(box=>box.dataset.compactChoice==='shortSpecialist')&&
@@ -2841,7 +2841,7 @@ try{
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&
       rect.height<innerHeight-40&&getComputedStyle(panel).overflowY==='auto'&&
-      labels.length===9&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
+      labels.length===10&&nameBoxes.length===2&&nameBoxes.every(box=>box.getClientRects().length>0&&!box.closest('details'))&&viewport.scrollWidth>viewport.clientWidth&&
       html.scrollWidth<=innerWidth+4&&!!id&&Math.abs(id.getBoundingClientRect().width-52)<=1,
       viewport:innerWidth,labels:labels.length,
       menu:rect?{left:rect.left,right:rect.right,height:rect.height}:null,
@@ -4827,7 +4827,12 @@ try{
       await eventually("!document.querySelector('th[data-column-key=type]') && !!document.querySelector('th[data-column-key=department]')",'Department split not independent');
       await pointerClick(deptToggle);
       await eventually("!document.querySelector('th[data-column-key=type]') && !document.querySelector('th[data-column-key=department]')",'Both document fields should merge');
-      const checkbox='.compact-columns-options-floating input[data-compact-choice=shortSpecialist]';
+      const stageToggle='.compact-columns-options-floating input[data-compact-choice=mergeProgressStages]';
+       await pointerClick(stageToggle);
+       await eventually("['partyLevel','progressParty','progressBuild','progressCouncil'].every(key=>!!document.querySelector('th[data-column-key='+key+']')) && !document.querySelector('.item-data-table .compact-stages')",'Progress split must expose all original fields');
+       await pointerClick(stageToggle);
+       await eventually("!!document.querySelector('.item-data-table .compact-stages') && ['progressParty','progressBuild','progressCouncil'].every(key=>!document.querySelector('th[data-column-key='+key+']'))",'Progress grouping must restore original compact view');
+       const checkbox='.compact-columns-options-floating input[data-compact-choice=shortSpecialist]';
       await pointerClick(checkbox);
       await eventually("!!document.querySelector('.inline-layout-cancel') && document.querySelector('.compact-columns-options-floating input[data-compact-choice=shortSpecialist]')?.checked===false",
         'Visible name checkbox did not stage shared layout draft');

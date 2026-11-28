@@ -398,7 +398,42 @@ try{
   assert.equal(await page.locator('#hdnd-a4-print-root').count(),0,'Second print DOM not cleaned');
   console.log('PRINT_WEB_STAFF_LABEL_INDEPENDENCE_PASS '+JSON.stringify({staffRows:withoutWebLabels.values.length}));
 
-  assert.deepEqual(external,[],'External network request from isolated preview');
+  // Verify split-stage projection through the same preview and print path.
+   await page.evaluate(()=>{document.querySelector('.compact-columns-menu').open=true;});
+   const progressToggle=page.locator('input[data-compact-choice=mergeProgressStages]');
+   await progressToggle.waitFor();
+   assert.equal(await progressToggle.isChecked(),true,'Legacy layout must keep grouped progress');
+   await progressToggle.uncheck();
+   const stageKeys=['partyLevel','progressParty','progressBuild','progressCouncil'];
+   for(const key of stageKeys)await page.locator('.item-data-table th[data-column-key="'+key+'"]').waitFor();
+   assert.equal(await page.locator('.item-data-table .compact-stages').count(),0,'Split progress still grouped');
+   await page.locator('.column-options-close').click();
+   await page.getByRole('button',{name:'In hoặc lưu PDF A4 ngang'}).click();
+   const splitPrint=await page.evaluate((keys)=>{
+     const table=document.querySelector('#hdnd-a4-print-root table');
+     const screen=document.querySelector('.item-data-table');
+     const text=el=>(el?.querySelector('.cell-picker-value-text')?.textContent??el?.textContent??'').replace(/\s+/gu,' ').trim();
+     return {columns:table.tHead.rows[0].cells.length,screenColumns:screen.tHead.rows[0].cells.length,
+       grouped:table.querySelectorAll('.hdnd-print-stage-row').length,
+       rows:[...table.tBodies[0].rows].map((row,index)=>keys.map(key=>({
+         key,printed:text(row.querySelector('[data-print-kind="'+key+'"]')),
+         screen:text(screen.tBodies[0].rows[index].querySelector('[data-col-key="'+key+'"]'))
+       })))};
+   },stageKeys);
+   assert.equal(splitPrint.columns,splitPrint.screenColumns,'Split PDF omitted a visible column');
+   assert.equal(splitPrint.grouped,0,'Split PDF reintroduced grouped stages');
+   assert.equal(splitPrint.rows.length,printed.printRows,'Split PDF lost records');
+   assert(splitPrint.rows.every(row=>row.every(cell=>cell.printed===cell.screen)),'Split PDF lost or changed visible source values');
+   await page.emulateMedia({media:'print'});
+   await page.pdf({path:'qa-results/print-a4/hdnd-split-progress-a4.pdf',preferCSSPageSize:true,printBackground:true});
+   await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));
+   await page.emulateMedia({media:'screen'});
+   await page.evaluate(()=>{document.querySelector('.compact-columns-menu').open=true;});
+   await progressToggle.check();
+   await page.locator('.item-data-table .compact-stages').first().waitFor();
+   await page.locator('.column-options-close').click();
+   console.log('PRINT_SPLIT_PROGRESS_PASS '+JSON.stringify({rows:splitPrint.rows.length,columns:splitPrint.columns}));
+   assert.deepEqual(external,[],'External network request from isolated preview');
   console.log('HDND_CLIPBOARD_A4_CHROME_PASS '+JSON.stringify({
     initialRows:initial,searchColumns:count,bulkRows:2,
     printRows:printed.printRows,printColumns:printed.printedColumns,paper:'A4 landscape',

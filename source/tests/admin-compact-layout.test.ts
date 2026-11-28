@@ -31,3 +31,20 @@ describe('Admin compact display is part of the saved shared layout',()=>{
      .toEqual(['HC','HC','QPPL','BC','BC']);
  });
 });
+
+
+describe('Shared progress grouping preference',()=>{
+  it('defaults missing flag to grouped, preserves false and merges unrelated layout edits',()=>{
+    const base=defaultItemLayout();
+    const legacy={...base,compactDisplay:{...base.compactDisplay!}};
+    delete legacy.compactDisplay.mergeProgressStages;
+    expect(validateItemLayout(legacy).compactDisplay?.mergeProgressStages).toBe(true);
+    const local={...base,compactDisplay:{...base.compactDisplay!,mergeProgressStages:false}};
+    expect(validateItemLayout(local).compactDisplay?.mergeProgressStages).toBe(false);
+    const remote={...base,columns:base.columns.map(c=>c.key==='room'?{...c,width:130}:c)};
+    const merged=mergeItemLayout(base,local,remote);
+    expect(merged.compactDisplay?.mergeProgressStages).toBe(false);
+    expect(merged.columns.find(c=>c.key==='room')?.width).toBe(130);
+    expect(()=>validateItemLayout({...local,compactDisplay:{...local.compactDisplay,mergeProgressStages:'false'}})).toThrow();
+  });
+});
