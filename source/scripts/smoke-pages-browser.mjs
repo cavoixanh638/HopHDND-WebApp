@@ -3094,7 +3094,7 @@ try{
     'Cấp stage cell picker popover did not open');
   const selected=await evaluate(`(()=>{
     const choices=[...document.querySelectorAll('.cell-picker-popover:popover-open .cell-picker-option')];
-    const next=choices.find(x=>x.textContent?.trim()==='BTV');
+    const next=choices.find(x=>x.textContent?.trim()==='BTV TU');
     if(!next)return false;next.click();return true;
   })()`);
   if(!selected)throw Error('QA canonical BTV official choice missing');
@@ -4310,10 +4310,10 @@ try{
   // two selected row IDs/counts, never migrate the source to satisfy this check.
   const v4NextVisible=await evaluate(`[...document.querySelectorAll('.item-data-table tbody tr.color-row td[data-col-key=partyLevel]')]
     .map(x=>x.textContent)`);
-  if(!v4NextVisible.some(x=>x.includes('Đã gửi ĐU'))||
-      !v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp'))||
-      v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp')))
-    throw Error('UI V4 next bucket must preserve distinct source member IDs and show canonical labels: '+JSON.stringify(v4NextVisible));
+  if(!v4NextVisible.some(x=>x.includes('UB đã gửi ĐU'))||
+      !v4NextVisible.some(x=>x.includes('ĐU đã gửi TU, chưa họp'))||
+      v4NextVisible.some(x=>x.includes('ĐU gửi TU, chưa họp')))
+    throw Error('Next bucket must preserve distinct source member IDs and show Excel labels: '+JSON.stringify(v4NextVisible));
   console.log('UI_V4_L1_NEXT_BUCKET_CANONICAL_DISPLAY_IDS_PRESERVED_PASS',JSON.stringify(v4NextVisible));
 
   const quickSummary=await evaluate(`({

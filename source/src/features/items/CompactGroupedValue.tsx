@@ -5,13 +5,13 @@ import {L03InlineWidthControl} from './L03InlineWidthControl';
 import type {Item,TextField} from '../../../shared/types';
 import {compactTypeTone,type CompactPair} from './compact-columns';
 import {normalizeSearch} from '../../domain/search';
-import {canonicalStatus,isNotRequiredStatus} from '../../domain/status-contract';
+import {canonicalStatus,isNotRequiredStatus,excelStatusLabel} from '../../domain/status-contract';
 
 /** Display-only transition for saved legacy labels until DATA's canonical catalog
  * lands. Never writes an Item or duplicates the domain's edit contract. */
 export function compactPartyLevelLabel(raw:unknown):string{
  const canonical=canonicalStatus('partyLevel',raw);
- return canonical==='BTV TU'?'BTV':canonical==='Không phải trình'?'Không':canonical;
+ return excelStatusLabel('partyLevel',canonical);
 }
 type MemberHighlight={color:string;backgroundColor:string}|undefined;
 /** R05 is presentation-only. Never reuse the report's completed bucket for

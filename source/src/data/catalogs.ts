@@ -1,6 +1,6 @@
 import type { Item, TextField } from '../../shared/types';
 import {validateReportGroupIdentities,type ReportGroupIdentityRegistry} from '../domain/report-reference-identity';
-import {OFFICIAL_STATUS_CHOICES,type StatusCatalogField} from '../domain/status-contract';
+import {OFFICIAL_STATUS_CHOICES,DEFAULT_STATUS_CHOICE_KEYS,type StatusCatalogField} from '../domain/status-contract';
 
 /** The four workflow catalogs are an authoritative ordered menu, not a union
  * of old saved profile choices or arbitrary source labels. The current value
@@ -34,7 +34,7 @@ const uniqueChoices=(values:Iterable<unknown>):string[]=>{
 
 export function catalogFromItems(items: Item[]): CatalogConfig {
   const options=Object.fromEntries(CATALOG_KEYS.map(key=>[key,
-    isWorkflowCatalog(key)?[...OFFICIAL_STATUS_CHOICES[key]]:
+    isWorkflowCatalog(key)?[...DEFAULT_STATUS_CHOICE_KEYS[key]]:
       uniqueChoices(items.map(item=>item[key]))
   ])) as CatalogConfig['options'];
   const specialistRooms:Record<string,string[]>=Object.create(null);
@@ -88,7 +88,7 @@ export function mergeCatalogItems(value:CatalogConfig,items:Item[]):CatalogConfi
   // profile/read-refresh bring those back as selectable official statuses.
   // This is a *projection* of choices, not a Firebase/profile migration.
   for(const key of CATALOG_KEYS)
-    saved.options[key]=isWorkflowCatalog(key)?[...OFFICIAL_STATUS_CHOICES[key]]:
+    saved.options[key]=isWorkflowCatalog(key)?[...DEFAULT_STATUS_CHOICE_KEYS[key]]:
       uniqueChoices([...saved.options[key],...items.map(item=>item[key])]);
   const canonical=(choices:string[],value:string)=>choices.find(choice=>
     choice.toLocaleLowerCase('vi')===value.toLocaleLowerCase('vi'));

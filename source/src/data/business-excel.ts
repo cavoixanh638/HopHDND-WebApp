@@ -132,7 +132,8 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
   const firstDataRow=head+1+(oneBlankSpacer?1:0); // 0-based sheet row
   const data=rows.slice(firstDataRow);
   if(!data.length)throw Error('Sheet "'+sheetName+'": file không chứa hồ sơ.');
-  const seen=new Map<string,number>(),checked:unknown[][]=[];
+  const seen=new Map<string,number>(),checked:unknown[][]=[],checkedLines:number[]=[];
+  const sectionHeaders=new Set<string>();
   const lastDataIndex=data.reduce((last,values,index)=>
     values.some(cell=>String(cell??'').trim())?index:last,-1);
   for(let index=0;index<=lastDataIndex;index++){
@@ -140,6 +141,15 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
     if(values.every(cell=>!String(cell??'').trim()))
       throw Error('Sheet "'+sheetName+'", dòng '+line+': dòng trống nằm giữa vùng hồ sơ; không tự bỏ dòng.');
     const code=String(values[0]??'');
+    // Only exact source section rows, not real records with a missing ID.
+    const section=normalized(values[1]).replace(/\.$/,'');
+    const title=normalized(values[2]);
+    const exactSection=!code.trim()&&values.slice(3).every(cell=>!String(cell??'').trim())&&
+      ((section==='i'&&title==='nghi quyet')||(section==='ii'&&title==='bao cao'));
+    if(exactSection){
+      if(sectionHeaders.has(section))throw Error('Sheet "'+sheetName+'", dòng '+line+': tiêu đề phân nhóm bị lặp.');
+      sectionHeaders.add(section);continue;
+    }
     if(!code.trim())throw Error('Sheet "'+sheetName+'", dòng '+line+', cột A: thiếu mã hồ sơ.');
     if(code!==code.trim())
       throw Error('Sheet "'+sheetName+'", dòng '+line+', cột A: mã có khoảng trắng đầu/cuối; hãy sửa trong Excel, không tự cắt mã.');
@@ -173,7 +183,7 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
           ': trạng thái chưa chuẩn hóa "'+value+'". Hãy chọn một trạng thái nghiệp vụ hợp lệ, không tự đổi giá trị.');
     }
     identifier(code,sheetName,line);
-    checked.push(values);
+    checked.push(values);checkedLines.push(line);
   }
   if(!checked.length)throw Error('Sheet "'+sheetName+'": không có hồ sơ hợp lệ.');
   if(checked.length>LIMIT_ROWS)throw Error('Sheet "'+sheetName+'": vượt giới hạn 1.000 hồ sơ.');
@@ -193,7 +203,7 @@ export function parseBusinessExcel(input:ArrayBuffer|Uint8Array,sheetName:string
     // GViz is used only for the shared classification and structure check.
     const asText=(column:number)=>String(source[column]??'');
     return {...item,
-      recordId:identifier(code,sheetName,firstDataRow+index+1),displayCode:code,revision:1,
+      recordId:identifier(code,sheetName,checkedLines[index]),displayCode:code,revision:1,
       content:asText(2),department:asText(3),type:asText(4),
       partyLevel:asText(5),progressParty:asText(6),progressBuild:asText(7),
       progressCouncil:asText(8),specialist:asText(9),room:asText(10),

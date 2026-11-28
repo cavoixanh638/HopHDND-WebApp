@@ -64,13 +64,13 @@ const checkTable=async(selector,label)=>{
     const table=document.querySelector(${JSON.stringify(selector)});
     if(!table)return null;
     const source=table.querySelector('tbody')?.textContent??table.textContent??'';
-    const legacy=['VP đang thực hiện','Ban Chấp hành','ĐU đã gửi TU',
+    const legacy=['VP đang thực hiện','Ban Chấp hành','ĐU gửi TU, chưa họp',
       'Đã họp/xin phiếu','Đã trình HĐND, chưa có QĐ',
       'Không phải trình xây dựng NQ','Đã có QĐ chấp thuận'];
     return {rows:table.querySelectorAll('tbody tr').length,
       legacy:legacy.filter(value=>source.includes(value)),
       canonical:['VP đang xử lý','BCH','BTV TU','Đã trình, chờ QĐ',
-        'ĐU gửi TU, chưa họp','Đã xin ý kiến, chờ TBKL']
+        'ĐU đã gửi TU, chưa họp','Đã họp/gửi phiếu, chờ TBKL']
         .filter(value=>source.includes(value))};
   })()`);
   assert(!!state,label+' table not mounted');

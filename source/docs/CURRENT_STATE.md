@@ -1,3 +1,9 @@
+## 28/11/2026 — Excel Droplist là mặc định trạng thái
+
+Candidate: chuẩn dropdown F–I theo Droplist ẩn của file 55 hồ sơ, nhãn Excel + thứ tự gốc; các khóa lưu/ghi đã được Rules chấp thuận giữ tương thích, không migration dữ liệu. Thêm alias G và nhận diện hai tiêu đề nhóm A–O theo cấu trúc chặt chẽ. Danh sách/popup/report/filter/catalog/PDF đồng bộ nhãn; dữ liệu nhập được giữ nguyên. Kiểm thử fixture tổng hợp không chứa nội dung thật; chưa nhập Firebase. Thay đổi importer/core phải qua preflight và phê duyệt theo policy hiện hành, không bypass.
+
+---
+
 ## 28/11/2026 — In PDF: ID và nhân sự chữ thường, nhóm nhân sự tự co
 
 Candidate bổ sung đo hai rail nhân sự bằng font in regular; phân bổ chung với L03 để không làm nhóm này thiếu chiều rộng do nhóm kia chiếm chỗ. ID 15mm căn giữa một dòng regular; tất cả nhãn/tên nhân sự regular, giữ tiêu đề đậm. Giữ hai đường ngang L03, không đổi WebApp, quyền/dữ liệu. Unit phân bổ nhiều nhóm, trường hợp thiếu ngân sách và Chromium đo toàn bộ hàng in. Chưa xác nhận phát hành trước CI/publisher/version.json.

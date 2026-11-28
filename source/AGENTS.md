@@ -1,3 +1,11 @@
+## CHỈ THỊ 28/11/2026 — DANH MỤC TRẠNG THÁI MẶC ĐỊNH THEO EXCEL DROPLIST
+
+- Nguồn chuẩn: file chủ dự án gửi 28/11, sheet ẩn Droplist: F nghiệp vụ lấy B2:B5 (TTTU, BTV TU, BCH, Không); G lấy C2:C8 (Không phải trình; Sở chưa trình; VP đang xử lý; UB đã gửi ĐU; ĐU đã gửi TU, chưa họp; Đã họp/gửi phiếu, chờ TBKL; Đã có TBKL); H lấy E2:E6; I lấy F2:F4. Không dùng tên khác ở sheet báo cáo thay cho dropdown. Dùng đúng thứ tự, kể cả lựa chọn chưa xuất hiện trong hồ sơ.
+- Tách nhãn hiển thị chính thức theo Excel khỏi khóa nghiệp vụ đã được Firebase Rules phê duyệt. Không đổi Rules, ID, transaction/history, dữ liệu lưu cũ hay tự nới quyền ghi. Khi chọn trạng thái, gửi khóa cũ tương ứng; import giữ nguyên chữ gốc, nhận diện alias đúng trường; báo cáo, bộ lọc, menu, danh mục và bản in dùng nhãn Excel, thống kê không đổi ý nghĩa. Quy định tên V3 cũ chỉ còn là khóa tương thích.
+- Import A–O nhận đúng hai dòng phân nhóm (A rỗng, B=I/II, C=NGHỊ QUYẾT/BÁO CÁO, D–O rỗng), không bỏ qua hồ sơ thiếu mã thật sự hoặc trùng mã/sai cột. Không upload file nghiệp vụ có tên người thật lên repo public; dùng fixture tổng hợp 43 NQ + 12 BC, vị trí và danh mục đúng nguồn. Không suy diễn trạng thái không được xác nhận, không tự ghi production. Phải qua CI và release gate theo phạm vi import/core.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — BẢN IN CỘT NHÂN SỰ MỘT DÒNG, ID VÀ NHÂN SỰ CHỮ THƯỜNG
 
 - Bản in A4 tự co đồng thời Tiến độ 3 khâu và các nhóm nhân sự đang hiển thị, độc lập tỷ lệ màn hình. Nhãn UBND/VP/Phòng/CV và tên tương ứng giữ một dòng cho dữ liệu đủ sức chứa A4; đo dài nhất theo font in thực tế, giảm rail/gap thừa, dành đủ chỗ cho cả hai nhóm. Giữ mọi thành phần đang hiện, không giảm font, không cắt chữ; nếu nội dung bất thường vượt giấy thì wrap an toàn.

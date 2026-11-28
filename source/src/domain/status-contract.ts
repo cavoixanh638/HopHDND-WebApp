@@ -20,6 +20,9 @@ export const PARTY_LEVEL_ALIASES:Readonly<Record<string,string>>={
   'Không':'Không',
 };
 export const PARTY_STATUS_ALIASES:Readonly<Record<string,string>>={
+  // Exact labels from the owner's Excel Droplist C2:C8, 28/11/2026.
+  'UB đã gửi ĐU':'Đã gửi ĐU',
+  'Đã họp/gửi phiếu, chờ TBKL':'Đã xin ý kiến, chờ TBKL',
   'VP đang thực hiện':'VP đang xử lý',
   'Văn phòng đang thực hiện':'VP đang xử lý',
   'ĐU đã gửi TU, chưa họp':'ĐU gửi TU, chưa họp',
@@ -82,4 +85,25 @@ export function isRecognizedStatus(field:StatusCatalogField,raw:unknown):boolean
 }
 export function isNotRequiredStatus(field:StatusCatalogField,raw:unknown):boolean{
   return field!=='progressCouncil'&&(field==='partyLevel'?canonicalStatus(field,raw)==='Không':canonicalStatus(field,raw)==='Không phải trình');
+}
+
+/** Excel Droplist is the authoritative user-facing default, including order.
+ * Retain deployed canonical keys for Firebase Rules, report identities,
+ * layout preferences and history. Reading a label never rewrites a record. */
+export const EXCEL_STATUS_CHOICES:Readonly<Record<StatusCatalogField,readonly string[]>>={
+  partyLevel:['TTTU','BTV TU','BCH','Không'],
+  progressParty:['Không phải trình','Sở chưa trình','VP đang xử lý','UB đã gửi ĐU',
+    'ĐU đã gửi TU, chưa họp','Đã họp/gửi phiếu, chờ TBKL','Đã có TBKL'],
+  progressBuild:['Không phải trình','Sở chưa trình','VP đang xử lý','Đã trình, chờ QĐ','Đã có QĐ'],
+  progressCouncil:['Sở chưa trình','VP đang xử lý','Hoàn thành']
+};
+export const DEFAULT_STATUS_CHOICE_KEYS=Object.fromEntries(
+  (Object.keys(EXCEL_STATUS_CHOICES) as StatusCatalogField[]).map(field=>
+    [field,EXCEL_STATUS_CHOICES[field].map(label=>canonicalStatus(field,label))]
+  )) as Record<StatusCatalogField,readonly string[]>;
+export function excelStatusLabel(field:string,raw:string):string{
+  if(!Object.prototype.hasOwnProperty.call(EXCEL_STATUS_CHOICES,field))return raw;
+  const key=field as StatusCatalogField;
+  const index=DEFAULT_STATUS_CHOICE_KEYS[key].indexOf(canonicalStatus(key,raw));
+  return index<0?raw:EXCEL_STATUS_CHOICES[key][index];
 }

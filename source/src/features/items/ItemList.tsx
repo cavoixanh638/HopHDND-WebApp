@@ -1112,7 +1112,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
               value={String(item[field]??'')} disabled={locked}
               onChange={value=>onUpdate(item.recordId,{[field]:value})}/>
             :<CellPicker directStatusCas={directStatusCasActive} leaseManager={leaseManager} recordId={item.recordId} field={field} editorKind={field==='specialist'?'search':'status'} label={displayId(item)+': '+label} value={statusDisplayValue(field,rawValue)}
-              displayValue={isStatusDisplayField(field)?statusDisplayValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
+              displayValue={isStatusDisplayField(field)?statusReadOnlyValue(field,rawValue):shortLeader?abbreviateLeaderName(item[field]):shortPerson?abbreviateVietnameseName(item[field]):undefined}
               options={options(field,item)} searchable={field==='specialist'} disabled={locked} highlightQuery={columnFilters[field]}
               onChange={value=>{const next=statusEditSelection(field,rawValue,value);
                 return next===null?false:guardBuildUpdate(item.recordId,{[field]:next});}}/>
@@ -1514,7 +1514,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                 onChange={e=>setToolbar(old=>({...old,details:{...old.details,
                   [key]:e.currentTarget.value}}))}>
                 <option value="">Tất cả</option>
-                {exactChoices(items,key).map(value=><option key={value} value={value}>{value}</option>)}
+                {exactChoices(items,key).map(value=><option key={value} value={value}>{displayOrganisationName(key,value)}</option>)}
               </select>
             </label>)}
           </div>}
@@ -1699,7 +1699,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
     maxLength={1000} value={String(item[key]??'')} disabled={locked}
     onChange={value=>onUpdate(item.recordId,{[key]:value})}/>
   :<CellPicker directStatusCas={directStatusCasActive} leaseManager={leaseManager} recordId={item.recordId} field={key} editorKind={key==='specialist'?'search':'status'} label={`${displayId(item)}: ${column.label}`} value={statusDisplayValue(key,item[key])}
-    displayValue={isStatusDisplayField(key)?statusDisplayValue(key,item[key]):compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
+    displayValue={isStatusDisplayField(key)?statusReadOnlyValue(key,item[key]):compactOn&&((key==='specialist'&&compactDisplay.shortSpecialist)||
       ((key==='vpLeader'||key==='ubndLeader')&&compactDisplay.shortLeaders))?
       (key==='vpLeader'||key==='ubndLeader'?abbreviateLeaderName(item[key]):abbreviateVietnameseName(item[key])):undefined}
     options={options(key,item)} searchable={key==="specialist"} disabled={locked} highlightQuery={columnFilters[key]}
