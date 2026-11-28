@@ -1,3 +1,9 @@
+## 28/11/2026 — In PDF bỏ nhãn lặp nhân sự, in nguyên tên đầy đủ
+
+Candidate: nhóm nhân sự in giá trị nguồn hiện hành theo ID kỹ thuật và danh sách thành phần DOM đang hiển thị; mỗi thành phần một dòng, bỏ nhãn UBND/VP/Phòng/CV, không thêm chữ, không suy diễn tên từ viết tắt. Không còn rail nhãn, tự fit chiều rộng tên dài nhất đồng thời với L03. Giữ 8pt regular, ID, thiết kế L03; không đổi WebApp màn hình hoặc dữ liệu. Cập nhật kiểm thử Chrome in tên đầy đủ mặc dù màn hình viết tắt, một dòng/căn trái/regular/no-tag và unit ẩn thành phần. Chưa xác nhận phát hành trước exact SHA QA và cổng phát hành.
+
+---
+
 ## 28/11/2026 — In PDF: ID và nhân sự chữ thường, nhóm nhân sự tự co
 
 Candidate bổ sung đo hai rail nhân sự bằng font in regular; phân bổ chung với L03 để không làm nhóm này thiếu chiều rộng do nhóm kia chiếm chỗ. ID 15mm căn giữa một dòng regular; tất cả nhãn/tên nhân sự regular, giữ tiêu đề đậm. Giữ hai đường ngang L03, không đổi WebApp, quyền/dữ liệu. Unit phân bổ nhiều nhóm, trường hợp thiếu ngân sách và Chromium đo toàn bộ hàng in. Chưa xác nhận phát hành trước CI/publisher/version.json.

@@ -1308,7 +1308,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
             const table=printTableRef.current;
             if(!table){onLayoutSaved('Không có bảng để in.');return;}
             try{printVisibleListA4(activeLayout.listTitle??DEFAULT_LIST_TITLE,table,
-              displayedColumns.map(col=>col.label));}
+              displayedColumns.map(col=>col.label),rows);}
             catch(cause){onLayoutSaved(cause instanceof Error?cause.message:'Không in được bảng.');}
           }}>In / PDF A4</button>}
       </div>:<h2 className="item-list-page-title">{activeLayout.listTitle??DEFAULT_LIST_TITLE}</h2>}

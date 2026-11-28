@@ -1,3 +1,11 @@
+## CHỈ THỊ 28/11/2026 — BẢN IN NHÂN SỰ CHỈ GHI CHỨC DANH VÀ HỌ TÊN
+
+- Bản in PDF A4 bỏ hoàn toàn nhãn lặp UBND, VP, Phòng, CV và rail nhãn trong các cột nhân sự gộp. In nguyên giá trị nguồn đầy đủ (ví dụ PCT + họ tên, PCVP + họ tên), không viết tắt theo chế độ màn hình; mỗi thành phần hiện có một dòng chữ thường 8pt, căn trái, không đậm. Phòng/CV chỉ in giá trị đang có, không thêm nhãn; bỏ dòng trống; nếu nguồn đã viết tắt thì giữ nguyên, không đoán họ tên.
+- Chỉ in các thành phần thực sự đang hiển thị, dùng ID kỹ thuật của đúng hồ sơ để lấy giá trị từ snapshot List (không lấy dữ liệu trường ẩn), cả khi CV/Phòng gộp trên màn hình. Tự đo độ rộng một rail nhân sự theo giá trị dài nhất, phối hợp với L03, không dành chỗ cho nhãn cũ. Không thay bảng trên màn hình, dữ liệu, Rules, quyền, cấu hình hay thiết kế ID/Tiến độ 3 khâu.
+- Kiểm thử full name trong chế độ viết tắt, không còn tag, mỗi dòng regular, không mất trường hoặc in trường ẩn, vẫn bảo toàn A4/Chrome/clipboard. Không sửa cổng phát hành.
+
+---
+
 ## CHỈ THỊ 28/11/2026 — BẢN IN CỘT NHÂN SỰ MỘT DÒNG, ID VÀ NHÂN SỰ CHỮ THƯỜNG
 
 - Bản in A4 tự co đồng thời Tiến độ 3 khâu và các nhóm nhân sự đang hiển thị, độc lập tỷ lệ màn hình. Nhãn UBND/VP/Phòng/CV và tên tương ứng giữ một dòng cho dữ liệu đủ sức chứa A4; đo dài nhất theo font in thực tế, giảm rail/gap thừa, dành đủ chỗ cho cả hai nhóm. Giữ mọi thành phần đang hiện, không giảm font, không cắt chữ; nếu nội dung bất thường vượt giấy thì wrap an toàn.
