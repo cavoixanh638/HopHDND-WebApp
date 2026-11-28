@@ -151,8 +151,21 @@ export function activeCompactPairs(columns:readonly ItemColumn[],prefs:CompactDi
   const selected=prefs.teamTogether?['teamTogether' as const]:['leadersTogether' as const,'roomSpecialist' as const];
   const optional=selected.flatMap(option=>{
     const group=PAIRS[option];
-    if(!group||!prefs[option]||group.memberFields.some(key=>!keys.has(key)))return [];
-    return [group];
+    if(!group||!prefs[option])return [];
+    const memberFields=group.memberFields.filter(key=>keys.has(key));
+    if(!memberFields.length)return [];
+    if(memberFields.length===group.memberFields.length)return [group];
+    const anchor=memberFields.includes(group.anchor)?group.anchor:memberFields[0];
+    const tags=memberFields.map(key=>group.tags[group.memberFields.indexOf(key)]);
+    const leaders=memberFields.includes('ubndLeader')&&memberFields.includes('vpLeader');
+    const label=[
+      ...(leaders?['Lãnh đạo']:memberFields.includes('ubndLeader')?['Lãnh đạo UBND']:memberFields.includes('vpLeader')?['Lãnh đạo VP']:[]),
+      ...(memberFields.includes('room')?['Phòng']:[]),
+      ...(memberFields.includes('specialist')?['CV']:[])
+    ].join(' / ');
+    return [{...group,anchor,hidden:memberFields.find(key=>key!==anchor)??anchor,
+      hiddenFields:memberFields.filter(key=>key!==anchor),memberFields,tags,label,
+      extraWidth:memberFields.length===1?0:group.extraWidth}];
   });
   return [...mandatory,...optional];
 }
@@ -164,7 +177,11 @@ export function compactVisibleColumns(columns:readonly ItemColumn[],prefs:Compac
   const hidden=new Set<string>(pairs.flatMap(pair=>pair.hiddenFields));
   return columns.filter(col=>!hidden.has(col.key)).map(col=>{
     const pair=pairs.find(p=>p.anchor===col.key);
-    return pair?{...col,label:groupLabels[pair.variant as keyof CompactGroupLabels]??pair.label,
+    const staffGroup=pair&&PAIRS[pair.variant];
+    // A custom full-group name is retained in storage; a partial staff group
+    // uses a truthful member-derived title until all of its members return.
+    const partial=staffGroup&&pair!.memberFields.length<staffGroup.memberFields.length;
+    return pair?{...col,label:(!partial?groupLabels[pair.variant as keyof CompactGroupLabels]:undefined)??pair.label,
       width:projectedGroupWidth(col.width,pair.extraWidth)}:{...col};
   });
 }

@@ -138,12 +138,33 @@ describe('Mandatory document/stage projection and optional staff groups are read
     expect(activeCompactPairs(defaultItemLayout().columns,separate).map(g=>g.anchor))
       .toEqual(['content','partyLevel','room']);
   });
-  it('only merges new groups if every source column is visible',()=>{
-    const cols=defaultItemLayout().columns.filter(c=>c.key!=='vpLeader');
+  it('retains all remaining staff members and truthful headings when source columns are hidden',()=>{
+    const source=defaultItemLayout().columns;
     const prefs={...DEFAULT_COMPACT_DISPLAY,teamTogether:true,partyTogether:true};
-    const groups=activeCompactPairs(cols,prefs);
-    expect(groups.map(group=>group.anchor)).toEqual(['content','partyLevel']);
-    expect(compactVisibleColumns(cols,prefs).some(c=>c.key==='ubndLeader')).toBe(true);
+    const fields=['ubndLeader','vpLeader','room','specialist'];
+    for(let mask=0;mask<16;mask++){
+      const visible=fields.filter((_,index)=>(mask&(1<<index))!==0);
+      const cols=source.filter(c=>!fields.includes(c.key)||visible.includes(c.key));
+      const pair=activeCompactPairs(cols,prefs).find(group=>group.variant==='teamTogether');
+      const shown=compactVisibleColumns(cols,prefs,{teamTogether:'Tên nhóm riêng'});
+      if(!visible.length){expect(pair).toBeUndefined();continue;}
+      expect(pair?.memberFields).toEqual(visible);
+      expect(pair?.anchor).toBe(visible.includes('room')?'room':visible[0]);
+      expect(pair?.tags).toEqual(visible.map(key=>['UBND','VP','Phòng','CV'][fields.indexOf(key)]));
+      expect(shown.filter(c=>fields.includes(c.key)).map(c=>c.key)).toEqual([pair!.anchor]);
+      const title=shown.find(c=>c.key===pair!.anchor)?.label;
+      if(mask===15)expect(title).toBe('Tên nhóm riêng');
+      else{
+        expect(title).not.toBe('Tên nhóm riêng');
+        expect(title?.includes('CV')).toBe(visible.includes('specialist'));
+        expect(title?.includes('Phòng')).toBe(visible.includes('room'));
+        expect(title?.includes('Lãnh đạo')).toBe(visible.includes('ubndLeader')||visible.includes('vpLeader'));
+      }
+    }
+    const noCv=source.filter(c=>c.key!=='specialist');
+    expect(compactVisibleColumns(noCv,prefs).find(c=>c.key==='room')?.label).toBe('Lãnh đạo / Phòng');
+    expect(compactVisibleColumns(source.filter(c=>c.key!=='room'),prefs).find(c=>c.key==='ubndLeader')?.label).toBe('Lãnh đạo / CV');
+    expect(source).toHaveLength(15);
   });
   it('persists independent boolean choices per local source with safe fallback',()=>{
     const values=new Map<string,string>();

@@ -150,8 +150,8 @@ export function CompactGroupedValue({item,pair,field,tone,editable=()=>false,
  if(pair.variant==='teamTogether'&&cvRoomInline&&includes('room')&&includes('specialist')){
    const leadFields=(['ubndLeader','vpLeader'] as TextField[]).filter(includes);
    return <div className="compact-pair-lines" data-ui-reference-group="L04">
-     {leadFields.map((key,index)=><div key={key}>
-       <span className="compact-pair-tag">{index===0?'UBND':'VP'}</span>
+     {leadFields.map(key=><div key={key}>
+       <span className="compact-pair-tag">{key==='ubndLeader'?'UBND':'VP'}</span>
        <span className="compact-highlight-member" data-ui-reference-part={key} data-ui-picker-skin={editable(key)?'standard':undefined}
          {...memberAttributes(key)}>{shown(key)}</span>
      </div>)}

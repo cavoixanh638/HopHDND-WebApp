@@ -2713,7 +2713,7 @@ try{
   const compactMenuDesktop=await evaluate(`(()=>{
     const panel=document.querySelector('.compact-columns-options');
     const rect=panel?.getBoundingClientRect();
-    const labels=[...panel?.querySelectorAll(':scope > label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
     return {ok:!!panel&&!!panel.querySelector('.column-options-checklist input[data-column-choice]')&&labels.length===8&&
       !panel.querySelector('details.compact-more-options')&&
@@ -2733,6 +2733,16 @@ try{
   await eventually("!document.querySelector('th[data-column-key=note]') && !!document.querySelector('.inline-layout-cancel')",'Column visibility did not stage into the existing draft');
   await evaluate("document.querySelector('.column-options-checklist input[data-column-choice=note]').click()");
   await eventually("!!document.querySelector('th[data-column-key=note]')",'Unified menu did not restore Note');
+  // A source checkbox changes only that member. Group checkbox and the eye
+  // operate on the whole displayed group; hidden-bar clutter never mounts.
+  await evaluate("document.querySelector('input[data-column-choice=specialist]').click()");
+  await eventually("(()=>{const h=document.querySelector('th[data-column-key=room] .column-heading-label');const c=document.querySelector('td[data-col-key=room]');return h?.textContent.trim()==='Lãnh đạo / Phòng'&&c?.querySelector('[data-ui-reference-part=ubndLeader]')&&c.querySelector('[data-ui-reference-part=vpLeader]')&&c.querySelector('[data-ui-reference-part=room]')&&!c.querySelector('[data-ui-reference-part=specialist]')&&document.querySelector('input[data-group-choice=teamTogether]')?.indeterminate;})()",'Partial staff group lost its remaining fields or retained an obsolete heading');
+  if(await evaluate("!!document.querySelector('.inline-excel-hidden-bar')"))throw Error('Obsolete hidden-column counter still mounted');
+  await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
+  await eventually("!document.querySelector('th[data-column-key=room],th[data-column-key=specialist],th[data-column-key=vpLeader],th[data-column-key=ubndLeader]')&&!document.querySelector('input[data-group-choice=teamTogether]')?.checked",'Hide group did not hide every staff member');
+  await evaluate("document.querySelector('input[data-group-choice=teamTogether]').click()");
+  await eventually("(()=>{const c=document.querySelector('td[data-col-key=room]');return ['ubndLeader','vpLeader','room','specialist'].every(k=>c?.querySelector('[data-ui-reference-part='+k+']'))&&document.querySelector('input[data-group-choice=teamTogether]')?.checked&&!document.querySelector('input[data-group-choice=teamTogether]')?.indeterminate;})()",'Hidden group did not restore all four members');
+  console.log('ADMIN_GROUP_VISIBILITY_PARTIAL_AND_FULL_RESTORE_PASS');
   await evaluate("document.querySelector('.inline-layout-cancel').click()");
   await eventually("!document.querySelector('.inline-layout-cancel')",'Visibility draft cancel did not restore view');
   await evaluate("document.querySelector('.compact-columns-menu').open=true");
@@ -2796,7 +2806,7 @@ try{
     const viewport=document.querySelector('.item-table-scroll');
     const rect=panel?.getBoundingClientRect();
     const html=document.scrollingElement;
-    const labels=[...panel?.querySelectorAll(':scope > label')??[]];
+    const labels=[...panel?.querySelectorAll(':scope > label, :scope > .column-options-merge-row > label')??[]];
     const nameBoxes=[...panel?.querySelectorAll(':scope > label > input[data-compact-choice=shortSpecialist],:scope > label > input[data-compact-choice=shortLeaders]')??[]];
     const id=document.querySelector('.item-data-table tbody td[data-col-key=displayCode]');
     return {ok:!!rect&&rect.left>=-1&&rect.right<=innerWidth+1&&

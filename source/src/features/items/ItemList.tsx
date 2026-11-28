@@ -905,6 +905,20 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
   };
   const hiddenQuickColumns=activeLayout.columns.filter(column=>
     !column.removed&&!column.visible&&column.key!=='stt');
+  // Derive configured groups even when all their source columns are hidden.
+  // Group visibility is the existing per-source layout visibility, not a new
+  // schema or business-data flag. Selecting a hidden group restores all members.
+  const configuredGroups=compactOn?activeCompactPairs(activeLayout.columns
+    .filter(column=>!column.removed).map(column=>({...column,visible:true})),compactDisplay):[];
+  const changeGroupVisibility=(members:readonly string[],visible:boolean)=>{
+    if(!canEditListSettings||showAllSourceColumns||viewSaving)return;
+    stageInlineLayout(base=>members.reduce((next,key)=>setInlineColumnVisibility(next,key,visible),base));
+  };
+  const hideDisplayedColumn=(key:string)=>{
+    const group=compactPairs.find(pair=>pair.anchor===key);
+    if(group){changeGroupVisibility(group.memberFields,false);return;}
+    changeHeaderColumnVisibility(key,false);
+  };
   // Keep the two persistence paths distinct: draft in Customize, CAS in View.
   const changeHeaderColumnVisibility=(key:string,visible:boolean)=>{
     if(canDraftEditHeaders){
@@ -1137,7 +1151,23 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
                   onChange={event=>changeInlineColumnVisibility(column.key,event.currentTarget.checked)}/>
                 <span>{column.label}{column.key==='displayCode'?' (cố định)':''}</span>
               </label>)}</div>
-            <small>Các cột nguồn vẫn được giữ nguyên khi ẩn hoặc gộp.</small>
+            {configuredGroups.length>0&&<>
+              <strong className="column-options-group-visibility-title">Cột gộp</strong>
+              <div className="column-options-checklist column-options-group-checklist">{configuredGroups.map(group=>{
+                const visibleMembers=group.memberFields.filter(key=>activeLayout.columns.some(column=>column.key===key&&column.visible&&!column.removed));
+                const anyVisible=visibleMembers.length>0;
+                const mixed=anyVisible&&visibleMembers.length<group.memberFields.length;
+                const groupLabel=activeLayout.groupLabels?.[group.variant as keyof CompactGroupLabels]??group.label;
+                return <label key={group.variant} title={mixed?'Đang hiện một phần; bỏ chọn để ẩn cả nhóm':groupLabel}>
+                  <input type="checkbox" data-group-choice={group.variant} checked={anyVisible}
+                    ref={input=>{if(input)input.indeterminate=mixed;}}
+                    aria-checked={mixed?'mixed':anyVisible} aria-label={'Hiện cột gộp '+groupLabel}
+                    disabled={viewSaving||locked} onChange={event=>changeGroupVisibility(group.memberFields,event.currentTarget.checked)}/>
+                  <span>{groupLabel}</span>
+                </label>;
+              })}</div>
+            </>}
+            <small>Cột thường: ẩn từng thành phần. Cột gộp: ẩn cả nhóm hoặc hiện lại tất cả thành phần.</small>
           </div>}
           <strong>Gộp cột</strong>
           <div className="column-options-group-name"><strong>{activeLayout.groupLabels?.contentDetails??COMPACT_GROUP_DEFAULT_LABELS.contentDetails}</strong>{groupLabelPencil('contentDetails')}</div>
@@ -1480,13 +1510,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
       <ActiveListFilters conditions={activeConditions} visibleCount={filtered.length}
         sourceCount={items.length} onRemove={removeOneCondition} onClearAll={clearAllListFilters}/>
     </>}
-    {<>{canEditListSettings&&!showAllSourceColumns&&hiddenQuickColumns.length>0&&<div className="inline-excel-hidden-bar" role="group" aria-label="Hiện lại cột đã ẩn">
-       {hiddenQuickColumns.length>0&&<details><summary>Cột đã ẩn ({hiddenQuickColumns.length})</summary>
-         <div>{hiddenQuickColumns.map(column=><button key={column.key} type="button" disabled={viewSaving}
-           onClick={()=>changeInlineColumnVisibility(column.key,true)}>+ Hiện {column.label}</button>)}
-           {hiddenQuickColumns.length>1&&<button type="button" disabled={viewSaving} onClick={showAllInlineColumns}>Hiện tất cả</button>}
-         </div></details>}
-     </div>}<div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-list-nowrap="true" data-list-font-override={explicitFontSize!==undefined?'true':undefined} data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',...(explicitFontSize!==undefined?{'--table-font-size':`${explicitFontSize}px`}:{}),
+    {<><div ref={tableViewportRef} className="table-wrap item-table-scroll" tabIndex={0} role="region" aria-label="Bảng nội dung cuộn ngang và dọc"><table ref={printTableRef} className="data-table item-data-table" data-list-nowrap="true" data-list-font-override={explicitFontSize!==undefined?'true':undefined} data-l03-physical-mode={l03Key?(hasEditablePartyLevel?'mixed-or-editable':'readonly'):undefined} style={{width:`${tableWidth}px`,minWidth:`${tableWidth}px`,tableLayout:'fixed',...(explicitFontSize!==undefined?{'--table-font-size':`${explicitFontSize}px`}:{}),
   '--hdnd-l03-width-readonly':`${partyTrackModeWidth(l03Widths,'readonly')}px`,
   '--hdnd-l03-width-editable':`${partyTrackModeWidth(l03Widths,'editable')}px`} as CSSProperties}><colgroup>{displayedColumns.map(column=><col key={column.key} data-protected-column={contentMinimums.columns[column.key]!==undefined?column.key:undefined} data-content-minimum={contentMinimums.columns[column.key]!==undefined?projectedPhysicalLimits(column.key,groupExtras,compactOn,contentMinimums.columns).min:undefined} style={{width:`${visualWidth(column.width,column.key)}px`}}/>)}</colgroup><thead><tr className="item-heading-row">{displayedColumns.map((column,index)=><ColumnHeader key={column.key} columnKey={column.key}
   sortLabel={column.label} sortDirection={adminControls&&columnSort?.key===column.key?columnSort.direction:null} onSort={adminControls?cycleSort:undefined}
@@ -1494,7 +1518,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
    saving={viewSaving} canHide={canHideInlineColumn(activeLayout,column.key)&&displayedColumns.length>1}
    hiddenColumns={hiddenQuickColumns.map(({key,label})=>({key,label}))}
    onShow={key=>changeHeaderColumnVisibility(key,true)} onShowAll={showAllHeaderColumns}
-   onRename={changeHeaderColumnName} onHide={key=>changeHeaderColumnVisibility(key,false)}
+   onRename={changeHeaderColumnName} onHide={hideDisplayedColumn}
    onOpenColumnSettings={canDraftEditHeaders
      ?key=>{
        setRequestedColumnFocus(key);
@@ -1511,7 +1535,7 @@ export function ItemList({ items, drafts, errors, savingRows, busy, onUpdate, on
         data-direct-hide-column={column.key} aria-label={'Ẩn cột '+column.label}
         title="Ẩn cột (không xóa); hiện lại trong Tùy chọn cột" disabled={viewSaving}
         onPointerDown={event=>event.stopPropagation()}
-        onClick={event=>{event.stopPropagation();if(!viewSaving)changeHeaderColumnVisibility(column.key,false);}}/>
+        onClick={event=>{event.stopPropagation();if(!viewSaving)hideDisplayedColumn(column.key);}}/>
     </span>}
   {((customizing&&!locked&&allowLayout)||canViewerArrange||canViewerResize)&&
     index<displayedColumns.length-1&&column.key!=='displayCode'&&
